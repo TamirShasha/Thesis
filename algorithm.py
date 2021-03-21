@@ -54,35 +54,38 @@ class LengthExtractor:
         denominator = np.sum(np.log(np.arange(n_tag) + 1))
         return nominator - denominator
 
+    def _calc_prob_dynamicly(self, mapping, segment, i, k, d, log_sigma_sqrt_2_pi):
+        total_len = len(segment) - i
+
+        # If we don't need any more signals
+        if k == 0:
+            return total_len * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[i:] / self._noise_std) ** 2)
+        # If there is no legal way to put signals in the remaining space
+        if total_len < k * d:
+            return -np.inf
+        # If there is only one legal way to put signals in the remaining space
+        if total_len == d * k:
+            return total_len * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[i:] - 1 / self._noise_std) ** 2)
+
+        case_1_const = d * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[i:i + d] - 1 / self._noise_std) ** 2)
+        case_2_const = log_sigma_sqrt_2_pi - 0.5 * (segment[i] / self._noise_std) ** 2
+
+        return np.logaddexp(case_1_const + mapping[i + d, k - 1], case_2_const + mapping[i + 1, k])
+
     def _calc_d_likelihood_fast(self, segment, d):
         n = segment.shape[0]
         expected_k = self._find_expected_occourences(segment, d)
-        signal = np.full(d, self._signal_avg_power)
 
         log_pd = self._compute_log_pd(n, expected_k, d)
-
         log_sigma_sqrt_2_pi = -np.log(self._noise_std * (2 * np.pi) ** 0.5)
+        mapping = np.zeros(shape=(n, expected_k + 1))
 
-        @Memoize
-        def log_R(start, k):
-            total_len = len(segment) - start
+        for i in np.arange(n)[::-1]:
+            for k in np.arange(expected_k + 1):
+                val = self._calc_prob_dynamicly(mapping, segment, i, k, d, log_sigma_sqrt_2_pi)
+                mapping[i, k] = val
 
-            # If we don't need any more signals
-            if k == 0:
-                return total_len * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[start:] / self._noise_std) ** 2)
-            # If there is no legal way to put signals in the remaining space
-            if total_len < k * d:
-                return -np.inf
-            # If there is only one legal way to put signals in the remaining space
-            if total_len == d * k:
-                return total_len * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[start:] - 1 / self._noise_std) ** 2)
-
-            case_1_const = d * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[start:start + d] - 1 / self._noise_std) ** 2)
-            case_2_const = log_sigma_sqrt_2_pi - 0.5 * (segment[start] / self._noise_std) ** 2
-
-            return np.logaddexp(case_1_const + log_R(start + d, k - 1), case_2_const + log_R(start + 1, k))
-
-        likelihood = log_pd + log_R(0, expected_k)
+        likelihood = log_pd + mapping[0, expected_k]
         return likelihood
 
     def extract(self):

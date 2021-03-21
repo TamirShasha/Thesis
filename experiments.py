@@ -58,7 +58,7 @@ class Experiment:
 
 def __main__():
     experiment = Experiment(
-        n=300,
+        n=3000,
         d=10,
         k=5,
         signal_avg_power=1,
