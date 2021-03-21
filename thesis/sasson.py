@@ -1,15 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import binom, logsumexp
+import time
+import sys
+
 
 np.random.seed(500)
 
-N = 300
+N = 1000
 D = 12
-K = 8
+K = 20
 NOISE_MEAN = 0
 NOISE_STD = 1
 SIGNAL_AVG_POWER = 1
+sys.setrecursionlimit(10 * N)
 
 
 class Memoize:
@@ -111,26 +115,29 @@ def calc_d_likelihood_fast(segment, d):
 
     log_pd = compute_log_pd(n, guess_k, d)
 
+    log_sigma_sqrt_2_pi = -np.log(NOISE_STD * (2 * np.pi) ** 0.5)
+
     @Memoize
     def log_R(start, k):
         total_len = len(segment) - start
 
         # If we don't need any more signals
         if k == 0:
-            return -np.sum((segment[start:]) ** 2 - NOISE_STD ** 2)
+            return total_len * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[start:] / NOISE_STD) ** 2)
         # If there is no legal way to put signals in the remaining space
         if total_len < k * d:
             return -np.inf
         # If there is only one legal way to put signals in the remaining space
         if total_len == d * k:
-            return -np.sum((segment[start:] - 1) ** 2 - NOISE_STD ** 2)
+            return total_len * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[start:] - 1 / NOISE_STD) ** 2)
 
-        case_1_const = -np.sum((segment[start:start + d] - 1) ** 2 - NOISE_STD ** 2)
-        case_2_const = -segment[start] ** 2 + NOISE_STD ** 2
+        case_1_const = d * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[start:start + d] - 1 / NOISE_STD) ** 2)
+        case_2_const = log_sigma_sqrt_2_pi - 0.5 * (segment[start] / NOISE_STD) ** 2
 
         return np.logaddexp(case_1_const + log_R(start + d, k - 1), case_2_const + log_R(start + 1, k))
 
     likelihood = log_pd + log_R(0, guess_k)
+    # print(likelihood)
     return likelihood
 
 
@@ -168,7 +175,6 @@ x = create_const_signal(SIGNAL_AVG_POWER, D)
 y_clean = add_pulses(y, s, x)
 y = add_noise(y_clean)
 
-import time
 _d_options = np.arange(D // 2, D * 2)
 tic1 = time.time()
 likelihoods, d = find_d_fast(y, _d_options)
