@@ -4,9 +4,9 @@ from scipy.special import binom, logsumexp
 
 np.random.seed(500)
 
-N = 50
-D = 6
-K = 2
+N = 300
+D = 12
+K = 8
 NOISE_MEAN = 0
 NOISE_STD = 1
 SIGNAL_AVG_POWER = 1
@@ -96,6 +96,51 @@ def calc_segment_likelihood(segment, d):
     return likelihood
 
 
+def compute_log_pd(n, k, d):
+    n_tag = n - (d - 1) * k
+    k_tag = k
+    nominator = np.sum(np.log(np.arange(k_tag) + 1)) + np.sum(np.log(np.arange(n_tag - k_tag) + 1))
+    denominator = np.sum(np.log(np.arange(n_tag) + 1))
+    return nominator - denominator
+
+
+def calc_d_likelihood_fast(segment, d):
+    n = segment.shape[0]
+    guess_k = find_k(segment, d)
+    x = create_const_signal(SIGNAL_AVG_POWER, d)
+
+    log_pd = compute_log_pd(n, guess_k, d)
+
+    @Memoize
+    def log_R(start, k):
+        total_len = len(segment) - start
+
+        # If we don't need any more signals
+        if k == 0:
+            return -np.sum((segment[start:]) ** 2 - NOISE_STD ** 2)
+        # If there is no legal way to put signals in the remaining space
+        if total_len < k * d:
+            return -np.inf
+        # If there is only one legal way to put signals in the remaining space
+        if total_len == d * k:
+            return -np.sum((segment[start:] - 1) ** 2 - NOISE_STD ** 2)
+
+        case_1_const = -np.sum((segment[start:start + d] - 1) ** 2 - NOISE_STD ** 2)
+        case_2_const = -segment[start] ** 2 + NOISE_STD ** 2
+
+        return np.logaddexp(case_1_const + log_R(start + d, k - 1), case_2_const + log_R(start + 1, k))
+
+    likelihood = log_pd + log_R(0, guess_k)
+    return likelihood
+
+
+def find_d_fast(y, d_options):
+    liklihoods = [calc_d_likelihood_fast(y, d) for d in d_options]
+    print(liklihoods)
+    d_best = d_options[np.argmax(liklihoods)]
+    return liklihoods, d_best
+
+
 def find_d(y, d_options):
     liklihoods = [calc_d_likelihood(y, d) for d in d_options]
     print(liklihoods)
@@ -123,12 +168,16 @@ x = create_const_signal(SIGNAL_AVG_POWER, D)
 y_clean = add_pulses(y, s, x)
 y = add_noise(y_clean)
 
-_d_options = np.arange(1, D * 5)
-liklihoods, d = find_d(y, _d_options)
+import time
+_d_options = np.arange(D // 2, D * 2)
+tic1 = time.time()
+likelihoods, d = find_d_fast(y, _d_options)
+tic2 = time.time()
+print(f'D Best: {d}', tic2 - tic1)
 print(f'D Best: {d}')
 
 plt.plot(y_clean)
 plt.show()
 
-plt.plot(_d_options, liklihoods)
+plt.plot(_d_options, likelihoods)
 plt.show()
