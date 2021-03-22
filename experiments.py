@@ -46,7 +46,7 @@ class Experiment:
 
     def run(self):
         start_time = time.time()
-        likelihoods, d = self._length_extractor.fast_extract()
+        likelihoods, d = self._length_extractor.extract()
         end_time = time.time()
 
         self._results = {
