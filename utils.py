@@ -41,12 +41,13 @@ def create_random_signal_mask(n, total_sum):
 
 # Add to signal y k pulses of length d
 def add_pulses(y, signal_mask, signal):
+    new_y = np.copy(y)
     x_len = signal.shape[0]
     s_cum = np.cumsum(signal_mask)
     for i in np.arange(s_cum.shape[0] - 1):
         start = s_cum[i] + x_len * i
-        y[start:start + x_len] = signal
-    return y
+        new_y[start:start + x_len] = signal
+    return new_y
 
 
 def add_gaus_noise(y, mean, std):

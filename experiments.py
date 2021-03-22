@@ -25,6 +25,7 @@ class Experiment:
         self._noise_mean = noise_mean  # Expected noise mean
         self._noise_std = noise_std  # Expected noise std
         self._logs = logs
+        self._results = {}
 
         signal_mask = create_random_signal_mask(self._k + 1, self._n - self._d * self._k)
         self._signal = np.full(self._d, self._signal_avg_power)
@@ -33,7 +34,7 @@ class Experiment:
         self._noisy_y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
         self._y = self._noisy_y
 
-        self._signal_length_options = np.arange(self._d // 2, self._d * 2)
+        self._signal_length_options = np.arange(self._d // 2, int(self._d * 1.3))
 
         self._length_extractor = LengthExtractor(y=self._y,
                                                  length_options=self._signal_length_options,
@@ -43,30 +44,64 @@ class Experiment:
                                                  logs=self._logs
                                                  )
 
-    def _plot_likelihoods(self, likelihoods):
-        plt.plot(self._signal_length_options, likelihoods)
-        plt.show()
-
     def run(self):
         start_time = time.time()
         likelihoods, d = self._length_extractor.fast_extract()
         end_time = time.time()
-        print(f'Most Likely D = {d} [D={self._d}], took: {end_time - start_time} seconds,', )
 
-        self._plot_likelihoods(likelihoods)
+        self._results = {
+            "likelihoods": likelihoods,
+            "d": d,
+            "total_time": end_time - start_time
+        }
+
+    def plot_results(self):
+        plt.title(f"N={self._n}, D={self._d}, K={self._k}, NoiseMean={self._noise_mean}, NoiseSTD={self._noise_std} "
+                  f"\n Most likely D={self._results['d']}, Took {'%.3f'%(self._results['total_time'])} Seconds")
+        plt.plot(self._signal_length_options, self._results['likelihoods'])
+        plt.show()
 
 
 def __main__():
-    experiment = Experiment(
-        n=3000,
-        d=10,
-        k=5,
+    experiment1 = Experiment(
+        n=2000,
+        d=20,
+        k=30,
         signal_avg_power=1,
         noise_mean=0,
-        noise_std=0.3,
-        logs=False
+        noise_std=0.5,
+        logs=True
     )
-    experiment.run()
+    experiment1.run()
+    experiment1.plot_results()
+
+    experiment2 = Experiment(
+        n=1000,
+        d=20,
+        k=20,
+        signal_avg_power=1,
+        noise_mean=0,
+        noise_std=1,
+        logs=True
+    )
+    # experiment2.run()
+    # experiment2.plot_results()
+
+    experiment3 = Experiment(
+        n=3000,
+        d=50,
+        k=20,
+        signal_avg_power=1,
+        noise_mean=0,
+        noise_std=1,
+        logs=True
+    )
+    # experiment3.run()
+    # experiment3.plot_results()
+
+
+
+
 
 
 if __name__ == '__main__':
