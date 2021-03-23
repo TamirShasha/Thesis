@@ -16,6 +16,7 @@ class Experiment:
                  n=1000,
                  d=12,
                  k=20,
+                 signal_gen=lambda d: np.full(d, 1),
                  signal_avg_power=1,
                  signal_seperation=0,
                  noise_mean=0,
@@ -27,7 +28,8 @@ class Experiment:
         self._n = n  # Data length
         self._d = d  # Signal Length
         self._k = k  # Num of signal occurrences
-        self._signal_avg_power = signal_avg_power  # Signal Expected Avg Power
+        self._signal_gen = signal_gen  # Signal generator per length d
+        # self._signal_avg_power = signal_avg_power  # Signal Expected Avg Power
         self._signal_seperation = signal_seperation
         self._use_exact_signal_power = use_exact_signal_power
         self._use_exact_k = use_exact_k
@@ -38,7 +40,7 @@ class Experiment:
         self._results = {}
 
         signal_mask = create_random_signal_mask(self._k + 1, self._n - self._d * self._k)
-        self._signal = np.full(self._d, self._signal_avg_power)
+        self._signal = self._signal_gen(self._d)
         self._clean_y = np.zeros(self._n)
         self._y_with_signals = add_pulses(self._clean_y, signal_mask, self._signal)
         self._noisy_y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
@@ -54,7 +56,8 @@ class Experiment:
         }
         self._length_extractor = LengthExtractor(y=self._y,
                                                  length_options=self._signal_length_options,
-                                                 signal_avg_power=self._signal_avg_power,
+                                                 # signal_avg_power=self._signal_avg_power,
+                                                 signal_gen=self._signal_gen,
                                                  signal_seperation=self._signal_seperation,
                                                  noise_mean=self._noise_mean,
                                                  noise_std=self._noise_std,
