@@ -19,6 +19,9 @@ class LengthExtractor:
 
     def _find_expected_occourences(self, y, d):
 
+        if self._exp_attr["use_exact_k"]:
+            return self._exp_attr["k"]
+
         if self._exp_attr["use_exact_signal_power"]:
             return int(np.round(self._exact_signal_power / (d * self._signal_avg_power)))
 
@@ -36,36 +39,36 @@ class LengthExtractor:
         denominator = np.sum(np.log(np.arange(n_tag) + 1))
         return nominator - denominator
 
-    def _calc_prob_dynamicly(self, mapping, segment, i, k, d, log_sigma_sqrt_2_pi):
+    def _calc_prob_dynamicly(self, mapping, segment, i, k, d, signal_seperation, log_sigma_sqrt_2_pi):
         total_len = len(segment) - i
 
         # If we don't need any more signals
         if k == 0:
             return total_len * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[i:] / self._noise_std) ** 2)
+
         # If there is no legal way to put signals in the remaining space
-        if total_len < k * d:
+        if total_len < k * (d + signal_seperation):
             return -np.inf
-        # If there is only one legal way to put signals in the remaining space
-        if total_len == d * k:
-            return total_len * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[i:] - 1 / self._noise_std) ** 2)
 
         case_1_const = d * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[i:i + d] - 1 / self._noise_std) ** 2)
+        case_1_const += signal_seperation * log_sigma_sqrt_2_pi - 0.5 * np.sum(
+            (segment[i + d:i + d + signal_seperation] / self._noise_std) ** 2)
+
         case_2_const = log_sigma_sqrt_2_pi - 0.5 * (segment[i] / self._noise_std) ** 2
 
-        return np.logaddexp(case_1_const + mapping[i + d, k - 1], case_2_const + mapping[i + 1, k])
+        return np.logaddexp(case_1_const + mapping[i + d + signal_seperation, k - 1], case_2_const + mapping[i + 1, k])
 
     def _calc_d_likelihood(self, segment, d):
         n = segment.shape[0]
         expected_k = self._find_expected_occourences(segment, d)
 
-        d_s = d + self._signal_seperation
-        log_pd = self._compute_log_pd(n, expected_k, d_s)
+        log_pd = self._compute_log_pd(n, expected_k, d + self._signal_seperation)
         log_sigma_sqrt_2_pi = -np.log(self._noise_std * (2 * np.pi) ** 0.5)
-        mapping = np.zeros(shape=(n, expected_k + 1))
+        mapping = np.zeros(shape=(n + 1, expected_k + 1))
 
-        for i in np.arange(n)[::-1]:
-            for k in np.arange(expected_k + 1):
-                val = self._calc_prob_dynamicly(mapping, segment, i, k, d_s, log_sigma_sqrt_2_pi)
+        for i in np.arange(mapping.shape[0])[::-1]:
+            for k in np.arange(mapping.shape[1]):
+                val = self._calc_prob_dynamicly(mapping, segment, i, k, d, self._signal_seperation, log_sigma_sqrt_2_pi)
                 mapping[i, k] = val
 
         likelihood = log_pd + mapping[0, expected_k]
