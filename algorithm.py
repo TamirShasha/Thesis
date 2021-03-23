@@ -3,21 +3,31 @@ import numpy as np
 
 class LengthExtractor:
 
-    def __init__(self, y, length_options, signal_avg_power, noise_mean, noise_std, logs=True):
+    def __init__(self, y, length_options, signal_avg_power, signal_seperation, noise_mean, noise_std, exp_attr,
+                 logs=True):
         self._y = y
         self._length_options = length_options
         self._signal_avg_power = signal_avg_power
         self._noise_mean = noise_mean
         self._noise_std = noise_std
         self._logs = logs
+        self._exp_attr = exp_attr
+        self._signal_seperation = signal_seperation
 
         self._n = self._y.shape[0]
+        self._exact_signal_power = self._exp_attr["d"] * exp_attr["k"] * signal_avg_power
 
     def _find_expected_occourences(self, y, d):
+
+        if self._exp_attr["use_exact_signal_power"]:
+            return int(np.round(self._exact_signal_power / (d * self._signal_avg_power)))
+
         y_power = np.sum(np.power(y, 2))
         noise_power = (self._noise_std ** 2 - self._noise_mean ** 2) * y.shape[0]
         signal_power = y_power - noise_power
-        return int(np.round(signal_power / d))
+        k = int(np.round(signal_power / d))
+
+        return k
 
     def _compute_log_pd(self, n, k, d):
         n_tag = n - (d - 1) * k
@@ -48,19 +58,21 @@ class LengthExtractor:
         n = segment.shape[0]
         expected_k = self._find_expected_occourences(segment, d)
 
-        log_pd = self._compute_log_pd(n, expected_k, d)
+        d_s = d + self._signal_seperation
+        log_pd = self._compute_log_pd(n, expected_k, d_s)
         log_sigma_sqrt_2_pi = -np.log(self._noise_std * (2 * np.pi) ** 0.5)
         mapping = np.zeros(shape=(n, expected_k + 1))
 
         for i in np.arange(n)[::-1]:
             for k in np.arange(expected_k + 1):
-                val = self._calc_prob_dynamicly(mapping, segment, i, k, d, log_sigma_sqrt_2_pi)
+                val = self._calc_prob_dynamicly(mapping, segment, i, k, d_s, log_sigma_sqrt_2_pi)
                 mapping[i, k] = val
 
         likelihood = log_pd + mapping[0, expected_k]
+        # likelihood = mapping[0, expected_k]
 
         if self._logs:
-            print(f"For D={d}, likelihood={likelihood}")
+            print(f"For D={d}, likelihood={likelihood}, Expected K={expected_k}")
 
         return likelihood
 
