@@ -17,65 +17,100 @@ class LengthExtractor:
         self._n = self._y.shape[0]
         self._exact_signal_power = self._exp_attr["d"] * exp_attr["k"] * signal_avg_power
 
-    def _find_expected_occourences(self, y, d):
+        # Temporary solution, should actually get this as input (instead of _length_options)
+        self._X = {d: np.full(d, self._signal_avg_power) for d in self._length_options}
+
+        # Fix signals to include seperation
+        self._X = {d + self._signal_seperation: np.concatenate((self._X[d], np.zeros(self._signal_seperation))) for d in self._X}
+        # Fix Signal power per d
+        self._signal_power = {d: np.sum(np.square(self._X[d])) for d in self._X}
+
+    def _find_expected_occurrences(self, y, d):
 
         if self._exp_attr["use_exact_k"]:
             return self._exp_attr["k"]
 
+        # If we know the exact signal power we use it, else compute from data
         if self._exp_attr["use_exact_signal_power"]:
-            return int(np.round(self._exact_signal_power / (d * self._signal_avg_power)))
+            signal_power = self._exact_signal_power
+        else:
+            y_power = np.sum(np.power(y, 2))
+            noise_power = (self._noise_std ** 2 - self._noise_mean ** 2) * y.shape[0]
+            signal_power = y_power - noise_power
 
-        y_power = np.sum(np.power(y, 2))
-        noise_power = (self._noise_std ** 2 - self._noise_mean ** 2) * y.shape[0]
-        signal_power = y_power - noise_power
-        k = int(np.round(signal_power / d))
-
+        k = int(np.round(signal_power / self._signal_power[d]))
         return k
 
     def _compute_log_pd(self, n, k, d):
+        """
+        Compute log(1/|S|), where |S| is the number of ways to insert k signals of length d in n spaces in such they are
+        not overlapping.
+        """
         n_tag = n - (d - 1) * k
         k_tag = k
         nominator = np.sum(np.log(np.arange(k_tag) + 1)) + np.sum(np.log(np.arange(n_tag - k_tag) + 1))
         denominator = np.sum(np.log(np.arange(n_tag) + 1))
         return nominator - denominator
 
-    def _calc_prob_dynamicly(self, mapping, segment, i, k, d, signal_seperation, log_sigma_sqrt_2_pi):
-        total_len = len(segment) - i
+    def _calc_prob_y_given_x_k(self, y, x, k):
+        n = y.shape[0]
+        d = x.shape[0]
 
-        # If we don't need any more signals
-        if k == 0:
-            return total_len * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[i:] / self._noise_std) ** 2)
+        # Precomputing stuff
+        minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2
+        y_squared = np.square(y)
+        sum_y_minus_x_squared = np.zeros(n - d + 1)
+        for i in range(n - d + 1):
+            sum_y_minus_x_squared[i] = np.sum(np.square(y[i:i + d] - x))
 
-        # If there is no legal way to put signals in the remaining space
-        if total_len < k * (d + signal_seperation):
-            return -np.inf
+        case_1_const = minus_1_over_twice_variance * sum_y_minus_x_squared
+        case_2_const = minus_1_over_twice_variance * y_squared
 
-        case_1_const = d * log_sigma_sqrt_2_pi - 0.5 * np.sum((segment[i:i + d] - 1 / self._noise_std) ** 2)
-        case_1_const += signal_seperation * log_sigma_sqrt_2_pi - 0.5 * np.sum(
-            (segment[i + d:i + d + signal_seperation] / self._noise_std) ** 2)
+        case_2_const_cum_sum = np.zeros(n + 1)
+        for i in range(1, n+1):
+            case_2_const_cum_sum[-i-1] = case_2_const_cum_sum[-i] + case_2_const[-i]
 
-        case_2_const = log_sigma_sqrt_2_pi - 0.5 * (segment[i] / self._noise_std) ** 2
+        # Allocating memory
+        mapping = np.zeros(shape=(n + 1, k + 1))
 
-        return np.logaddexp(case_1_const + mapping[i + d + signal_seperation, k - 1], case_2_const + mapping[i + 1, k])
+        def log_R(start_idx, num_signals):
+            total_len = len(y) - start_idx
 
-    def _calc_d_likelihood(self, segment, d):
-        n = segment.shape[0]
-        expected_k = self._find_expected_occourences(segment, d)
+            # If we don't need any more signals
+            if num_signals == 0:
+                return case_2_const_cum_sum[start_idx]
 
-        log_pd = self._compute_log_pd(n, expected_k, d + self._signal_seperation)
-        log_sigma_sqrt_2_pi = -np.log(self._noise_std * (2 * np.pi) ** 0.5)
-        mapping = np.zeros(shape=(n + 1, expected_k + 1))
+            # If there is no legal way to put signals in the remaining space
+            if total_len < num_signals * d:
+                return -np.inf
 
+            c1 = case_1_const[start_idx]
+            c2 = case_2_const[start_idx]
+
+            return np.logaddexp(c1 + mapping[start_idx + d, num_signals - 1], c2 + mapping[start_idx + 1, num_signals])
+
+        # Filling values one by one, skipping irrelevant values
         for i in np.arange(mapping.shape[0])[::-1]:
-            for k in np.arange(mapping.shape[1]):
-                val = self._calc_prob_dynamicly(mapping, segment, i, k, d, self._signal_seperation, log_sigma_sqrt_2_pi)
-                mapping[i, k] = val
+            for curr_k in np.arange(mapping.shape[1]):
+                if i < (k - curr_k) * d:
+                    continue
+                mapping[i, curr_k] = log_R(i, curr_k)
 
-        likelihood = log_pd + mapping[0, expected_k]
-        # likelihood = mapping[0, expected_k]
+        # Computing remaining parts of log-likelihood
+        log_pd = self._compute_log_pd(n, k, d)
+        log_sigma_sqrt_2_pi = -np.log(self._noise_std * (2 * np.pi) ** 0.5)
+
+        likelihood = log_pd + n * log_sigma_sqrt_2_pi + mapping[0, k]
+        return likelihood
+
+    def _calc_d_likelihood(self, y, d):
+        d += self._signal_seperation
+        expected_k = self._find_expected_occurrences(y, d)
+
+        likelihood = self._calc_prob_y_given_x_k(y, self._X[d], expected_k)
 
         if self._logs:
-            print(f"For D={d}, likelihood={likelihood}, Expected K={expected_k}")
+            print(f"For D={d - self._signal_seperation}, likelihood={likelihood}, Expected K={expected_k}")
 
         return likelihood
 
