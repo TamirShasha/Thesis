@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+import os
+from src.constants import ROOT_DIR
 
 from src.utils import create_random_signal_mask, add_pulses, add_gaus_noise
 from src.algorithm import LengthExtractor
@@ -78,7 +80,7 @@ class Experiment:
         plt.plot(self._signal_length_options, self._results['likelihoods'])
 
         if self._save:
-            plt.savefig('experiments_results/' + str(time.time()) + '.pdf')
+            plt.savefig(os.path.join(ROOT_DIR, 'experiments_results', str(time.time()) + '.pdf'))
 
         plt.show()
 
