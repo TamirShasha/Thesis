@@ -2,8 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-from utils import create_random_signal_mask, add_pulses, add_gaus_noise
-from algorithm import LengthExtractor
+from src.utils import create_random_signal_mask, add_pulses, add_gaus_noise
+from src.algorithm import LengthExtractor
 
 np.random.seed(500)
 
