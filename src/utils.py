@@ -37,12 +37,18 @@ def create_random_k_tuple_sum_to_n(n, k):
     if k == 1:
         return [n]
 
-    # Probably prob_x0_is_i = 1 / (1 + n - i) is true, need to check
-    log_num_options_x0_is_i = np.zeros(n + 1)
-    for i in range(n + 1):
-        log_num_options_x0_is_i[i] = log_num_k_sums_to_n(n - i, k - 1)
     log_num_options_total = log_num_k_sums_to_n(n, k)
+
+    log_num_options_x0_is_i = np.zeros(n + 1)
+    # Saving computations with the relation: log_num_options_x0_is_i[0] = log_num_options_x0_is_i * (k-1) / (n+1)
+    log_num_options_x0_is_i[0] = log_num_options_total + np.log(k - 1) - np.log(n + 1)
+    for i in range(n):
+        # Using the relation: log_num_options_x0_is_i[i+1] = log_num_options_x0_is_i[i] * (n-i+1) / (n-i+k-1)
+        log_num_options_x0_is_i[i + 1] = log_num_options_x0_is_i[i] + np.log(n - i + 1) - np.log(n - i + k - 1)
+
     prob_x0_is_i = np.exp(log_num_options_x0_is_i - log_num_options_total)
+    # There is some numerical problems with this fast computation, so simply normalize
+    prob_x0_is_i /= prob_x0_is_i.sum()
     head = np.random.choice(np.arange(n + 1), p=prob_x0_is_i)
     tail = create_random_k_tuple_sum_to_n(n - head, k - 1)
     return np.concatenate(([head], tail))
