@@ -30,13 +30,46 @@ def create_all_signal_mask_combs(signal_size, num_of_bars, size_of_bars):
     return _find_all_signal_mask_combinations(num_of_bars + 1, num_of_free_spots)
 
 
-def create_random_signal_mask(n, total_sum):
-    if n == 1:
-        return [total_sum]
+def create_random_k_tuple_sum_to_n(n, k):
+    """
+    Output a random k tuple of non-negative integers that sums to n, with uniform probability over all options.
+    """
+    if k == 1:
+        return [n]
 
-    head = np.random.randint(0, (total_sum + 1) / n + 1)
-    tail = create_random_signal_mask(n - 1, total_sum - head)
+    log_num_options_total = log_num_k_sums_to_n(n, k)
+
+    log_num_options_x0_is_i = np.zeros(n + 1)
+    # Saving computations with the relation: log_num_options_x0_is_i[0] = log_num_options_x0_is_i * (k-1) / (n+1)
+    log_num_options_x0_is_i[0] = log_num_options_total + np.log(k - 1) - np.log(n + 1)
+    for i in range(n):
+        # Using the relation: log_num_options_x0_is_i[i+1] = log_num_options_x0_is_i[i] * (n-i+1) / (n-i+k-1)
+        log_num_options_x0_is_i[i + 1] = log_num_options_x0_is_i[i] + np.log(n - i + 1) - np.log(n - i + k - 1)
+
+    prob_x0_is_i = np.exp(log_num_options_x0_is_i - log_num_options_total)
+    # There is some numerical problems with this fast computation, so simply normalize
+    prob_x0_is_i /= prob_x0_is_i.sum()
+    head = np.random.choice(np.arange(n + 1), p=prob_x0_is_i)
+    tail = create_random_k_tuple_sum_to_n(n - head, k - 1)
     return np.concatenate(([head], tail))
+
+
+def log_num_k_sums_to_n(n, k):
+    """
+    Compute the log number of #{k tuples that sum to n}.
+    """
+    n_tag = n + k - 1
+    k_tag = k - 1
+    return log_binomial(n_tag, k_tag)
+
+
+def log_binomial(n, k):
+    """
+    Compute the log of the binomial coefficient.
+    """
+    nominator = np.sum(np.log(np.arange(n) + 1))
+    denominator = np.sum(np.log(np.arange(k) + 1)) + np.sum(np.log(np.arange(n - k) + 1))
+    return nominator - denominator
 
 
 # Add to signal y k pulses of length d

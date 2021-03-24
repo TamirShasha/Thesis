@@ -1,4 +1,5 @@
 import numpy as np
+from src.utils import log_binomial
 
 
 class LengthExtractor:
@@ -17,15 +18,6 @@ class LengthExtractor:
         self._signal_avg_power = self._calc_signal_avg_power(self._exp_attr["d"])
         self._n = self._y.shape[0]
         self._exact_signal_power = self._exp_attr["d"] * exp_attr["k"] * self._signal_avg_power
-
-        # # Temporary solution, should actually get this as input (instead of _length_options)
-        # self._X = {d: np.full(d, self._signal_avg_power) for d in self._length_options}
-        #
-        # # Fix signals to include seperation
-        # self._X = {d + self._signal_seperation: np.concatenate((self._X[d], np.zeros(self._signal_seperation))) for d in
-        #            self._X}
-        # # Fix Signal power per d
-        # # self._signal_power = {d: np.sum(np.square(self._X[d])) for d in self._X}
 
     def _calc_signal_avg_power(self, d):
         return np.sum(np.power(self._signal_gen(d), 2)) / d
@@ -54,9 +46,7 @@ class LengthExtractor:
         """
         n_tag = n - (d - 1) * k
         k_tag = k
-        nominator = np.sum(np.log(np.arange(k_tag) + 1)) + np.sum(np.log(np.arange(n_tag - k_tag) + 1))
-        denominator = np.sum(np.log(np.arange(n_tag) + 1))
-        return nominator - denominator
+        return log_binomial(n_tag, k_tag)
 
     def _calc_prob_y_given_x_k(self, y, x, k):
         n = y.shape[0]
