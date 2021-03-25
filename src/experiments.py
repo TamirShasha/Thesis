@@ -39,7 +39,7 @@ class Experiment:
         self._logs = logs
         self._results = {}
 
-        signal_mask = create_random_k_tuple_sum_to_n(self._k + 1, self._n - self._d * self._k)
+        signal_mask = create_random_k_tuple_sum_to_n(self._n - self._d * self._k, self._k + 1)
         self._signal = self._signal_gen(self._d)
         self._clean_y = np.zeros(self._n)
         self._y_with_signals = add_pulses(self._clean_y, signal_mask, self._signal)

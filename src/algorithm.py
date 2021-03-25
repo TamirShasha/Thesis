@@ -46,7 +46,7 @@ class LengthExtractor:
         """
         n_tag = n - (d - 1) * k
         k_tag = k
-        return log_binomial(n_tag, k_tag)
+        return -log_binomial(n_tag, k_tag)
 
     def _calc_prob_y_given_x_k(self, y, x, k):
         n = y.shape[0]
