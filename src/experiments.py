@@ -4,7 +4,7 @@ import time
 import os
 from src.constants import ROOT_DIR
 
-from src.utils import create_random_signal_mask, add_pulses, add_gaus_noise
+from src.utils import create_random_k_tuple_sum_to_n, add_pulses, add_gaus_noise
 from src.algorithm import LengthExtractor
 
 np.random.seed(500)
@@ -44,7 +44,7 @@ class Experiment:
             self._signal = self._signal_fn(self._d)
         else:
             self._signal = signal_filter_gen(self._d)
-        signal_mask = create_random_signal_mask(self._k + 1, self._n - self._d * self._k)
+        signal_mask = create_random_k_tuple_sum_to_n(self._n - self._d * self._k, self._k + 1)
         self._clean_y = np.zeros(self._n)
         self._y_with_signals = add_pulses(self._clean_y, signal_mask, self._signal)
         self._noisy_y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)

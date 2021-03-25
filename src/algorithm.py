@@ -1,4 +1,5 @@
 import numpy as np
+from src.utils import log_binomial
 
 
 class LengthExtractor:
@@ -44,9 +45,7 @@ class LengthExtractor:
         """
         n_tag = n - (d - 1) * k
         k_tag = k
-        nominator = np.sum(np.log(np.arange(k_tag) + 1)) + np.sum(np.log(np.arange(n_tag - k_tag) + 1))
-        denominator = np.sum(np.log(np.arange(n_tag) + 1))
-        return nominator - denominator
+        return -log_binomial(n_tag, k_tag)
 
     def _calc_prob_y_given_x_k(self, y, x, k):
         n = y.shape[0]
