@@ -13,23 +13,24 @@ np.random.seed(500)
 class Experiment:
 
     def __init__(self,
+                 signal_fn=None,
                  n=1000,
                  d=12,
                  k=20,
-                 signal_gen=lambda d: np.full(d, 1),
-                 signal_avg_power=1,
+                 signal_filter_gen=lambda d: np.full(d, 1),
                  signal_seperation=0,
                  noise_mean=0,
                  noise_std=0.3,
                  use_exact_signal_power=False,
                  use_exact_k=False,
-                 save=False,
-                 logs=False):
+                 save=True,
+                 logs=True,
+                 d_options=None):
+        self._signal_fn = signal_fn
         self._n = n  # Data length
         self._d = d  # Signal Length
         self._k = k  # Num of signal occurrences
-        self._signal_gen = signal_gen  # Signal generator per length d
-        # self._signal_avg_power = signal_avg_power  # Signal Expected Avg Power
+        self._signal_filter_gen = signal_filter_gen  # Signal generator per length d
         self._signal_seperation = signal_seperation
         self._use_exact_signal_power = use_exact_signal_power
         self._use_exact_k = use_exact_k
@@ -39,14 +40,19 @@ class Experiment:
         self._logs = logs
         self._results = {}
 
+        if self._signal_fn:
+            self._signal = self._signal_fn(self._d)
+        else:
+            self._signal = signal_filter_gen(self._d)
         signal_mask = create_random_signal_mask(self._k + 1, self._n - self._d * self._k)
-        self._signal = self._signal_gen(self._d)
         self._clean_y = np.zeros(self._n)
         self._y_with_signals = add_pulses(self._clean_y, signal_mask, self._signal)
         self._noisy_y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
         self._y = self._noisy_y
 
-        self._signal_length_options = np.arange(self._d // 4, int(self._d * 2), 4)
+        if d_options is None:
+            d_options = np.arange(self._d // 4, int(self._d * 2), 4)
+        self._signal_length_options = d_options
 
         exp_attr = {
             "d": self._d,
@@ -56,8 +62,7 @@ class Experiment:
         }
         self._length_extractor = LengthExtractor(y=self._y,
                                                  length_options=self._signal_length_options,
-                                                 # signal_avg_power=self._signal_avg_power,
-                                                 signal_gen=self._signal_gen,
+                                                 signal_filter_gen=self._signal_filter_gen,
                                                  signal_seperation=self._signal_seperation,
                                                  noise_mean=self._noise_mean,
                                                  noise_std=self._noise_std,
@@ -76,6 +81,8 @@ class Experiment:
             "total_time": end_time - start_time
         }
 
+        return likelihoods
+
     def plot_results(self):
         plt.title(f"N={self._n}, D={self._d}, K={self._k}, NoiseMean={self._noise_mean}, NoiseSTD={self._noise_std} "
                   f" Seperation={self._signal_seperation}, ExactPower={self._use_exact_signal_power}, ExactK={self._use_exact_k}\n"
@@ -93,7 +100,6 @@ def __main__():
         n=2000,
         d=20,
         k=30,
-        signal_avg_power=1,
         noise_mean=0,
         noise_std=0.5,
         logs=True
@@ -105,7 +111,6 @@ def __main__():
         n=1000,
         d=20,
         k=20,
-        signal_avg_power=1,
         noise_mean=0,
         noise_std=1,
         logs=True
@@ -117,7 +122,6 @@ def __main__():
         n=3000,
         d=50,
         k=20,
-        signal_avg_power=1,
         noise_mean=0,
         noise_std=1,
         logs=True
@@ -129,7 +133,6 @@ def __main__():
         n=10000,
         d=50,
         k=70,
-        signal_avg_power=1,
         signal_seperation=0,
         noise_mean=0,
         noise_std=1.5,
@@ -138,8 +141,19 @@ def __main__():
         logs=True,
         save=True
     )
-    experiment4.run()
-    experiment4.plot_results()
+    # experiment4.run()
+    # experiment4.plot_results()
+
+    experiment5 = Experiment(
+        signal_fn=lambda d: np.sin(10 * np.arange(d)) * 0.2 + 1,
+        n=5000,
+        d=50,
+        k=30,
+        noise_std=1.5,
+        use_exact_signal_power=True,
+    )
+    experiment5.run()
+    experiment5.plot_results()
 
 
 if __name__ == '__main__':
