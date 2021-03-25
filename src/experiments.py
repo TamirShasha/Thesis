@@ -90,7 +90,7 @@ class Experiment:
         plt.plot(self._signal_length_options, self._results['likelihoods'])
 
         if self._save:
-            plt.savefig(os.path.join(ROOT_DIR, 'experiments_results', str(time.time()) + '.pdf'))
+            plt.savefig(os.path.join(ROOT_DIR, 'experiments_results', str(time.time()) + '.png'))
 
         plt.show()
 
@@ -145,11 +145,10 @@ def __main__():
     # experiment4.plot_results()
 
     experiment5 = Experiment(
-        signal_fn=lambda d: np.sin(10 * np.arange(d)) * 0.2 + 1,
         n=5000,
         d=50,
         k=30,
-        noise_std=1.5,
+        noise_std=2,
         use_exact_signal_power=True,
     )
     experiment5.run()
