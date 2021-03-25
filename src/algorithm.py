@@ -4,23 +4,22 @@ from src.utils import log_binomial
 
 class LengthExtractor:
 
-    def __init__(self, y, length_options, signal_gen, signal_seperation,
+    def __init__(self, y, length_options, signal_filter_gen, signal_seperation,
                  noise_mean, noise_std, exp_attr, logs=True):
         self._y = y
         self._length_options = length_options
-        self._signal_gen = signal_gen
+        self._signal_filter_gen = signal_filter_gen
         self._noise_mean = noise_mean
         self._noise_std = noise_std
         self._logs = logs
         self._exp_attr = exp_attr
         self._signal_seperation = signal_seperation
 
-        self._signal_avg_power = self._calc_signal_avg_power(self._exp_attr["d"])
         self._n = self._y.shape[0]
-        self._exact_signal_power = self._exp_attr["d"] * exp_attr["k"] * self._signal_avg_power
+        self._exact_signal_power = self._calc_signal_power(exp_attr["d"]) * exp_attr["k"]
 
-    def _calc_signal_avg_power(self, d):
-        return np.sum(np.power(self._signal_gen(d), 2)) / d
+    def _calc_signal_power(self, d):
+        return np.sum(np.power(self._signal_filter_gen(d), 2))
 
     def _find_expected_occurrences(self, y, d):
 
@@ -35,7 +34,7 @@ class LengthExtractor:
             noise_power = (self._noise_std ** 2 - self._noise_mean ** 2) * y.shape[0]
             all_signal_power = y_power - noise_power
 
-        single_signal_power = self._calc_signal_avg_power(d) * d
+        single_signal_power = self._calc_signal_power(d)
         k = int(np.round(all_signal_power / single_signal_power))
         return k
 
@@ -102,7 +101,7 @@ class LengthExtractor:
     def _calc_d_likelihood(self, y, d):
         expected_k = self._find_expected_occurrences(y, d)
 
-        signal_with_sep_pad = np.pad(self._signal_gen(d), [(0, self._signal_seperation)])
+        signal_with_sep_pad = np.pad(self._signal_filter_gen(d), [(0, self._signal_seperation)])
         likelihood = self._calc_prob_y_given_x_k(y, signal_with_sep_pad, expected_k)
 
         if self._logs:
