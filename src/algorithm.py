@@ -17,6 +17,13 @@ class LengthExtractor:
 
         self._n = self._y.shape[0]
         self._exact_signal_power = self._calc_signal_power(exp_attr["d"]) * exp_attr["k"]
+        self.log_prob_all_noise = self._calc_log_prob_all_is_noise()
+
+    def _calc_log_prob_all_is_noise(self):
+        y = self._y
+        n = y.shape[0]
+        minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2
+        return - n * np.log(self._noise_std * (2 * np.pi) ** 0.5) + minus_1_over_twice_variance * np.sum(np.square(y))
 
     def _calc_signal_power(self, d):
         return np.sum(np.power(self._signal_filter_gen(d), 2))
@@ -53,17 +60,12 @@ class LengthExtractor:
 
         # Precomputing stuff
         minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2
-        y_squared = np.square(y)
-        sum_y_minus_x_squared = np.zeros(n - d + 1)
+        sum_yx_minus_x_squared = np.zeros(n - d + 1)
+        x_squared = np.square(x)
         for i in range(n - d + 1):
-            sum_y_minus_x_squared[i] = np.sum(np.square(y[i:i + d] - x))
+            sum_yx_minus_x_squared[i] = np.sum(x_squared - 2 * x * y[i:i + d])
 
-        case_1_const = minus_1_over_twice_variance * sum_y_minus_x_squared
-        case_2_const = minus_1_over_twice_variance * y_squared
-
-        case_2_const_cum_sum = np.zeros(n + 1)
-        for i in range(1, n + 1):
-            case_2_const_cum_sum[-i - 1] = case_2_const_cum_sum[-i] + case_2_const[-i]
+        sum_yx_minus_x_squared *= minus_1_over_twice_variance
 
         # Allocating memory
         mapping = np.zeros(shape=(n + 1, k + 1))
@@ -73,16 +75,14 @@ class LengthExtractor:
 
             # If we don't need any more signals
             if num_signals == 0:
-                return case_2_const_cum_sum[start_idx]
+                return 0
 
             # If there is no legal way to put signals in the remaining space
             if total_len < num_signals * d:
                 return -np.inf
 
-            c1 = case_1_const[start_idx]
-            c2 = case_2_const[start_idx]
-
-            return np.logaddexp(c1 + mapping[start_idx + d, num_signals - 1], c2 + mapping[start_idx + 1, num_signals])
+            c1 = sum_yx_minus_x_squared[start_idx]
+            return np.logaddexp(c1 + mapping[start_idx + d, num_signals - 1], mapping[start_idx + 1, num_signals])
 
         # Filling values one by one, skipping irrelevant values
         for i in np.arange(mapping.shape[0])[::-1]:
@@ -93,9 +93,8 @@ class LengthExtractor:
 
         # Computing remaining parts of log-likelihood
         log_pd = self._compute_log_pd(n, k, d)
-        log_sigma_sqrt_2_pi = -np.log(self._noise_std * (2 * np.pi) ** 0.5)
 
-        likelihood = log_pd + n * log_sigma_sqrt_2_pi + mapping[0, k]
+        likelihood = log_pd + self.log_prob_all_noise + mapping[0, k]
         return likelihood
 
     def _calc_d_likelihood(self, y, d):
