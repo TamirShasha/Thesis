@@ -1,7 +1,7 @@
 import numpy as np
 from src.utils import log_binomial
 import numba as nb
-
+import time
 
 class LengthExtractor:
 
@@ -133,13 +133,15 @@ class LengthExtractor:
         return likelihood
 
     def _calc_d_likelihood(self, y, d):
+        tic = time.time()
         expected_k = self._find_expected_occurrences(y, d)
 
         signal_with_sep_pad = np.pad(self._signal_filter_gen(d), [(0, self._signal_seperation)])
         likelihood = self._calc_prob_y_given_x_k_fast(y, signal_with_sep_pad, expected_k)
+        toc = time.time()
 
         if self._logs:
-            print(f"For D={d - self._signal_seperation}, likelihood={likelihood}, Expected K={expected_k}")
+            print(f"For D={d - self._signal_seperation}, likelihood={likelihood}, Expected K={expected_k}, Time={toc-tic}")
 
         return likelihood
 
