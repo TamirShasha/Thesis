@@ -54,7 +54,7 @@ class LengthExtractor:
         k_tag = k
         return -log_binomial(n_tag, k_tag)
 
-    def _calc_prob_y_given_x_k(self, y, x, k):
+    def _calc_prob_y_given_x_k_slow(self, y, x, k):
         n = y.shape[0]
         d = x.shape[0]
 
@@ -71,11 +71,11 @@ class LengthExtractor:
         mapping = np.zeros(shape=(n + 1, k + 1))
 
         def log_R(start_idx, num_signals):
-            total_len = len(y) - start_idx
+            total_len = n - start_idx
 
-            # If we don't need any more signals. We can automatically set the k=0 to be zeros
-            # if num_signals == 0:
-            #     return 0
+            # If we don't need any more signals
+            if num_signals == 0:
+                return 0
 
             # If there is no legal way to put signals in the remaining space
             if total_len < num_signals * d:
@@ -86,9 +86,45 @@ class LengthExtractor:
 
         # Filling values one by one, skipping irrelevant values
         for i in np.arange(mapping.shape[0])[::-1]:
-            for curr_k in np.arange(1, mapping.shape[1]):
+            for curr_k in np.arange(mapping.shape[1]):
                 if i < (k - curr_k) * d:
                     continue
+                mapping[i, curr_k] = log_R(i, curr_k)
+
+        # Computing remaining parts of log-likelihood
+        log_pd = self._compute_log_pd(n, k, d)
+
+        likelihood = log_pd + self.log_prob_all_noise + mapping[0, k]
+        return likelihood
+
+    def _calc_prob_y_given_x_k_fast(self, y, x, k):
+        n = y.shape[0]
+        d = x.shape[0]
+
+        # Precomputing stuff
+        minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2
+        sum_yx_minus_x_squared = np.zeros(n - d + 1)
+        x_squared = np.square(x)
+        for i in range(n - d + 1):
+            sum_yx_minus_x_squared[i] = np.sum(x_squared - 2 * x * y[i:i + d])
+
+        sum_yx_minus_x_squared *= minus_1_over_twice_variance
+
+        # Allocating memory
+        # Default is -inf everywhere as there are many places where the probability is 0 (when i > n - k * d)
+        # when k=0 the probability is 1
+        mapping = np.full((n + 1, k + 1), -np.inf)
+        mapping[:, 0] = 0
+
+        def log_R(start_idx, num_signals):
+            c1 = sum_yx_minus_x_squared[start_idx]
+            return np.logaddexp(c1 + mapping[start_idx + d, num_signals - 1], mapping[start_idx + 1, num_signals])
+
+        # Filling values one by one, skipping irrelevant values
+        # We already filled values when k=0 (=0) and when i>n-k*d
+        # Values in  i<(k-curr_k)*d are not used for the computation of mapping[0,k]
+        for curr_k in range(1, k + 1):
+            for i in range(n - curr_k * d, (k - curr_k) * d - 1, -1):
                 mapping[i, curr_k] = log_R(i, curr_k)
 
         # Computing remaining parts of log-likelihood
@@ -101,7 +137,7 @@ class LengthExtractor:
         expected_k = self._find_expected_occurrences(y, d)
 
         signal_with_sep_pad = np.pad(self._signal_filter_gen(d), [(0, self._signal_seperation)])
-        likelihood = self._calc_prob_y_given_x_k(y, signal_with_sep_pad, expected_k)
+        likelihood = self._calc_prob_y_given_x_k_fast(y, signal_with_sep_pad, expected_k)
 
         if self._logs:
             print(f"For D={d - self._signal_seperation}, likelihood={likelihood}, Expected K={expected_k}")
