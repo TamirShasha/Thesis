@@ -13,6 +13,7 @@ np.random.seed(500)
 class Experiment:
 
     def __init__(self,
+                 name=str(time.time()),
                  signal_fn=None,
                  n=1000,
                  d=12,
@@ -26,6 +27,7 @@ class Experiment:
                  save=True,
                  logs=True,
                  d_options=None):
+        self._name = name
         self._signal_fn = signal_fn
         self._n = n  # Data length
         self._d = d  # Signal Length
@@ -84,75 +86,32 @@ class Experiment:
         return likelihoods
 
     def plot_results(self):
-        plt.title(f"N={self._n}, D={self._d}, K={self._k}, NoiseMean={self._noise_mean}, NoiseSTD={self._noise_std} "
-                  f" Seperation={self._signal_seperation}, ExactPower={self._use_exact_signal_power}, ExactK={self._use_exact_k}\n"
-                  f"\n Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
+        plt.title(f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
+                  f"Signal Exact Power={self._use_exact_signal_power},\n"
+                  f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
         plt.plot(self._signal_length_options, self._results['likelihoods'])
+        plt.tight_layout()
 
         if self._save:
-            plt.savefig(os.path.join(ROOT_DIR, 'experiments_results', str(time.time()) + '.png'))
+            fig_path = os.path.join(ROOT_DIR, f'experiments_results/{self._name}.png')
+            plt.savefig(fname=fig_path)
 
         plt.show()
 
 
 def __main__():
-    experiment1 = Experiment(
-        n=2000,
-        d=20,
-        k=30,
-        noise_mean=0,
-        noise_std=0.5,
-        logs=True
-    )
-    # experiment1.run()
-    # experiment1.plot_results()
-
-    experiment2 = Experiment(
-        n=1000,
-        d=20,
-        k=20,
-        noise_mean=0,
-        noise_std=1,
-        logs=True
-    )
-    # experiment2.run()
-    # experiment2.plot_results()
-
-    experiment3 = Experiment(
-        n=3000,
-        d=50,
-        k=20,
-        noise_mean=0,
-        noise_std=1,
-        logs=True
-    )
-    # experiment3.run()
-    # experiment3.plot_results()
-
-    experiment4 = Experiment(
-        n=10000,
-        d=50,
-        k=70,
-        signal_seperation=0,
-        noise_mean=0,
-        noise_std=1.5,
-        use_exact_k=False,
-        use_exact_signal_power=True,
-        logs=True,
-        save=True
-    )
-    # experiment4.run()
-    # experiment4.plot_results()
-
-    experiment5 = Experiment(
+    experiment = Experiment(
+        name="using approx (default) filter",
+        signal_fn=lambda d: np.sin(np.arange(d)) * 0.2 + 1,
         n=5000,
         d=50,
         k=30,
-        noise_std=2,
-        use_exact_signal_power=True,
+        noise_std=2.5,
+        use_exact_signal_power=False,
+        save=False
     )
-    experiment5.run()
-    experiment5.plot_results()
+    experiment.run()
+    experiment.plot_results()
 
 
 if __name__ == '__main__':
