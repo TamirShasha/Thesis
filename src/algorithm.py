@@ -1,5 +1,6 @@
 import numpy as np
 from src.utils import log_binomial
+import numba as nb
 
 
 class LengthExtractor:
@@ -97,6 +98,7 @@ class LengthExtractor:
         likelihood = log_pd + self.log_prob_all_noise + mapping[0, k]
         return likelihood
 
+    @nb.jit
     def _calc_prob_y_given_x_k_fast(self, y, x, k):
         n = y.shape[0]
         d = x.shape[0]
@@ -116,16 +118,13 @@ class LengthExtractor:
         mapping = np.full((n + 1, k + 1), -np.inf)
         mapping[:, 0] = 0
 
-        def log_R(start_idx, num_signals):
-            c1 = sum_yx_minus_x_squared[start_idx]
-            return np.logaddexp(c1 + mapping[start_idx + d, num_signals - 1], mapping[start_idx + 1, num_signals])
-
         # Filling values one by one, skipping irrelevant values
         # We already filled values when k=0 (=0) and when i>n-k*d
         # Values in  i<(k-curr_k)*d are not used for the computation of mapping[0,k]
         for curr_k in range(1, k + 1):
             for i in range(n - curr_k * d, (k - curr_k) * d - 1, -1):
-                mapping[i, curr_k] = log_R(i, curr_k)
+                mapping[i, curr_k] = np.logaddexp(sum_yx_minus_x_squared[i] + mapping[i + d, curr_k - 1],
+                                                  mapping[i + 1, curr_k])
 
         # Computing remaining parts of log-likelihood
         log_pd = self._compute_log_pd(n, k, d)
