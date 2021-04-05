@@ -41,7 +41,6 @@ class LengthExtractor:
         return np.sum(np.power(self._signal_filter_gen(d), 2))
 
     def _find_expected_occurrences(self, y, d):
-
         single_signal_power = self._calc_single_instance_of_signal_power(d)
         k = int(np.round(self._signal_power / single_signal_power))
         return k
@@ -60,49 +59,6 @@ class LengthExtractor:
         n_tag = n - (d - 1) * k
         k_tag = k
         return -log_binomial(n_tag, k_tag)
-
-    def _calc_prob_y_given_x_k_slow(self, y, x, k):
-        n = y.shape[0]
-        d = x.shape[0]
-
-        # Precomputing stuff
-        minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2
-        sum_yx_minus_x_squared = np.zeros(n - d + 1)
-        x_squared = np.square(x)
-        for i in range(n - d + 1):
-            sum_yx_minus_x_squared[i] = np.sum(x_squared - 2 * x * y[i:i + d])
-
-        sum_yx_minus_x_squared *= minus_1_over_twice_variance
-
-        # Allocating memory
-        mapping = np.zeros(shape=(n + 1, k + 1))
-
-        def log_R(start_idx, num_signals):
-            total_len = n - start_idx
-
-            # If we don't need any more signals
-            if num_signals == 0:
-                return 0
-
-            # If there is no legal way to put signals in the remaining space
-            if total_len < num_signals * d:
-                return -np.inf
-
-            c1 = sum_yx_minus_x_squared[start_idx]
-            return np.logaddexp(c1 + mapping[start_idx + d, num_signals - 1], mapping[start_idx + 1, num_signals])
-
-        # Filling values one by one, skipping irrelevant values
-        for i in np.arange(mapping.shape[0])[::-1]:
-            for curr_k in np.arange(mapping.shape[1]):
-                if i < (k - curr_k) * d:
-                    continue
-                mapping[i, curr_k] = log_R(i, curr_k)
-
-        # Computing remaining parts of log-likelihood
-        log_pd = self._compute_log_pd(n, k, d)
-
-        likelihood = log_pd + self.log_prob_all_noise + mapping[0, k]
-        return likelihood
 
     @nb.jit
     def _calc_prob_y_given_x_k_fast(self, y, x, k):
