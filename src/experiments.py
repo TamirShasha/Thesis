@@ -14,63 +14,54 @@ class Experiment:
 
     def __init__(self,
                  name=str(time.time()),
-                 signal_fn=None,
                  n=1000,
                  d=12,
                  k=20,
-                 signal_filter_gen=lambda d: np.full(d, 1),
-                 signal_seperation=0,
                  noise_mean=0,
                  noise_std=0.3,
+                 signal_fn=lambda d: np.full(d, 1),
+                 signal_filter_gen=None,
                  use_exact_signal_power=False,
-                 use_exact_k=False,
+                 length_options=None,
                  save=True,
-                 logs=True,
-                 d_options=None):
+                 logs=True):
         self._name = name
         self._signal_fn = signal_fn
         self._n = n  # Data length
         self._d = d  # Signal Length
         self._k = k  # Num of signal occurrences
         self._signal_filter_gen = signal_filter_gen  # Signal generator per length d
-        self._signal_seperation = signal_seperation
         self._use_exact_signal_power = use_exact_signal_power
-        self._use_exact_k = use_exact_k
         self._noise_mean = noise_mean  # Expected noise mean
         self._noise_std = noise_std  # Expected noise std
         self._save = save
         self._logs = logs
         self._results = {}
 
-        if self._signal_fn:
-            self._signal = self._signal_fn(self._d)
-        else:
-            self._signal = signal_filter_gen(self._d)
+        self._signal = self._signal_fn(self._d)
+        if signal_filter_gen is None:
+            self._signal_filter_gen = self._signal_fn
         signal_mask = create_random_k_tuple_sum_to_n(self._n - self._d * self._k, self._k + 1)
         self._clean_y = np.zeros(self._n)
         self._y_with_signals = add_pulses(self._clean_y, signal_mask, self._signal)
-        self._noisy_y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
-        self._y = self._noisy_y
+        self._y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
 
-        if d_options is None:
-            d_options = np.arange(self._d // 4, int(self._d * 2), 4)
-        self._signal_length_options = d_options
+        if length_options is None:
+            length_options = np.arange(self._d // 4, int(self._d * 2), 10)
+        self._signal_length_options = length_options
 
         exp_attr = {
             "d": self._d,
             "k": self._k,
-            "use_exact_signal_power": self._use_exact_signal_power,
-            "use_exact_k": self._use_exact_k
+            "use_exact_signal_power": self._use_exact_signal_power
         }
         self._length_extractor = LengthExtractor(y=self._y,
                                                  length_options=self._signal_length_options,
                                                  signal_filter_gen=self._signal_filter_gen,
-                                                 signal_seperation=self._signal_seperation,
                                                  noise_mean=self._noise_mean,
                                                  noise_std=self._noise_std,
                                                  exp_attr=exp_attr,
-                                                 logs=self._logs
-                                                 )
+                                                 logs=self._logs)
 
     def run(self):
         start_time = time.time()
@@ -103,9 +94,9 @@ def __main__():
     experiment = Experiment(
         name="using approx (default) filter",
         signal_fn=lambda d: np.sin(np.arange(d)) * 0.2 + 1,
-        n=5000,
+        n=50000,
         d=50,
-        k=30,
+        k=300,
         noise_std=2.5,
         use_exact_signal_power=False,
         save=False
