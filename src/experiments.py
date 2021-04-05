@@ -5,7 +5,7 @@ import os
 from src.constants import ROOT_DIR
 
 from src.utils import create_random_k_tuple_sum_to_n, add_pulses, add_gaus_noise
-from src.algorithm import LengthExtractor
+from src.algorithm import LengthExtractor, SignalPowerEstimator
 
 np.random.seed(500)
 
@@ -21,7 +21,7 @@ class Experiment:
                  noise_std=0.3,
                  signal_fn=lambda d: np.full(d, 1),
                  signal_filter_gen=None,
-                 use_exact_signal_power=False,
+                 signal_power_estimator_method=SignalPowerEstimator.Exact,
                  length_options=None,
                  save=True,
                  logs=True):
@@ -31,7 +31,7 @@ class Experiment:
         self._d = d  # Signal Length
         self._k = k  # Num of signal occurrences
         self._signal_filter_gen = signal_filter_gen  # Signal generator per length d
-        self._use_exact_signal_power = use_exact_signal_power
+        self._signal_power_estimator_method = signal_power_estimator_method
         self._noise_mean = noise_mean  # Expected noise mean
         self._noise_std = noise_std  # Expected noise std
         self._save = save
@@ -53,13 +53,13 @@ class Experiment:
         exp_attr = {
             "d": self._d,
             "k": self._k,
-            "use_exact_signal_power": self._use_exact_signal_power
         }
         self._length_extractor = LengthExtractor(y=self._y,
                                                  length_options=self._signal_length_options,
                                                  signal_filter_gen=self._signal_filter_gen,
                                                  noise_mean=self._noise_mean,
                                                  noise_std=self._noise_std,
+                                                 signal_power_estimator_method=self._signal_power_estimator_method,
                                                  exp_attr=exp_attr,
                                                  logs=self._logs)
 
@@ -77,9 +77,10 @@ class Experiment:
         return likelihoods
 
     def plot_results(self):
-        plt.title(f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
-                  f"Signal Exact Power={self._use_exact_signal_power},\n"
-                  f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
+        plt.title(
+            f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
+            f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"
+            f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
         plt.plot(self._signal_length_options, self._results['likelihoods'])
         plt.tight_layout()
 
@@ -94,11 +95,11 @@ def __main__():
     experiment = Experiment(
         name="using approx (default) filter",
         signal_fn=lambda d: np.sin(np.arange(d)) * 0.2 + 1,
-        n=50000,
-        d=50,
-        k=300,
+        n=30000,
+        d=100,
+        k=30,
         noise_std=2.5,
-        use_exact_signal_power=False,
+        signal_power_estimator_method=SignalPowerEstimator.SecondMoment,
         save=False
     )
     experiment.run()

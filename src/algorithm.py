@@ -1,18 +1,26 @@
 import numpy as np
-from src.utils import log_binomial
 import numba as nb
 import time
+from enum import Enum
+
+from src.utils import log_binomial
+from src.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
+
+
+class SignalPowerEstimator(SPE, Enum):
+    Exact = "Exact Power"
 
 
 class LengthExtractor:
 
     def __init__(self, y, length_options, signal_filter_gen,
-                 noise_mean, noise_std, exp_attr, logs=True):
+                 noise_mean, noise_std, signal_power_estimator_method, exp_attr, logs=True):
         self._y = y
         self._length_options = length_options
         self._signal_filter_gen = signal_filter_gen
         self._noise_mean = noise_mean
         self._noise_std = noise_std
+        self._signal_power_estimator_method = signal_power_estimator_method
         self._logs = logs
         self._exp_attr = exp_attr
         self._n = self._y.shape[0]
@@ -31,15 +39,14 @@ class LengthExtractor:
     def _find_expected_occurrences(self, y, d):
 
         # If we know the exact signal power we use it, else compute from data
-        if self._exp_attr["use_exact_signal_power"]:
-            all_signal_power = self._calc_signal_power(self._exp_attr["d"]) * self._exp_attr["k"]
-        else:  # TODO: select the extract method
-            y_power = np.sum(np.power(y, 2))
-            noise_power = (self._noise_std ** 2 - self._noise_mean ** 2) * y.shape[0]
-            all_signal_power = y_power - noise_power
+        if self._signal_power_estimator_method == SignalPowerEstimator.Exact:
+            signal_power = self._calc_signal_power(self._exp_attr["d"]) * self._exp_attr["k"]
+        else:
+            signal_power = estimate_signal_power(y, self._noise_std, self._noise_mean,
+                                                 method=self._signal_power_estimator_method)
 
         single_signal_power = self._calc_signal_power(d)
-        k = int(np.round(all_signal_power / single_signal_power))
+        k = int(np.round(signal_power / single_signal_power))
         return k
 
     def _compute_log_pd(self, n, k, d):
