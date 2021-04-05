@@ -104,13 +104,12 @@ class LengthExtractor:
         d = x.shape[0]
 
         # Precomputing stuff
-        minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2
         sum_yx_minus_x_squared = np.zeros(n - d + 1)
         x_squared = np.square(x)
         for i in range(n - d + 1):
             sum_yx_minus_x_squared[i] = np.sum(x_squared - 2 * x * y[i:i + d])
 
-        sum_yx_minus_x_squared *= minus_1_over_twice_variance
+        sum_yx_minus_x_squared *= - 0.5 / self._noise_std ** 2
 
         # Allocating memory
         # Default is -inf everywhere as there are many places where the probability is 0 (when i > n - k * d)
@@ -128,8 +127,9 @@ class LengthExtractor:
 
         # Computing remaining parts of log-likelihood
         log_pd = self._compute_log_pd(n, k, d)
+        log_prob_all_noise = self.log_prob_all_noise
 
-        likelihood = log_pd + self.log_prob_all_noise + mapping[0, k]
+        likelihood = log_pd + log_prob_all_noise + mapping[0, k]
         return likelihood
 
     def _calc_d_likelihood(self, y, d):
