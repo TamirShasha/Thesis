@@ -26,28 +26,31 @@ class LengthExtractor:
         self._n = self._y.shape[0]
 
         self.log_prob_all_noise = self._calc_log_prob_all_is_noise()
+        self._signal_power = self._calc_signal_power(self._y)
+
+    def _calc_signal_power(self, y):
+        # If we know the exact signal power we use it, else compute from data
+        if self._signal_power_estimator_method == SignalPowerEstimator.Exact:
+            signal_power = self._calc_single_instance_of_signal_power(self._exp_attr["d"]) * self._exp_attr["k"]
+        else:
+            signal_power = estimate_signal_power(y, self._noise_std, self._noise_mean,
+                                                 method=self._signal_power_estimator_method)
+        return signal_power
+
+    def _calc_single_instance_of_signal_power(self, d):
+        return np.sum(np.power(self._signal_filter_gen(d), 2))
+
+    def _find_expected_occurrences(self, y, d):
+
+        single_signal_power = self._calc_single_instance_of_signal_power(d)
+        k = int(np.round(self._signal_power / single_signal_power))
+        return k
 
     def _calc_log_prob_all_is_noise(self):
         y = self._y
         n = y.shape[0]
         minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2
         return - n * np.log(self._noise_std * (2 * np.pi) ** 0.5) + minus_1_over_twice_variance * np.sum(np.square(y))
-
-    def _calc_signal_power(self, d):
-        return np.sum(np.power(self._signal_filter_gen(d), 2))
-
-    def _find_expected_occurrences(self, y, d):
-
-        # If we know the exact signal power we use it, else compute from data
-        if self._signal_power_estimator_method == SignalPowerEstimator.Exact:
-            signal_power = self._calc_signal_power(self._exp_attr["d"]) * self._exp_attr["k"]
-        else:
-            signal_power = estimate_signal_power(y, self._noise_std, self._noise_mean,
-                                                 method=self._signal_power_estimator_method)
-
-        single_signal_power = self._calc_signal_power(d)
-        k = int(np.round(signal_power / single_signal_power))
-        return k
 
     def _compute_log_pd(self, n, k, d):
         """
