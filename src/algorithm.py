@@ -3,9 +3,10 @@ from src.utils import log_binomial
 import numba as nb
 import time
 
+
 class LengthExtractor:
 
-    def __init__(self, y, length_options, signal_filter_gen, signal_seperation,
+    def __init__(self, y, length_options, signal_filter_gen,
                  noise_mean, noise_std, exp_attr, logs=True):
         self._y = y
         self._length_options = length_options
@@ -14,10 +15,8 @@ class LengthExtractor:
         self._noise_std = noise_std
         self._logs = logs
         self._exp_attr = exp_attr
-        self._signal_seperation = signal_seperation
-
         self._n = self._y.shape[0]
-        self._exact_signal_power = self._calc_signal_power(exp_attr["d"]) * exp_attr["k"]
+
         self.log_prob_all_noise = self._calc_log_prob_all_is_noise()
 
     def _calc_log_prob_all_is_noise(self):
@@ -31,13 +30,10 @@ class LengthExtractor:
 
     def _find_expected_occurrences(self, y, d):
 
-        if self._exp_attr["use_exact_k"]:
-            return self._exp_attr["k"]
-
         # If we know the exact signal power we use it, else compute from data
         if self._exp_attr["use_exact_signal_power"]:
-            all_signal_power = self._exact_signal_power
-        else:
+            all_signal_power = self._calc_signal_power(self._exp_attr["d"]) * self._exp_attr["k"]
+        else:  # TODO: select the extract method
             y_power = np.sum(np.power(y, 2))
             noise_power = (self._noise_std ** 2 - self._noise_mean ** 2) * y.shape[0]
             all_signal_power = y_power - noise_power
@@ -136,12 +132,13 @@ class LengthExtractor:
         tic = time.time()
         expected_k = self._find_expected_occurrences(y, d)
 
-        signal_with_sep_pad = np.pad(self._signal_filter_gen(d), [(0, self._signal_seperation)])
-        likelihood = self._calc_prob_y_given_x_k_fast(y, signal_with_sep_pad, expected_k)
+        signal_filter = self._signal_filter_gen(d)
+        likelihood = self._calc_prob_y_given_x_k_fast(y, signal_filter, expected_k)
         toc = time.time()
 
         if self._logs:
-            print(f"For D={d - self._signal_seperation}, likelihood={likelihood}, Expected K={expected_k}, Time={toc-tic}")
+            print(
+                f"For D={d}, likelihood={likelihood}, Expected K={expected_k}, Time={toc - tic}")
 
         return likelihood
 
