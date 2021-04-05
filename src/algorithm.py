@@ -73,9 +73,9 @@ class LengthExtractor:
         def log_R(start_idx, num_signals):
             total_len = len(y) - start_idx
 
-            # If we don't need any more signals
-            if num_signals == 0:
-                return 0
+            # If we don't need any more signals. We can automatically set the k=0 to be zeros
+            # if num_signals == 0:
+            #     return 0
 
             # If there is no legal way to put signals in the remaining space
             if total_len < num_signals * d:
@@ -86,7 +86,7 @@ class LengthExtractor:
 
         # Filling values one by one, skipping irrelevant values
         for i in np.arange(mapping.shape[0])[::-1]:
-            for curr_k in np.arange(mapping.shape[1]):
+            for curr_k in np.arange(1, mapping.shape[1]):
                 if i < (k - curr_k) * d:
                     continue
                 mapping[i, curr_k] = log_R(i, curr_k)
