@@ -4,10 +4,8 @@ import time
 import os
 from src.constants import ROOT_DIR
 
-from src.utils import create_random_k_tuple_sum_to_n, add_pulses, add_gaus_noise
+from src.utils import create_random_k_tuple_sum_to_n, add_pulses, add_gaus_noise, Memoize
 from src.algorithm import LengthExtractor, SignalPowerEstimator
-
-np.random.seed(500)
 
 
 class Experiment:
@@ -17,12 +15,14 @@ class Experiment:
                  n=1000,
                  d=12,
                  k=20,
+                 signal_fraction=None,
                  noise_mean=0,
                  noise_std=0.3,
                  signal_fn=lambda d: np.full(d, 1),
                  signal_filter_gen=None,
                  signal_power_estimator_method=SignalPowerEstimator.Exact,
                  length_options=None,
+                 plot=True,
                  save=True,
                  logs=True):
         self._name = name
@@ -30,24 +30,32 @@ class Experiment:
         self._n = n  # Data length
         self._d = d  # Signal Length
         self._k = k  # Num of signal occurrences
+        self._signal_fraction = signal_fraction  # The fraction of signal out of all data
         self._signal_filter_gen = signal_filter_gen  # Signal generator per length d
-        self._signal_power_estimator_method = signal_power_estimator_method
+        self._signal_power_estimator_method = signal_power_estimator_method  # The method the algorithm uses to estimate signal power
         self._noise_mean = noise_mean  # Expected noise mean
         self._noise_std = noise_std  # Expected noise std
+
+        self._plot = plot
         self._save = save
         self._logs = logs
         self._results = {}
 
+        if self._signal_fraction:
+            self._k = int((self._n / self._d) * self._signal_fraction)
+
         self._signal = self._signal_fn(self._d)
         if signal_filter_gen is None:
             self._signal_filter_gen = self._signal_fn
+
+        print('Arranging data...')
         signal_mask = create_random_k_tuple_sum_to_n(self._n - self._d * self._k, self._k + 1)
         self._clean_y = np.zeros(self._n)
         self._y_with_signals = add_pulses(self._clean_y, signal_mask, self._signal)
         self._y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
 
         if length_options is None:
-            length_options = np.arange(self._d // 4, int(self._d * 2), 10)
+            length_options = np.arange(self._d // 4, int(self._d * 2), 5)
         self._signal_length_options = length_options
 
         exp_attr = {
@@ -74,12 +82,14 @@ class Experiment:
             "total_time": end_time - start_time
         }
 
+        self.save_and_plot()
+
         return likelihoods
 
-    def plot_results(self):
+    def save_and_plot(self):
         plt.title(
             f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
-            f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"
+            f"Signal Power Estimator Method={self._signal_power_estimator_method.name},\n"
             f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
         plt.plot(self._signal_length_options, self._results['likelihoods'])
         plt.tight_layout()
@@ -87,23 +97,43 @@ class Experiment:
         if self._save:
             fig_path = os.path.join(ROOT_DIR, f'experiments_results/{self._name}.png')
             plt.savefig(fname=fig_path)
-
-        plt.show()
+        if self._plot:
+            plt.show()
 
 
 def __main__():
-    experiment = Experiment(
-        name="using approx (default) filter",
-        signal_fn=lambda d: np.sin(np.arange(d)) * 0.2 + 1,
-        n=30000,
-        d=100,
-        k=30,
-        noise_std=2.5,
+    # Experiment(
+    #     name="std-5",
+    #     n=300000,
+    #     d=150,
+    #     signal_fraction=1 / 4,
+    #     noise_std=5,
+    #     signal_power_estimator_method=SignalPowerEstimator.SecondMoment,
+    #     plot=True,
+    #     save=False
+    # ).run()
+
+    # Experiment(
+    #     name="std-10",
+    #     n=300000,
+    #     d=150,
+    #     signal_fraction=1 / 4,
+    #     noise_std=10,
+    #     signal_power_estimator_method=SignalPowerEstimator.SecondMoment,
+    #     plot=False,
+    #     save=True
+    # ).run()
+
+    Experiment(
+        name="std-13",
+        n=300000,
+        d=500,
+        signal_fraction=1 / 4,
+        noise_std=13,
         signal_power_estimator_method=SignalPowerEstimator.SecondMoment,
-        save=False
-    )
-    experiment.run()
-    experiment.plot_results()
+        plot=False,
+        save=True
+    ).run()
 
 
 if __name__ == '__main__':
