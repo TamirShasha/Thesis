@@ -62,6 +62,7 @@ def create_random_k_tuple_sum_to_n(n, k):
 
 
 def log_num_k_sums_to_n(n, k):
+
     """
     Compute the log number of #{k tuples that sum to n}.
     """
@@ -95,6 +96,60 @@ def add_pulses(y, signal_mask, signal):
 def add_gaus_noise(y, mean, std):
     noise = np.random.normal(mean, std, y.shape[0])
     return y + noise
+
+
+def arange_data(n, d, p, k, noise_std):
+    signal = np.full(d, p)
+    y = np.zeros(n)
+    signal_mask = create_random_k_tuple_sum_to_n(n - d * k, k + 1)
+    pulses = add_pulses(y, signal_mask, signal)
+    y = add_gaus_noise(pulses, 0, noise_std)
+    return y, pulses
+
+
+def create_2d_circle_signal(signal_diameter, signal_power):
+    signal = np.zeros(shape=(signal_diameter, signal_diameter))
+    signal_radius = signal_diameter / 2
+    for i in range(signal.shape[0]):
+        for j in range(signal.shape[1]):
+            if np.square(i - signal_radius) + np.square(j - signal_radius) <= np.square(signal_radius):
+                signal[i, j] = signal_power
+    return signal
+
+
+def create_2d_square_signal(signal_diameter, signal_power):
+    return np.full((signal_diameter, signal_diameter), signal_power)
+
+
+def create_random_mask_2d(rows, columns, signal_diameter, occurrences):
+    mask_rows = rows - signal_diameter + 1
+    mask_columns = columns - signal_diameter + 1
+    mask = np.random.choice(mask_rows * mask_columns, occurrences, replace=False)
+    mask = list(zip(mask // mask_rows, mask % mask_columns))
+    return mask
+
+
+def add_signals_2d(data, signal, mask):
+    signals = np.zeros_like(data)
+    signal_diameter = signal.shape[0]
+    for (i, j) in mask:
+        signals[i:i + signal_diameter, j:j + signal_diameter] = signal
+    return data + signals
+
+
+def add_noise_2d(data: np.ndarray, noise_std: float, noise_mean: float):
+    noise = np.random.normal(noise_mean, noise_std, data.shape)
+    return data + noise
+
+
+def arange_data_2d(rows, columns, signal_diameter, signal_power, occurrences, noise_std, noise_mean=0):
+    # signal = create_2d_circle_signal(signal_diameter, signal_power)
+    signal = create_2d_circle_signal(signal_diameter, signal_power)
+    mask = create_random_mask_2d(rows, columns, signal_diameter, occurrences)
+    data = np.zeros(shape=(rows, columns))
+    data = add_signals_2d(data, signal, mask)
+    data = add_noise_2d(data, noise_std, noise_mean)
+    return data
 
 
 def downample_signal(signal, d):

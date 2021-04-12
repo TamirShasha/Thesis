@@ -5,7 +5,7 @@ import os
 from src.constants import ROOT_DIR
 
 from src.utils import create_random_k_tuple_sum_to_n, add_pulses, add_gaus_noise, Memoize
-from src.algorithm import LengthExtractor, SignalPowerEstimator
+from src.algorithm2 import LengthExtractor, SignalPowerEstimator
 
 
 class Experiment:
@@ -126,13 +126,13 @@ def __main__():
 
     Experiment(
         name="std-13",
-        n=300000,
-        d=500,
-        signal_fraction=1 / 4,
-        noise_std=13,
-        signal_power_estimator_method=SignalPowerEstimator.SecondMoment,
-        plot=False,
-        save=True
+        n=1000,
+        d=10,
+        k=20,
+        noise_std=0.00001,
+        signal_power_estimator_method=SignalPowerEstimator.Exact,
+        plot=True,
+        save=False
     ).run()
 
 
