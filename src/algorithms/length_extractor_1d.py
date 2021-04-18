@@ -3,15 +3,15 @@ import numba as nb
 import time
 from enum import Enum
 
-from src.utils import log_binomial
-from src.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
+from src.algorithms.utils import log_binomial
+from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
 
 
 class SignalPowerEstimator(SPE, Enum):
     Exact = "Exact Power"
 
 
-class LengthExtractor:
+class LengthExtractor1D:
 
     def __init__(self, y, length_options, signal_filter_gen,
                  noise_mean, noise_std, signal_power_estimator_method, exp_attr, logs=True):
@@ -51,7 +51,8 @@ class LengthExtractor:
         minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2
         return - n * np.log(self._noise_std * (2 * np.pi) ** 0.5) + minus_1_over_twice_variance * np.sum(np.square(y))
 
-    def _compute_log_pd(self, n, k, d):
+    @staticmethod
+    def _compute_log_pd(n, k, d):
         """
         Compute log(1/|S|), where |S| is the number of ways to insert k signals of length d in n spaces in such they are
         not overlapping.

@@ -1,16 +1,6 @@
 import numpy as np
 
-
-class Memoize:
-    def __init__(self, f):
-        self.f = f
-        self.memo = {}
-
-    def __call__(self, *args):
-        if not args in self.memo:
-            self.memo[args] = self.f(*args)
-        # Warning: You may wish to do a deepcopy here if returning objects
-        return self.memo[args]
+from src.utils.memoize import Memoize
 
 
 @Memoize
@@ -79,22 +69,16 @@ def log_binomial(n, k):
     return nominator - denominator
 
 
-def add_pulses(y, signal_mask, signal):
-    """
-    Add to y the signal at positions signal_masl == 1
-    """
-    new_y = np.copy(y)
-    x_len = signal.shape[0]
-    s_cum = np.cumsum(signal_mask)
-    for i in np.arange(s_cum.shape[0] - 1):
-        start = s_cum[i] + x_len * i
-        new_y[start:start + x_len] = signal
-    return new_y
+@Memoize
+def _find_all_signal_mask_combinations(k, n):
+    if k == 1:
+        return np.array([n])
 
-
-def add_gaus_noise(y, mean, std):
-    noise = np.random.normal(mean, std, y.shape[0])
-    return y + noise
+    combinations = []
+    for i in np.arange(n + 1):
+        tmp = _find_all_signal_mask_combinations(k - 1, n - i)
+        combinations.extend(np.column_stack((np.array([[i] * len(tmp)]).T, tmp)))
+    return np.array(combinations)
 
 
 def downample_signal(signal, d):
