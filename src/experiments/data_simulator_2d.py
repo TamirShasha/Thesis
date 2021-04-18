@@ -13,7 +13,7 @@ class Shapes2D:
 
         r, c = major_diameter // 2, major_diameter // 2
         r_radius, c_radius = major_diameter // 2, minor_diameter // 2
-        rr, cc = ellipse(r, c, r_radius, c_radius, rotation)
+        rr, cc = ellipse(r, c, r_radius, c_radius, rotation=rotation)
         signal[rr, cc] = fill_value
 
         return signal

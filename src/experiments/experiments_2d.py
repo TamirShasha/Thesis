@@ -67,8 +67,8 @@ class Experiment2D:
             "k": self._k,
         }
 
-        # plt.imshow(self._y, cmap='gray')
-        # plt.show()
+        plt.imshow(self._y, cmap='gray')
+        plt.show()
 
         self._length_extractor = LengthExtractor2D(y=self._y,
                                                    length_options=self._signal_length_options,
@@ -116,11 +116,12 @@ def __main__():
         m=4000,
         d=100,
         k=50,
+        signal_gen=lambda: Shapes2D.ellipse(100, 50, 1),
         noise_std=1,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
         save=False
-    ).run()
+    )
 
 
 if __name__ == '__main__':
