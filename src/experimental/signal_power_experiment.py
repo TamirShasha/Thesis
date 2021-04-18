@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.utils import create_random_k_tuple_sum_to_n, add_pulses, add_gaus_noise
-from src.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
+from src.utils.utils import create_random_k_tuple_sum_to_n, add_pulses, add_gaus_noise
+from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 
 np.random.seed(500)
 

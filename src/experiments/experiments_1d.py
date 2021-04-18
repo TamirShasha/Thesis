@@ -4,8 +4,9 @@ import time
 import os
 from src.constants import ROOT_DIR
 
-from src.utils import create_random_k_tuple_sum_to_n, add_pulses, add_gaus_noise, Memoize
-from src.algorithm2 import LengthExtractor, SignalPowerEstimator
+from src.algorithms.utils import create_random_k_tuple_sum_to_n
+from src.experiments.data_simulator_1d import add_pulses, add_gaus_noise
+from src.algorithms.length_extractor_1d import LengthExtractor1D, SignalPowerEstimator
 
 
 class Experiment:
@@ -62,14 +63,14 @@ class Experiment:
             "d": self._d,
             "k": self._k,
         }
-        self._length_extractor = LengthExtractor(y=self._y,
-                                                 length_options=self._signal_length_options,
-                                                 signal_filter_gen=self._signal_filter_gen,
-                                                 noise_mean=self._noise_mean,
-                                                 noise_std=self._noise_std,
-                                                 signal_power_estimator_method=self._signal_power_estimator_method,
-                                                 exp_attr=exp_attr,
-                                                 logs=self._logs)
+        self._length_extractor = LengthExtractor1D(y=self._y,
+                                                   length_options=self._signal_length_options,
+                                                   signal_filter_gen=self._signal_filter_gen,
+                                                   noise_mean=self._noise_mean,
+                                                   noise_std=self._noise_std,
+                                                   signal_power_estimator_method=self._signal_power_estimator_method,
+                                                   exp_attr=exp_attr,
+                                                   logs=self._logs)
 
     def run(self):
         start_time = time.time()
@@ -95,7 +96,7 @@ class Experiment:
         plt.tight_layout()
 
         if self._save:
-            fig_path = os.path.join(ROOT_DIR, f'experiments_results/{self._name}.png')
+            fig_path = os.path.join(ROOT_DIR, f'src/experiments/plots/{self._name}.png')
             plt.savefig(fname=fig_path)
         if self._plot:
             plt.show()
@@ -113,27 +114,27 @@ def __main__():
     #     save=False
     # ).run()
 
-    # Experiment(
-    #     name="std-10",
-    #     n=300000,
-    #     d=150,
-    #     signal_fraction=1 / 4,
-    #     noise_std=10,
-    #     signal_power_estimator_method=SignalPowerEstimator.SecondMoment,
-    #     plot=False,
-    #     save=True
-    # ).run()
-
     Experiment(
-        name="std-13",
-        n=1000,
-        d=10,
-        k=20,
-        noise_std=0.00001,
-        signal_power_estimator_method=SignalPowerEstimator.Exact,
+        name="std-10",
+        n=70000,
+        d=150,
+        signal_fraction=1 / 5,
+        noise_std=5,
+        signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
         save=False
     ).run()
+
+    # Experiment(
+    #     name="std-13",
+    #     n=50000,
+    #     d=100,
+    #     signal_fraction=1 / 5,
+    #     noise_std=7,
+    #     signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
+    #     plot=True,
+    #     save=False
+    # ).run()
 
 
 if __name__ == '__main__':

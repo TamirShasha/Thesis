@@ -1,13 +1,11 @@
 import numpy as np
-from src.utils import arange_data_2d
+from src.utils.utils import arange_data_2d
 
 import matplotlib.pyplot as plt
-from src.utils import log_binomial
+from src.utils.utils import log_binomial
 from scipy.special import logsumexp
 
-from src.algorithm import LengthExtractor, SignalPowerEstimator
-
-np.random.seed(500)
+np.random.seed(501)
 
 
 class DynamicProgramming2D:
@@ -76,11 +74,11 @@ class DynamicProgramming2D:
 # dp.dp_multilpe_rows()
 # dp.log_dp_multilpe_rows()
 
-rows = 2000
-columns = 2000
-d = 100
+rows = 1000
+columns = 1000
+d = 20
 p = 1
-k = 50
+k = 71
 std = 0.1
 
 data = arange_data_2d(rows=rows,
@@ -94,28 +92,28 @@ data = arange_data_2d(rows=rows,
 plt.imshow(data, cmap='gray')
 plt.show()
 
-chuncked_rows = int(rows / d)
-chuncked_data = data.reshape(chuncked_rows, d, columns)
-downsample = np.sum(chuncked_data, 1).reshape(-1) / d
+# chuncked_rows = int(rows / d)
+# chuncked_data = data.reshape(chuncked_rows, d, columns)
+# downsample = np.sum(chuncked_data, 1).reshape(-1) / d
 
-plt.figure()
-plt.plot(downsample)
-plt.show()
+# plt.figure()
+# plt.plot(downsample)
+# plt.show()
 
-d_options = np.arange(1, d * 2, 5)
-le = LengthExtractor(y=downsample,
-                     length_options=d_options,
-                     signal_filter_gen=lambda d: np.full(d, 1),
-                     noise_mean=0,
-                     noise_std=std,
-                     signal_power_estimator_method=SignalPowerEstimator.SecondMoment,
-                     exp_attr=None,
-                     logs=True)
-
-likelihoods, d = le.extract()
-plt.figure()
-plt.plot(d_options, likelihoods)
-plt.show()
+# d_options = np.arange(1, d * 2, 5)
+# le = LengthExtractor(y=downsample,
+#                      length_options=d_options,
+#                      signal_filter_gen=lambda d: np.full(d, 1),
+#                      noise_mean=0,
+#                      noise_std=std,
+#                      signal_power_estimator_method=SignalPowerEstimator.SecondMoment,
+#                      exp_attr=None,
+#                      logs=True)
+#
+# likelihoods, d = le.extract()
+# plt.figure()
+# plt.plot(d_options, likelihoods)
+# plt.show()
 
 # plt.plot(data.sum(0))
 # plt.show()

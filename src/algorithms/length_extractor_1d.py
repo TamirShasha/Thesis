@@ -2,16 +2,16 @@ import numpy as np
 import numba as nb
 import time
 from enum import Enum
-from scipy.special import logsumexp
 
-from src.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
+from src.algorithms.utils import log_binomial
+from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
 
 
 class SignalPowerEstimator(SPE, Enum):
     Exact = "Exact Power"
 
 
-class LengthExtractor:
+class LengthExtractor1D:
 
     def __init__(self, y, length_options, signal_filter_gen,
                  noise_mean, noise_std, signal_power_estimator_method, exp_attr, logs=True):
@@ -51,41 +51,15 @@ class LengthExtractor:
         minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2
         return - n * np.log(self._noise_std * (2 * np.pi) ** 0.5) + minus_1_over_twice_variance * np.sum(np.square(y))
 
-    def _compute_log_pd(self, n, k):
+    @staticmethod
+    def _compute_log_pd(n, k, d):
         """
         Compute log(1/|S|), where |S| is the number of ways to insert k signals of length d in n spaces in such they are
         not overlapping.
         """
-        return -k * np.log(n)
-
-    # @nb.jit
-    def _calc_prob_y_given_x_k_slow(self, y, x, k):
-        n = y.shape[0]
-        d = x.shape[0]
-
-        # Precomputing stuff
-        x = x.mean()
-        minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2
-        arange_k = np.arange(k + 1)
-
-        # Allocating memory
-        mapping = np.zeros(shape=(n + 1, k + 1))
-        mapping[n-d:n+1, :] = -np.inf
-        mapping[n, 0] = 0
-
-        # Filling values one by one, skipping irrelevant values
-        for i in np.arange(mapping.shape[0] - 1)[::-1]:
-            if i > n-d:
-                minus_1_over_twice_variance + mapping[i+1, 0]
-        for i in np.arange(mapping.shape[0] - d)[::-1]:
-            for curr_k in np.arange(mapping.shape[1]):
-                mapping[i, curr_k] = logsumexp(minus_1_over_twice_variance * np.sum(np.square(y[i:i+d, np.newaxis] - arange_k[np.newaxis, :curr_k+1] * x), 0) + mapping[i+d, curr_k-arange_k[:curr_k+1]])
-
-        # Computing remaining parts of log-likelihood
-        log_pd = self._compute_log_pd(n, k)
-
-        likelihood = log_pd + mapping[0, k]
-        return likelihood
+        n_tag = n - (d - 1) * k
+        k_tag = k
+        return -log_binomial(n_tag, k_tag)
 
     @nb.jit
     def _calc_prob_y_given_x_k_fast(self, y, x, k):
@@ -115,7 +89,7 @@ class LengthExtractor:
                                                   mapping[i + 1, curr_k])
 
         # Computing remaining parts of log-likelihood
-        log_pd = self._compute_log_pd(n, k)
+        log_pd = self._compute_log_pd(n, k, d)
         log_prob_all_noise = self.log_prob_all_noise
 
         likelihood = log_pd + log_prob_all_noise + mapping[0, k]
@@ -124,10 +98,9 @@ class LengthExtractor:
     def _calc_d_likelihood(self, y, d):
         tic = time.time()
         expected_k = self._find_expected_occurrences(y, d)
-        expected_k = 20
 
         signal_filter = self._signal_filter_gen(d)
-        likelihood = self._calc_prob_y_given_x_k_slow(y, signal_filter, expected_k)
+        likelihood = self._calc_prob_y_given_x_k_fast(y, signal_filter, expected_k)
         toc = time.time()
 
         if self._logs:
