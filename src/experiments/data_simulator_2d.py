@@ -23,7 +23,7 @@ class Shapes2D:
         signal = np.zeros(shape=(diameter, diameter))
 
         r, c = diameter // 2, diameter // 2
-        rr, cc = disk((r, c), diameter)
+        rr, cc = disk((r, c), diameter // 2)
         signal[rr, cc] = fill_value
 
         return signal

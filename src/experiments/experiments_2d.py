@@ -29,7 +29,8 @@ class Experiment2D:
                  save=True,
                  logs=True):
         self._name = name
-        self._n = n  # Data length
+        self._n = n  # Rows
+        self._m = m  # Columns
         self._d = d  # Signal Length
         self._k = k  # Num of signal occurrences
         self._signal_gen = signal_gen
@@ -45,11 +46,11 @@ class Experiment2D:
         self._logs = logs
         self._results = {}
 
-        if self._signal_fraction:
-            self._k = int((self._n / self._d) * self._signal_fraction)
-
         if self._signal_shape is None:
             self._signal_shape = (self._d, self._d)
+
+        if self._signal_fraction:
+            self._k = int((self._n * self._m / np.prod(self._signal_shape)) * self._signal_fraction)
 
         if self._signal_gen is None:
             self._signal_gen = lambda: Shapes2D.square(self._d, 1)
@@ -115,13 +116,13 @@ def __main__():
         n=4000,
         m=4000,
         d=100,
-        k=50,
-        signal_gen=lambda: Shapes2D.ellipse(100, 50, 1),
-        noise_std=1,
+        signal_fraction=1 / 4,
+        signal_gen=lambda: Shapes2D.disk(100, 1),
+        noise_std=5,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
         save=False
-    )
+    ).run()
 
 
 if __name__ == '__main__':
