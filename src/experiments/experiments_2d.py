@@ -55,12 +55,12 @@ class Experiment2D:
         if self._signal_gen is None:
             self._signal_gen = lambda: Shapes2D.square(self._d, 1)
 
-        print('Arranging data...')
+        print(f'Arranging data: number of occurrences is {self._k}')
         self._y = simulate_data((n, m), self._signal_gen, self._signal_shape, self._k,
                                 self._noise_std, self._noise_mean)
 
         if length_options is None:
-            length_options = np.arange(self._d // 2, int(self._d * 1.3), 10)
+            length_options = np.arange(self._d // 4, int(self._d), 10)
         self._signal_length_options = length_options
 
         exp_attr = {
@@ -97,7 +97,7 @@ class Experiment2D:
 
     def save_and_plot(self):
         plt.title(
-            f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
+            f"N={self._n}, M={self._m}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
             f"Signal Power Estimator Method={self._signal_power_estimator_method.name},\n"
             f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
         plt.plot(self._signal_length_options, self._results['likelihoods'])
@@ -113,11 +113,11 @@ class Experiment2D:
 def __main__():
     Experiment2D(
         name="std-10",
-        n=1000,
-        m=1000,
-        d=50,
+        n=4000,
+        m=4000,
+        d=300,
         signal_fraction=1 / 4,
-        signal_gen=lambda: Shapes2D.disk(50, 1),
+        signal_gen=lambda: Shapes2D.ellipse(300, 200, 1),
         noise_std=5,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,

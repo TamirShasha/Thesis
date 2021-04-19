@@ -3,10 +3,6 @@ import matplotlib.pyplot as plt
 from skimage.draw import line, ellipse, disk
 
 
-# create image of circle
-# n = 1000
-
-
 def plot_circle_cut_length_hist(radius):
     n = 3 * radius
     img = np.zeros((n, n))
@@ -54,12 +50,17 @@ def plot_cut_length_hist(img, max_cut):
 
     normed_intersections = np.array(intersections) / total_intersection_events
     names = [f'{np.round((i + 1) * bin_size / max_cut, 2)}' for i in range(intersections.shape[0])]
+
+    avg = (np.sum(
+        (np.arange(1, intersections.shape[0] + 1) * bin_size) * intersections) / total_intersection_events) / max_cut
+
+    plt.title(f'average: {avg}')
     plt.bar(names, normed_intersections)
     plt.show()
 
 
 def __main__():
-    plot_ellipse_cut_length_hist(300, 200)
+    plot_circle_cut_length_hist(300)
 
 
 if __name__ == '__main__':
