@@ -93,8 +93,8 @@ class LengthExtractor1D:
         # Computing remaining parts of log-likelihood
         log_pd = self._compute_log_pd(n, k, d)
         log_prob_all_noise = self.log_prob_all_noise
-
         likelihood = log_pd + log_prob_all_noise + mapping[0, k]
+        print(mapping[0, k])
         return likelihood
 
     def _calc_d_likelihood(self, y, d):

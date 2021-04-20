@@ -4,6 +4,7 @@ import time
 from typing import List, Callable
 import itertools
 from src.utils.logsumexp import logsumexp
+# from scipy.special import logsumexp
 
 from src.algorithms.utils import log_binomial
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
@@ -152,7 +153,7 @@ class LengthExtractorML1D:
         lens = signals_dist.lengths
 
         # Precomputing stuff
-        sum_yx_minus_x_squared = np.zeros([n, 3])
+        sum_yx_minus_x_squared = np.zeros([n, 4])
         signals_squared = np.square(signals_dist.signals)
         for i in range(n):
             for j, d in enumerate(lens):
@@ -161,26 +162,7 @@ class LengthExtractorML1D:
                 sum_yx_minus_x_squared[i, j] = np.sum(signals_squared[j] - 2 * signals_dist.signals[j] * y[i: i + d])
 
         sum_yx_minus_x_squared *= - 0.5 / self._noise_std ** 2
-
-        # Allocating memory
-        # Default is -inf everywhere as there are many places where the probability is 0 (when i > n - k * d)
-        # when k=0 the probability is 1
-
         k = signals_dist.find_expected_occurrences(self._signal_power)  # k1, k2, .. , kl
-        # shape = np.concatenate([[n + 1 + signals_dist.length], np.array(k) + 2])
-        # mapping = np.full(shape, -np.inf)
-        # mapping[:, 0, 0, 0] = 0
-        #
-        # boundaries_list = [(n - 1, -1, -1)] + [(0, ki + 1, 1) for ki in k]
-        # curr_values = np.zeros(4)
-        # for i, k1, k2, k3 in itertools.product(*(range(*b) for b in boundaries_list)):
-        #     curr_values[0] = mapping[i + 1, k1, k2, k3]
-        #     curr_values[1] = sum_yx_minus_x_squared[i, 0] + mapping[i + lens[0], k1 - 1, k2, k3]
-        #     curr_values[2] = sum_yx_minus_x_squared[i, 1] + mapping[i + lens[1], k1, k2 - 1, k3]
-        #     curr_values[3] = sum_yx_minus_x_squared[i, 2] + mapping[i + lens[2], k1, k2, k3 - 1]
-        #     val = logsumexp(curr_values)
-        #     mapping[i, k1, k2, k3] = val
-        #
         R = self.tmp(n, signals_dist.length, k, sum_yx_minus_x_squared, lens)
         # Computing remaining parts of log-likelihood
         log_pd = self._compute_log_pd(n, signals_dist.lengths, k)
@@ -197,27 +179,24 @@ class LengthExtractorML1D:
         mapping = np.full(shape, -np.inf)
         mapping[:, 0, 0, 0] = 0
 
-        curr_values = np.zeros(4)
+        tmp_map = np.zeros((k[0] + 1, k[1] + 1, k[2] + 1, 4))
+        print(tmp_map.shape)
         for i in range(n - 1, -1, -1):
             for k1 in range(0, k[0] + 1, 1):
                 for k2 in range(0, k[1] + 1, 1):
                     for k3 in range(0, k[2] + 1, 1):
-                        curr_values[0] = mapping[i + 1, k1, k2, k3]
-                        curr_values[1] = sum_yx_minus_x_squared[i, 0] + mapping[i + lens[0], k1 - 1, k2, k3]
-                        curr_values[2] = sum_yx_minus_x_squared[i, 1] + mapping[i + lens[1], k1, k2 - 1, k3]
-                        curr_values[3] = sum_yx_minus_x_squared[i, 2] + mapping[i + lens[2], k1, k2, k3 - 1]
-                        mapping[i, k1, k2, k3] = logsumexp(curr_values)
+                        tmp_map[k1, k2, k3] = [mapping[i + lens[0], k1 - 1, k2, k3],
+                                               mapping[i + lens[1], k1, k2 - 1, k3],
+                                               mapping[i + lens[2], k1, k2, k3 - 1],
+                                               mapping[i + 1, k1, k2, k3]]
+            tmp_map += sum_yx_minus_x_squared[np.newaxis, np.newaxis, [i], :]
+            mapping[i, :-1, :-1, :-1] = logsumexp(tmp_map, axis=-1)
         return mapping[0, k[0], k[1], k[2]]
 
     def _calc_length_distribution_likelihood(self, len_dist):
         tic = time.time()
         likelihood = self._calc_likelihood_fast3(len_dist)
         toc = time.time()
-        print(len_dist.length)
-        # likelihood2 = self._calc_likelihood_fast3(len_dist)
-        # toc2 = time.time()
-        # print(likelihood, toc - tic)
-        # print(likelihood2, toc2 - toc)
 
         print(f'For d = {len_dist.length} took {toc - tic} seconds, likelihood={likelihood}')
 

@@ -7,6 +7,7 @@ from src.experimental.length_extractor_1d_multiple_length import LengthExtractor
 
 np.random.seed(501)
 
+
 def add_pulses(y, signal_mask, signal_gen):
     """
     Add to y the signal at positions signal_masl == 1
@@ -44,20 +45,22 @@ def simulate_data(n, ds, ds_dist, p, k, noise_std):
     return y, pulses
 
 
-noise_std = 0.1
-n = 7000
+noise_std = 1
+n = 3000
 k = 30
-d = 100
-cuts = np.array([1, 0.6, 0.3])
-ds = np.array(d*cuts, dtype=int)
-ds_dist = [0.6, 0.3, 0.1]
+d = 30
+cuts = np.array([1, 0.5, 0.3])
+ds = np.array(d * cuts, dtype=int)
+# ds_dist = [0.6, 0.3, 0.1]
+ds_dist = [0.4, 0.3, 0.3]
 p = 1,
 signal_filter_gen = lambda d: np.full(d, 1)
 y, pulses = simulate_data(n, ds, ds_dist, p, k, noise_std)
 
-plt.plot(y)
-plt.show()
-length_options = np.array([60, 70, 80, 90, 100, 110, 120])
+# plt.plot(y)
+# plt.show()
+length_options = np.arange(d // 4, int(d * 2), 5)
+# length_options = [d]
 
 le = LengthExtractor1D(y=y,
                        length_options=length_options,
@@ -70,6 +73,6 @@ le2 = LengthExtractorML1D(data=y,
                           length_distribution_options=signals_distributions, noise_std=noise_std)
 likelihoods2, d2 = le2.extract()
 
-# plt.plot(length_options, likelihoods)
+plt.plot(length_options, likelihoods)
 plt.plot(length_options, likelihoods2)
 plt.show()
