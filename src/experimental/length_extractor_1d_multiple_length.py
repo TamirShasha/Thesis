@@ -3,7 +3,7 @@ import numba as nb
 import time
 from typing import List, Callable
 import itertools
-from scipy.special import logsumexp
+from src.utils.logsumexp import logsumexp
 
 from src.algorithms.utils import log_binomial
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
@@ -88,7 +88,7 @@ class LengthExtractorML1D:
 
         return -lb
 
-    @nb.jit
+    # @nb.jit
     def _calc_likelihood_fast(self, signals_dist: SignalsDistribution):
         y = self._data
         n = y.shape[0]
@@ -133,7 +133,7 @@ class LengthExtractorML1D:
                 next_ks = list.copy(ks)
                 next_ks[j] -= 1
                 next_loc = tuple([i + lens[j]] + next_ks)
-                options_values[j] = sum_yx_minus_x_squared[i][j] + mapping[next_loc]
+                options_values[j] = sum_yx_minus_x_squared[i, j] + mapping[next_loc]
 
             val = np.logaddexp(logsumexp(options_values), mapping[tuple([i + 1] + ks)])
             mapping[curr_loc] = val
@@ -146,10 +146,78 @@ class LengthExtractorML1D:
         likelihood = log_pd + log_prob_all_noise + mapping[start_loc]
         return likelihood
 
+    def _calc_likelihood_fast3(self, signals_dist: SignalsDistribution):
+        y = self._data
+        n = y.shape[0]
+        lens = signals_dist.lengths
+
+        # Precomputing stuff
+        sum_yx_minus_x_squared = np.zeros([n, 3])
+        signals_squared = np.square(signals_dist.signals)
+        for i in range(n):
+            for j, d in enumerate(lens):
+                if i + d > n - 1:
+                    continue
+                sum_yx_minus_x_squared[i, j] = np.sum(signals_squared[j] - 2 * signals_dist.signals[j] * y[i: i + d])
+
+        sum_yx_minus_x_squared *= - 0.5 / self._noise_std ** 2
+
+        # Allocating memory
+        # Default is -inf everywhere as there are many places where the probability is 0 (when i > n - k * d)
+        # when k=0 the probability is 1
+
+        k = signals_dist.find_expected_occurrences(self._signal_power)  # k1, k2, .. , kl
+        # shape = np.concatenate([[n + 1 + signals_dist.length], np.array(k) + 2])
+        # mapping = np.full(shape, -np.inf)
+        # mapping[:, 0, 0, 0] = 0
+        #
+        # boundaries_list = [(n - 1, -1, -1)] + [(0, ki + 1, 1) for ki in k]
+        # curr_values = np.zeros(4)
+        # for i, k1, k2, k3 in itertools.product(*(range(*b) for b in boundaries_list)):
+        #     curr_values[0] = mapping[i + 1, k1, k2, k3]
+        #     curr_values[1] = sum_yx_minus_x_squared[i, 0] + mapping[i + lens[0], k1 - 1, k2, k3]
+        #     curr_values[2] = sum_yx_minus_x_squared[i, 1] + mapping[i + lens[1], k1, k2 - 1, k3]
+        #     curr_values[3] = sum_yx_minus_x_squared[i, 2] + mapping[i + lens[2], k1, k2, k3 - 1]
+        #     val = logsumexp(curr_values)
+        #     mapping[i, k1, k2, k3] = val
+        #
+        R = self.tmp(n, signals_dist.length, k, sum_yx_minus_x_squared, lens)
+        # Computing remaining parts of log-likelihood
+        log_pd = self._compute_log_pd(n, signals_dist.lengths, k)
+        log_prob_all_noise = self.log_prob_all_noise
+
+        start_loc = tuple([0] + list(k))
+        # likelihood = log_pd + log_prob_all_noise + mapping[start_loc]
+        likelihood = log_pd + log_prob_all_noise + R
+        return likelihood
+
+    @nb.jit
+    def tmp(self, n, d, k, sum_yx_minus_x_squared, lens):
+        shape = np.concatenate([[n + 1 + d], np.array(k) + 2])
+        mapping = np.full(shape, -np.inf)
+        mapping[:, 0, 0, 0] = 0
+
+        curr_values = np.zeros(4)
+        for i in range(n - 1, -1, -1):
+            for k1 in range(0, k[0] + 1, 1):
+                for k2 in range(0, k[1] + 1, 1):
+                    for k3 in range(0, k[2] + 1, 1):
+                        curr_values[0] = mapping[i + 1, k1, k2, k3]
+                        curr_values[1] = sum_yx_minus_x_squared[i, 0] + mapping[i + lens[0], k1 - 1, k2, k3]
+                        curr_values[2] = sum_yx_minus_x_squared[i, 1] + mapping[i + lens[1], k1, k2 - 1, k3]
+                        curr_values[3] = sum_yx_minus_x_squared[i, 2] + mapping[i + lens[2], k1, k2, k3 - 1]
+                        mapping[i, k1, k2, k3] = logsumexp(curr_values)
+        return mapping[0, k[0], k[1], k[2]]
+
     def _calc_length_distribution_likelihood(self, len_dist):
         tic = time.time()
-        likelihood = self._calc_likelihood_fast(len_dist)
+        likelihood = self._calc_likelihood_fast3(len_dist)
         toc = time.time()
+        print(len_dist.length)
+        # likelihood2 = self._calc_likelihood_fast3(len_dist)
+        # toc2 = time.time()
+        # print(likelihood, toc - tic)
+        # print(likelihood2, toc2 - toc)
 
         print(f'For d = {len_dist.length} took {toc - tic} seconds, likelihood={likelihood}')
 
