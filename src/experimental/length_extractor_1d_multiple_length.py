@@ -1,4 +1,5 @@
 import numpy as np
+import numba as nb
 import time
 from typing import List, Callable
 import itertools
@@ -70,15 +71,24 @@ class LengthExtractorML1D:
         return - n * np.log(self._noise_std * (2 * np.pi) ** 0.5) + minus_1_over_twice_variance * np.sum(np.square(y))
 
     @staticmethod
-    def _compute_log_pd(n, k, d):
+    def _compute_log_pd(data_length, signals_lengths, signals_occurrences):
         """
         Compute log(1/|S|), where |S| is the number of ways to insert k signals of length d in n spaces in such they are
-        not overlapping.
+        not overlapping. And then coloring them with l colors such that k1,..,kl are the counts of each.
         """
-        n_tag = n - (d - 1) * k
-        k_tag = k
-        return -log_binomial(n_tag, k_tag)
 
+        k = np.sum(signals_occurrences)  # total signals occurrences
+        dk = np.sum(signals_lengths * signals_occurrences)  # total signals length
+
+        lb = np.sum(np.log(np.arange(1, data_length - dk + k + 1))) - \
+             np.sum(np.log(np.arange(1, data_length - dk + 1)))
+
+        for ki in signals_occurrences:
+            lb -= np.sum(np.log(np.arange(1, ki + 1)))
+
+        return -lb
+
+    @nb.jit
     def _calc_likelihood_fast(self, signals_dist: SignalsDistribution):
         y = self._data
         n = y.shape[0]
@@ -105,7 +115,7 @@ class LengthExtractorML1D:
         mapping = np.full(shape, -np.inf)
         # mapping[:, 0] = 0
 
-        boundaries_list = [(0, ki, 1) for ki in k] + [(n - 1, 0, -1)]
+        boundaries_list = [(0, ki + 1, 1) for ki in k] + [(n - 1, -1, -1)]
         for indices in itertools.product(*(range(*b) for b in boundaries_list)):
             ks = list(indices[:-1])
             i = indices[-1]
@@ -115,12 +125,9 @@ class LengthExtractorML1D:
                 mapping[curr_loc] = 0
                 continue
 
-            options_values = np.zeros(nk)
+            options_values = np.full(nk, -np.inf)
             for j in range(nk):  # if current i has k'th length starting at it
-                if ks[j] == 0:
-                    continue
-                if i + lens[j] > n - 1:
-                    options_values[j] = -np.inf
+                if ks[j] == 0 or i + lens[j] > n - 1:
                     continue
 
                 next_ks = list.copy(ks)
@@ -132,19 +139,23 @@ class LengthExtractorML1D:
             mapping[curr_loc] = val
 
         # Computing remaining parts of log-likelihood
-        log_pd = self._compute_log_pd(n, k, signals_dist.length)  # TODO: change to correct
+        log_pd = self._compute_log_pd(n, signals_dist.lengths, k)
         log_prob_all_noise = self.log_prob_all_noise
 
-        likelihood = log_pd + log_prob_all_noise + mapping[0, k]
+        start_loc = tuple([0] + list(k))
+        likelihood = log_pd + log_prob_all_noise + mapping[start_loc]
         return likelihood
 
     def _calc_length_distribution_likelihood(self, len_dist):
         tic = time.time()
         likelihood = self._calc_likelihood_fast(len_dist)
         toc = time.time()
+
+        print(f'For d = {len_dist.length} took {toc - tic} seconds, likelihood={likelihood}')
+
         return likelihood
 
     def extract(self):
         likelihoods = [self._calc_length_distribution_likelihood(ld) for ld in self._length_distribution_options]
-        ld_best = self._calc_length_distribution_likelihood[np.argmax(likelihoods)]
+        ld_best = self._length_distribution_options[np.argmax(likelihoods)]
         return likelihoods, ld_best

@@ -13,8 +13,10 @@ class SignalPowerEstimator(SPE, Enum):
 
 class LengthExtractor1D:
 
-    def __init__(self, y, length_options, signal_filter_gen,
-                 noise_mean, noise_std, signal_power_estimator_method, exp_attr, logs=True):
+    def __init__(self, y, length_options, noise_std,
+                 noise_mean=0, signal_filter_gen=lambda l: np.full(l, 1),
+                 signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
+                 exp_attr=None, logs=True):
         self._y = y
         self._length_options = length_options
         self._signal_filter_gen = signal_filter_gen

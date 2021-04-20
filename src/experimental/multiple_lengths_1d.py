@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 
 from src.algorithms.utils import create_random_k_tuple_sum_to_n
 from src.algorithms.length_extractor_1d import LengthExtractor1D, SignalPowerEstimator
+from src.experimental.length_extractor_1d_multiple_length import LengthExtractorML1D, SignalsDistribution
 
 
 def add_pulses(y, signal_mask, signal_gen):
@@ -43,22 +44,26 @@ def simulate_data(n, ds, ds_dist, p, k, noise_std):
 
 
 noise_std = 1
-n = 70000
-k = 200
-ds = [150, 100]
-ds_dist = [0.3, 0.7]
+n = 7000
+k = 30
+ds = [100, 50]
+ds_dist = [0.8, 0.2]
 p = 1,
+signal_filter_gen = lambda d: np.full(d, 1)
 y, pulses = simulate_data(n, ds, ds_dist, p, k, noise_std)
+length_options = np.arange(10, int(ds[0] * 1.3), 5)
 
 le = LengthExtractor1D(y=y,
-                       length_options=np.arange(10, int(ds[0] * 1.3), 5),
-                       signal_filter_gen=lambda d: np.full(d, 1),
-                       noise_mean=0,
-                       noise_std=noise_std,
-                       signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-                       exp_attr={},
-                       logs=True)
+                       length_options=length_options,
+                       noise_std=noise_std)
 likelihoods, d = le.extract()
 
-plt.plot(np.arange(10, int(ds[0] * 1.3), 5), likelihoods)
+signals_distributions = [SignalsDistribution(length=l, cuts=[1, 0.5], distribution=[0.8, 0.2],
+                                             filter_gen=signal_filter_gen) for l in length_options]
+le2 = LengthExtractorML1D(data=y,
+                          length_distribution_options=signals_distributions, noise_std=noise_std)
+likelihoods2, d2 = le2.extract()
+
+plt.plot(length_options, likelihoods)
+plt.plot(length_options, likelihoods2)
 plt.show()
