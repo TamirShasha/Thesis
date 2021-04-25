@@ -24,15 +24,13 @@ def plot_ellipse_cut_length_hist(major_radius, minor_radius):
 
 def plot_cut_length_hist(img, max_cut):
     n = img.shape[0]
-    m = 30000
-    bin_size = 25
+    m = 500
+    num_of_bins = 10
+    bin_size = max_cut // num_of_bins
     intersections = np.zeros(max_cut // bin_size)
     total_intersection_events = 0
 
-    for i in range(m):
-        if i % 1000 == 0:
-            print(i)
-
+    while m > 0:
         sides = np.random.choice(4, 2, replace=False)
         points = np.array([(0, np.random.randint(n)), (n - 1, np.random.randint(n)),
                            (np.random.randint(n), 0), (np.random.randint(n), n - 1)])
@@ -45,17 +43,24 @@ def plot_cut_length_hist(img, max_cut):
         if intersection_len > 0:
             intersections[intersection_len // bin_size] += 1
             total_intersection_events += 1
+            m -= 1
 
         img[rr, cc] -= 1
 
     normed_intersections = np.array(intersections) / total_intersection_events
-    names = [f'{np.round((i + 1) * bin_size / max_cut, 2)}' for i in range(intersections.shape[0])]
+    names = [f'{np.round(i * bin_size / max_cut, 2)}' for i in range(intersections.shape[0])]
 
     avg = (np.sum(
         (np.arange(1, intersections.shape[0] + 1) * bin_size) * intersections) / total_intersection_events) / max_cut
 
-    plt.title(f'average: {avg}')
-    plt.bar(names, normed_intersections)
+    print(names)
+    print(normed_intersections)
+    # plt.title(f'average: {avg}')
+    # plt.bar(names, normed_intersections)
+    # plt.show()
+
+    plt.title(f'sumed: {avg}')
+    plt.bar(names, np.cumsum(normed_intersections))
     plt.show()
 
 

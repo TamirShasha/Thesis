@@ -8,6 +8,7 @@ from src.experiments.data_simulator_2d import simulate_data, Shapes2D
 from src.algorithms.length_extractor_1d import SignalPowerEstimator
 from src.algorithms.length_extractor_2d import LengthExtractor2D
 
+np.random.seed(500)
 
 class Experiment2D:
 
@@ -60,7 +61,7 @@ class Experiment2D:
                                 self._noise_std, self._noise_mean)
 
         if length_options is None:
-            length_options = np.arange(self._d // 4, int(self._d), 10)
+            length_options = np.arange(self._d // 4, int(self._d * 1.3), 3)
         self._signal_length_options = length_options
 
         exp_attr = {
@@ -68,8 +69,8 @@ class Experiment2D:
             "k": self._k,
         }
 
-        plt.imshow(self._y, cmap='gray')
-        plt.show()
+        # plt.imshow(self._y, cmap='gray')
+        # plt.show()
 
         self._length_extractor = LengthExtractor2D(y=self._y,
                                                    length_options=self._signal_length_options,
@@ -82,12 +83,12 @@ class Experiment2D:
 
     def run(self):
         start_time = time.time()
-        likelihoods, d = self._length_extractor.extract()
+        likelihoods = self._length_extractor.extract2()
         end_time = time.time()
 
         self._results = {
             "likelihoods": likelihoods,
-            "d": d,
+            "d": 123,
             "total_time": end_time - start_time
         }
 
@@ -113,11 +114,12 @@ class Experiment2D:
 def __main__():
     Experiment2D(
         name="std-10",
-        n=4000,
-        m=4000,
-        d=300,
-        signal_fraction=1 / 4,
-        signal_gen=lambda: Shapes2D.ellipse(300, 200, 1),
+        n=300,
+        m=300,
+        d=30,
+        signal_fraction=1 / 5,
+        signal_gen=lambda: Shapes2D.disk(30, 1),
+        length_options=[30],
         noise_std=5,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
