@@ -66,11 +66,12 @@ class LengthExtractor2D:
                                  for l in self._length_options]
         num_of_curves = int(np.log(np.max(self._y.shape)))
         times = int(np.log(self._y.shape[0]))
-        times = 1
+        times = 3
         print(f'Will average over {times} runs, Num of curves is: {num_of_curves}')
 
         sum_likelihoods = np.zeros_like(self._length_options)
-        for _ in range(times):
+        for t in range(times):
+            print(f'At iteration {t}')
             data = self._create_1d_data_from_curves(num_of_curves)
             likelihoods, d = LengthExtractorML1D(data=data,
                                                  length_distribution_options=signals_distributions,

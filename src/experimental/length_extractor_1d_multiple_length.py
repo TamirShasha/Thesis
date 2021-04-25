@@ -171,15 +171,15 @@ class LengthExtractorML1D:
         sum_yx_minus_x_squared *= - 0.5 / self._noise_std ** 2
         k = signals_dist.find_expected_occurrences(self._signal_power)  # k1, k2, .. , kl
 
-        tic = time.time()
-        # R = self.tmp(n, signals_dist.length, k, sum_yx_minus_x_squared, lens)
-        tac = time.time()
-        print(f'took {tac - tic} time for tmp')
+        # tic = time.time()
+        # # R = self.tmp(n, signals_dist.length, k, sum_yx_minus_x_squared, lens)
+        # tac = time.time()
+        # print(f'took {tac - tic} time for tmp')
 
-        tic = time.time()
+        # tic = time.time()
         R = self.tmp3(n, signals_dist.length, k, sum_yx_minus_x_squared, lens)
-        tac = time.time()
-        print(f'took {tac - tic} time for tmp3')
+        # tac = time.time()
+        # print(f'took {tac - tic} time for tmp3')
 
         # Computing remaining parts of log-likelihood
         log_pd = self._compute_log_pd(n, signals_dist.lengths, k)
@@ -222,19 +222,51 @@ class LengthExtractorML1D:
         boundaries_list = [(0, k[0] + 1), (0, k[1] + 1), (0, k[2] + 1)]
         indices = np.array(list(itertools.product(*(range(*b) for b in boundaries_list))))
 
-        tmp_map = np.zeros((k[0] + 1, k[1] + 1, k[2] + 1, 4))
-        print(tmp_map.shape)
-        val = self.tmp4(n, mapping, lens, indices, sum_yx_minus_x_squared, k)
-        return val
+        k1, k2, k3 = indices[:, 0], indices[:, 1], indices[:, 2]
+        l1, l2, l3 = lens[0], lens[1], lens[2]
+        for i in np.arange(n - 1, -1, -1):
+            tmp = [mapping[i + l1, k1 - 1, k2, k3],
+                   mapping[i + l2, k1, k2 - 1, k3],
+                   mapping[i + l3, k1, k2, k3 - 1],
+                   mapping[i + 1, k1, k2, k3]]
+            tmp_map = np.stack(tmp, axis=-1).reshape(k[0] + 1, k[1] + 1, k[2] + 1, 4)
+            tmp_map += sum_yx_minus_x_squared[np.newaxis, np.newaxis, [i], :]
+            mapping[i, :-1, :-1, :-1] = logsumexp(tmp_map, axis=-1)
+
+        return mapping[0, k[0], k[1], k[2]]
+
+    @staticmethod
+    def tmp3_circulant_mapping(n, d, k, sum_yx_minus_x_squared, lens):
+        shape = np.concatenate([[d + 1], np.array(k) + 2])
+        mapping = np.full(shape, -np.inf)
+        mapping[:, 0, 0, 0] = 0
+
+        boundaries_list = [(0, k[0] + 1), (0, k[1] + 1), (0, k[2] + 1)]
+        indices = np.array(list(itertools.product(*(range(*b) for b in boundaries_list))))
+
+        k1, k2, k3 = indices[:, 0], indices[:, 1], indices[:, 2]
+        l1, l2, l3 = lens[0], lens[1], lens[2]
+        for i in np.arange(n - 1, -1, -1):
+            tmp = [mapping[i + l1, k1 - 1, k2, k3],
+                   mapping[i + l2, k1, k2 - 1, k3],
+                   mapping[i + l3, k1, k2, k3 - 1],
+                   mapping[i + 1, k1, k2, k3]]
+            tmp_map = np.stack(tmp, axis=-1).reshape(k[0] + 1, k[1] + 1, k[2] + 1, 4)
+            tmp_map += sum_yx_minus_x_squared[np.newaxis, np.newaxis, [i], :]
+            mapping[i, :-1, :-1, :-1] = logsumexp(tmp_map, axis=-1)
+
+        return mapping[0, k[0], k[1], k[2]]
 
     # @nb.jit
     def tmp4(self, n, mapping, lens, indices, sum_yx_minus_x_squared, k):
+        k1, k2, k3 = indices[:, 0], indices[:, 1], indices[:, 2]
+        l1, l2, l3 = lens[0], lens[1], lens[2]
         for i in np.arange(n - 1, -1, -1):
-            tmp_map = np.array([[mapping[i + lens[0], k1 - 1, k2, k3],
-                                 mapping[i + lens[1], k1, k2 - 1, k3],
-                                 mapping[i + lens[2], k1, k2, k3 - 1],
-                                 mapping[i + 1, k1, k2, k3]]
-                                for k1, k2, k3 in indices]).reshape(k[0] + 1, k[1] + 1, k[2] + 1, 4)
+            tmp = [mapping[i + l1, k1 - 1, k2, k3],
+                   mapping[i + l2, k1, k2 - 1, k3],
+                   mapping[i + l3, k1, k2, k3 - 1],
+                   mapping[i + 1, k1, k2, k3]]
+            tmp_map = np.stack(tmp, axis=-1).reshape(k[0] + 1, k[1] + 1, k[2] + 1, 4)
             tmp_map += sum_yx_minus_x_squared[np.newaxis, np.newaxis, [i], :]
             mapping[i, :-1, :-1, :-1] = logsumexp(tmp_map, axis=-1)
         return mapping[0, k[0], k[1], k[2]]

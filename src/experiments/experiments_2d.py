@@ -112,14 +112,15 @@ class Experiment2D:
 
 
 def __main__():
+    d = 100
     Experiment2D(
         name="std-10",
-        n=300,
-        m=300,
-        d=30,
+        n=2000,
+        m=2000,
+        d=d,
         signal_fraction=1 / 5,
-        signal_gen=lambda: Shapes2D.disk(30, 1),
-        length_options=[30],
+        signal_gen=lambda: Shapes2D.disk(d, 1),
+        length_options=np.arange(d // 2, int(d * 2), 3),
         noise_std=5,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
