@@ -55,7 +55,7 @@ class LengthExtractor2D:
 
     @staticmethod
     @nb.jit
-    def _compute_log_pd(n, k, d):
+    def _compute_log_size_S_very_well_separated_single_axis(n, k, d):
         """
         Compute log(1/|S|), where |S| is the number of ways to insert k signals of length d in n spaces in such they are
         not overlapping.
@@ -72,7 +72,14 @@ class LengthExtractor2D:
             for i in range(d, n+1):
                 mapping[i, curr_k] = logsumexp(mapping[i - d, range(curr_k-1, curr_k-max_k-1, -1)] + log_size_S_per_row_per_k[:max_k])
                 mapping[i, curr_k] = np.logaddexp(mapping[i, curr_k], mapping[i - 1, curr_k])
-        return -mapping[n, k]
+        return mapping[n, k]
+
+    @staticmethod
+    def _compute_log_pd(n, k, d):
+        size_S = LengthExtractor2D._compute_log_size_S_very_well_separated_single_axis(n, k, d)
+        size_S_both_axis = size_S + np.log(2)  # Twice the size of one axis
+        # TODO: size_S_both_axis -= size_intersection
+        return -size_S_both_axis
 
     def _compute_log_very_well_separated_in_both_axis(self, n, k, d):
         pass
@@ -111,11 +118,7 @@ class LengthExtractor2D:
 
         max_k_in_row = min(n // d, k)
 
-        ### Precomputing stuff
-        log_size_S_per_row_per_k = np.zeros(max_k_in_row)
-        for k_in_row in range(1, max_k_in_row + 1):
-            log_size_S_per_row_per_k[k_in_row - 1] = LengthExtractor2D._compute_log_size_S_1d(n, k_in_row, d)
-
+        # Axis 1
         # per viable pixel compute the prob the filter is there (Can be done faster using convolution)
         sum_yx_minus_x_squared = self._calc_sum_yx_minus_x_squared(y, x)
 
@@ -148,6 +151,7 @@ class LengthExtractor2D:
                 mapping[i, curr_k] = np.logaddexp(mapping[i, curr_k], mapping[i - 1, curr_k])
         very_well_separated_axis_1 = mapping[n, k]
 
+        # Axis 2
         # Doing the same for y transpose to find very well separated on the other axis
         sum_yx_minus_x_squared = sum_yx_minus_x_squared.T.copy()
         pre_compute_per_row_per_k = np.zeros((n + 1, max_k_in_row))
@@ -174,8 +178,10 @@ class LengthExtractor2D:
 
         very_well_separated_both_axis = np.logaddexp(very_well_separated_axis_1, very_well_separated_axis_2)
 
+        # TODO: remove intersection
+
         # Computing remaining parts of log-likelihood
-        log_pd = self._compute_log_pd(n, k, d) - np.log(2)
+        log_pd = self._compute_log_pd(n, k, d)
         log_prob_all_noise = self.log_prob_all_noise
 
         likelihood = log_pd + log_prob_all_noise + very_well_separated_both_axis
