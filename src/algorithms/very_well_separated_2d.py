@@ -117,10 +117,7 @@ class LengthExtractor2D:
             log_size_S_per_row_per_k[k_in_row - 1] = LengthExtractor2D._compute_log_size_S_1d(n, k_in_row, d)
 
         # per viable pixel compute the prob the filter is there (Can be done faster using convolution)
-        tic1 = time.time()
         sum_yx_minus_x_squared = self._calc_sum_yx_minus_x_squared(y, x)
-        tic2 = time.time()
-        print('Convolution finished in {} sec'.format(tic2 - tic1))
 
         # Per row compute the sum over all s_k
         pre_compute_per_row_per_k = np.zeros((n + 1, max_k_in_row))
@@ -134,8 +131,6 @@ class LengthExtractor2D:
                     mapping[i, curr_k] = np.logaddexp(curr_sum_yx_minus_x_squared[i] + mapping[i + d, curr_k - 1],
                                                       mapping[i + 1, curr_k])
             pre_compute_per_row_per_k[j] = mapping[0, 1:]
-        tic3 = time.time()
-        print('1d cases finished in {} sec'.format(tic3 - tic2))
 
         # Allocating memory
         # Default is -inf everywhere as there are many places where the probability is 0 (when i > n - k * d)
@@ -144,8 +139,6 @@ class LengthExtractor2D:
         mapping[:, 0] = 0
 
         # Filling values one by one, skipping irrelevant values
-        # We already filled values when k=0 (=0) and when i>n-k*d
-        # Values in  i<(k-curr_k)*d are not used for the computation of mapping[0,k]
         mapping = np.full((n + 1, k + 1), -np.inf)
         mapping[:, 0] = 0
         for curr_k in range(1, k + 1):
@@ -153,17 +146,39 @@ class LengthExtractor2D:
             for i in range(d, n+1):
                 mapping[i, curr_k] = logsumexp(mapping[i - d, range(curr_k-1, curr_k-max_k-1, -1)] + pre_compute_per_row_per_k[i, :max_k])
                 mapping[i, curr_k] = np.logaddexp(mapping[i, curr_k], mapping[i - 1, curr_k])
+        very_well_separated_axis_1 = mapping[n, k]
 
-        tic4 = time.time()
-        print('DP finished in {} sec'.format(tic4 - tic3))
+        # Doing the same for y transpose to find very well separated on the other axis
+        sum_yx_minus_x_squared = sum_yx_minus_x_squared.T.copy()
+        pre_compute_per_row_per_k = np.zeros((n + 1, max_k_in_row))
+        for j in range(n + 1-d):
+            # Go to 1d case
+            curr_sum_yx_minus_x_squared = sum_yx_minus_x_squared[j]
+            mapping = np.full((n + 1, max_k_in_row + 1), -np.inf)
+            mapping[:, 0] = 0
+            for curr_k in range(1, max_k_in_row + 1):
+                for i in range(n-d, -1, -1):
+                    mapping[i, curr_k] = np.logaddexp(curr_sum_yx_minus_x_squared[i] + mapping[i + d, curr_k - 1],
+                                                      mapping[i + 1, curr_k])
+            pre_compute_per_row_per_k[j] = mapping[0, 1:]
+
+        mapping = np.full((n + 1, k + 1), -np.inf)
+        mapping[:, 0] = 0
+        for curr_k in range(1, k + 1):
+            max_k = min(curr_k, max_k_in_row)
+            for i in range(d, n + 1):
+                mapping[i, curr_k] = logsumexp(
+                    mapping[i - d, range(curr_k - 1, curr_k - max_k - 1, -1)] + pre_compute_per_row_per_k[i, :max_k])
+                mapping[i, curr_k] = np.logaddexp(mapping[i, curr_k], mapping[i - 1, curr_k])
+        very_well_separated_axis_2 = mapping[n, k]
+
+        very_well_separated_both_axis = np.logaddexp(very_well_separated_axis_1, very_well_separated_axis_2)
 
         # Computing remaining parts of log-likelihood
-        log_pd = self._compute_log_pd(n, k, d)
-        tic5 = time.time()
-        print('Log pd finished in {} sec'.format(tic5 - tic4))
+        log_pd = self._compute_log_pd(n, k, d) - np.log(2)
         log_prob_all_noise = self.log_prob_all_noise
 
-        likelihood = log_pd + log_prob_all_noise + mapping[n, k]
+        likelihood = log_pd + log_prob_all_noise + very_well_separated_both_axis
         return likelihood
 
     def _calc_d_likelihood(self, y, d):
