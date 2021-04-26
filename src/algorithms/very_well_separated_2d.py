@@ -3,6 +3,7 @@ import numba as nb
 import time
 from enum import Enum
 from src.utils.logsumexp import logsumexp
+from scipy.signal import fftconvolve
 
 from src.algorithms.utils import log_binomial
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
@@ -88,6 +89,21 @@ class LengthExtractor2D:
         k_tag = k
         return log_binomial(n_tag, k_tag)
 
+    def _calc_sum_yx_minus_x_squared(self, y, x):
+        n = y.shape[0]
+        d = x.shape[0]
+        sum_yx_minus_x_squared = np.empty((n - d + 1, n - d + 1))
+        z = fftconvolve(y, x, mode='valid')
+        sum_yx_minus_x_squared[:-1, :-1] = z[1:, 1:]
+
+        for i in range(n - d + 1):
+            sum_yx_minus_x_squared[i, -1] = np.sum(x * y[i:i + d, n-d:])
+            sum_yx_minus_x_squared[-1, i] = np.sum(x * y[n-d:, i:i + d])
+
+        sum_yx_minus_x_squared = np.sum(np.square(x)) - 2 * sum_yx_minus_x_squared
+        sum_yx_minus_x_squared *= - 0.5 / self._noise_std ** 2
+        return sum_yx_minus_x_squared
+
     @nb.jit
     def _calc_prob_y_given_x_k_fast(self, y, x, k):
         n = y.shape[0]
@@ -102,12 +118,7 @@ class LengthExtractor2D:
 
         # per viable pixel compute the prob the filter is there (Can be done faster using convolution)
         tic1 = time.time()
-        sum_yx_minus_x_squared = np.zeros((n - d + 1, n - d + 1))
-        for i in range(n - d + 1):
-            for j in range(n - d + 1):
-                sum_yx_minus_x_squared[i, j] = np.sum(x * y[i:i + d, j:j + d])
-        sum_yx_minus_x_squared = np.sum(np.square(x)) - 2 * sum_yx_minus_x_squared
-        sum_yx_minus_x_squared *= - 0.5 / self._noise_std ** 2
+        sum_yx_minus_x_squared = self._calc_sum_yx_minus_x_squared(y, x)
         tic2 = time.time()
         print('Convolution finished in {} sec'.format(tic2 - tic1))
 
