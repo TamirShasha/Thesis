@@ -41,8 +41,24 @@ class SignalsDistribution:
 
 class CircleCutsDistribution(SignalsDistribution):
     def __init__(self, length: int, filter_gen: Callable[[int], np.ndarray]):
-        cuts = [0.9, 0.7, 0.35]
-        distribution = [0.25, 0.45, 0.35]
+        cuts = [0.4, 0.7, 1]
+        distribution = [0.1, 0.2, 0.7]
+        super().__init__(length, cuts, distribution, filter_gen)
+
+
+class Ellipse1t2CutsDistribution(SignalsDistribution):
+    def __init__(self, length: int, filter_gen: Callable[[int], np.ndarray]):
+        cuts = [0.4, 0.7, 1]
+        distribution = [0.35, 0.55, 0.1]
+        super().__init__(length, cuts, distribution, filter_gen)
+
+
+class GeneralCutsDistribution(SignalsDistribution):
+    def __init__(self, length: int, filter_gen: Callable[[int], np.ndarray]):
+        cuts = [0.4, 0.7, 1]
+        # distribution = [0.85, 0.1, 0.05]
+        cuts = [1, 0.5, 0]
+        distribution = [0.9, 0.1, 0]
         super().__init__(length, cuts, distribution, filter_gen)
 
 
@@ -148,6 +164,7 @@ class LengthExtractorML1D:
 
         # Computing remaining parts of log-likelihood
         log_pd = self._compute_log_pd(n, signals_dist.lengths, k)
+        # print(f'log_pd={log_pd}')
         log_prob_all_noise = self.log_prob_all_noise
 
         start_loc = tuple([0] + list(k))
@@ -170,6 +187,7 @@ class LengthExtractorML1D:
 
         sum_yx_minus_x_squared *= - 0.5 / self._noise_std ** 2
         k = signals_dist.find_expected_occurrences(self._signal_power)  # k1, k2, .. , kl
+        print(k)
 
         # tic = time.time()
         # # R = self.tmp(n, signals_dist.length, k, sum_yx_minus_x_squared, lens)
@@ -177,47 +195,30 @@ class LengthExtractorML1D:
         # print(f'took {tac - tic} time for tmp')
 
         # tic = time.time()
-        R = self.tmp3(n, signals_dist.length, k, sum_yx_minus_x_squared, lens)
+        # R = self.tmp3(n, signals_dist.length, k, sum_yx_minus_x_squared, lens)
         # tac = time.time()
         # print(f'took {tac - tic} time for tmp3')
+        # print(R)
+        tic = time.time()
+        R = self.tmp3_circulant_mapping(n, k, sum_yx_minus_x_squared, lens)
+        print(R)
+        tac = time.time()
+        print(f'took {tac - tic} time for circulant tmp3')
 
         # Computing remaining parts of log-likelihood
         log_pd = self._compute_log_pd(n, signals_dist.lengths, k)
         log_prob_all_noise = self.log_prob_all_noise
+        # print(log_pd, log_prob_all_noise, R)
 
         start_loc = tuple([0] + list(k))
         # likelihood = log_pd + log_prob_all_noise + mapping[start_loc]
         likelihood = log_pd + log_prob_all_noise + R
         return likelihood
 
-    # n - length of data (integer)
-    # d - max length of signal
-    # sum_yx_minus_x_squared - some array of shape (n,4)
-    # lens - list of possible signals lengths
-    @nb.jit
-    def tmp(self, n: int, d: int, k: np.ndarray, sum_yx_minus_x_squared, lens):
-        shape = np.concatenate([[n + 1 + d], np.array(k) + 2])
-        mapping = np.full(shape, -np.inf)
-        mapping[:, 0, 0, 0] = 0
-
-        tmp_map = np.zeros((k[0] + 1, k[1] + 1, k[2] + 1, 4))
-        print(tmp_map.shape)
-        for i in range(n - 1, -1, -1):
-            for k1 in range(0, k[0] + 1, 1):
-                for k2 in range(0, k[1] + 1, 1):
-                    for k3 in range(0, k[2] + 1, 1):
-                        tmp_map[k1, k2, k3] = [mapping[i + lens[0], k1 - 1, k2, k3],
-                                               mapping[i + lens[1], k1, k2 - 1, k3],
-                                               mapping[i + lens[2], k1, k2, k3 - 1],
-                                               mapping[i + 1, k1, k2, k3]]
-            tmp_map += sum_yx_minus_x_squared[np.newaxis, np.newaxis, [i], :]
-            mapping[i, :-1, :-1, :-1] = logsumexp(tmp_map, axis=-1)
-        return mapping[0, k[0], k[1], k[2]]
-
     def tmp3(self, n, d, k, sum_yx_minus_x_squared, lens):
         shape = np.concatenate([[n + 1 + d], np.array(k) + 2])
         mapping = np.full(shape, -np.inf)
-        mapping[:, 0, 0, 0] = 0
+        mapping[:n + 1, 0, 0, 0] = 0
 
         boundaries_list = [(0, k[0] + 1), (0, k[1] + 1), (0, k[2] + 1)]
         indices = np.array(list(itertools.product(*(range(*b) for b in boundaries_list))))
@@ -235,65 +236,31 @@ class LengthExtractorML1D:
 
         return mapping[0, k[0], k[1], k[2]]
 
-    @staticmethod
-    def tmp3_circulant_mapping(n, d, k, sum_yx_minus_x_squared, lens):
-        shape = np.concatenate([[d + 1], np.array(k) + 2])
-        mapping = np.full(shape, -np.inf)
-        mapping[:, 0, 0, 0] = 0
+    def tmp3_circulant_mapping(self, n, k, sum_yx_minus_x_squared, lens):
+        max_len = np.max(lens)
+        l1, l2, l3 = lens[0], lens[1], lens[2]
+        shape = np.concatenate([[max_len + 1], np.array(k) + 2])
 
+        mapping = np.full(shape, -np.inf)
+        mapping[1, 0, 0, 0] = 0
+
+        i_indices = [
+            np.insert(((np.array([i, i + 1, i + l1, i + l2, i + l3]) - (n - 1)) % (max_len + 1)), 0, i)
+            for i in np.arange(n - 1, -1, -1)]
         boundaries_list = [(0, k[0] + 1), (0, k[1] + 1), (0, k[2] + 1)]
         indices = np.array(list(itertools.product(*(range(*b) for b in boundaries_list))))
 
         k1, k2, k3 = indices[:, 0], indices[:, 1], indices[:, 2]
-        l1, l2, l3 = lens[0], lens[1], lens[2]
-        for i in np.arange(n - 1, -1, -1):
-            tmp = [mapping[i + l1, k1 - 1, k2, k3],
-                   mapping[i + l2, k1, k2 - 1, k3],
-                   mapping[i + l3, k1, k2, k3 - 1],
-                   mapping[i + 1, k1, k2, k3]]
+
+        for i, j, j_1, j_l1, j_l2, j_l3 in i_indices:
+            tmp = [mapping[j_l1, k1 - 1, k2, k3],
+                   mapping[j_l2, k1, k2 - 1, k3],
+                   mapping[j_l3, k1, k2, k3 - 1],
+                   mapping[j_1, k1, k2, k3]]
             tmp_map = np.stack(tmp, axis=-1).reshape(k[0] + 1, k[1] + 1, k[2] + 1, 4)
             tmp_map += sum_yx_minus_x_squared[np.newaxis, np.newaxis, [i], :]
-            mapping[i, :-1, :-1, :-1] = logsumexp(tmp_map, axis=-1)
+            mapping[j, :-1, :-1, :-1] = logsumexp(tmp_map, axis=-1)
 
-        return mapping[0, k[0], k[1], k[2]]
-
-    # @nb.jit
-    def tmp4(self, n, mapping, lens, indices, sum_yx_minus_x_squared, k):
-        k1, k2, k3 = indices[:, 0], indices[:, 1], indices[:, 2]
-        l1, l2, l3 = lens[0], lens[1], lens[2]
-        for i in np.arange(n - 1, -1, -1):
-            tmp = [mapping[i + l1, k1 - 1, k2, k3],
-                   mapping[i + l2, k1, k2 - 1, k3],
-                   mapping[i + l3, k1, k2, k3 - 1],
-                   mapping[i + 1, k1, k2, k3]]
-            tmp_map = np.stack(tmp, axis=-1).reshape(k[0] + 1, k[1] + 1, k[2] + 1, 4)
-            tmp_map += sum_yx_minus_x_squared[np.newaxis, np.newaxis, [i], :]
-            mapping[i, :-1, :-1, :-1] = logsumexp(tmp_map, axis=-1)
-        return mapping[0, k[0], k[1], k[2]]
-
-    @nb.jit
-    def tmp2(self, n, d, k, sum_yx_minus_x_squared, lens):
-        print(k)
-        shape = np.concatenate([[n + 1 + d], np.array(k) + 2])
-        mapping = np.full(shape, -np.inf)
-        mapping[:, 0, 0, 0] = 0
-
-        k1_max, k2_max, k3_max = k[0] + 1, k[1] + 1, k[2] + 1
-        m = np.prod((k1_max, k2_max, k3_max))
-        tmp_map = np.zeros(shape=(m, 4))
-        for i in range(n - 1, -1, -1):
-            # tmp_map = [[mapping[i + lens[0], k1 - 1, k2, k3],
-            #             mapping[i + lens[1], k1, k2 - 1, k3],
-            #             mapping[i + lens[2], k1, k2, k3 - 1],
-            #             mapping[i + 1, k1, k2, k3]] for j in ms]
-            for j in range(m):
-                k1, k2, k3 = j % k1_max, (j // k1_max) % k2_max, (j // (k1_max * k2_max)) % k3_max
-                tmp_map[j] = [mapping[i + lens[0], k1 - 1, k2, k3],
-                              mapping[i + lens[1], k1, k2 - 1, k3],
-                              mapping[i + lens[2], k1, k2, k3 - 1],
-                              mapping[i + 1, k1, k2, k3]]
-            tmp_map += sum_yx_minus_x_squared[i]
-            mapping[i, :-1, :-1, :-1] = logsumexp(tmp_map.reshape(k1_max, k2_max, k3_max, 4), axis=-1)
         return mapping[0, k[0], k[1], k[2]]
 
     def _calc_length_distribution_likelihood(self, len_dist):

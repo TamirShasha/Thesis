@@ -116,9 +116,9 @@ def __main__():
 
     Experiment(
         name="std-10",
-        n=2000,
-        d=20,
-        k=30,
+        n=10000,
+        d=55,
+        k=80,
         noise_std=1,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,

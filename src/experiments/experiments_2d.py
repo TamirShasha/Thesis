@@ -8,7 +8,9 @@ from src.experiments.data_simulator_2d import simulate_data, Shapes2D
 from src.algorithms.length_extractor_1d import SignalPowerEstimator
 from src.algorithms.length_extractor_2d import LengthExtractor2D
 
-np.random.seed(500)
+
+# np.random.seed(500)
+
 
 class Experiment2D:
 
@@ -83,8 +85,12 @@ class Experiment2D:
 
     def run(self):
         start_time = time.time()
+        likelihoods = {}
         likelihoods = self._length_extractor.extract2()
         end_time = time.time()
+
+        likelihoods2, d = self._length_extractor.extract()
+        likelihoods['1d'] = likelihoods2
 
         self._results = {
             "likelihoods": likelihoods,
@@ -94,14 +100,28 @@ class Experiment2D:
 
         self.save_and_plot()
 
-        return likelihoods
+        return None
 
     def save_and_plot(self):
         plt.title(
             f"N={self._n}, M={self._m}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
             f"Signal Power Estimator Method={self._signal_power_estimator_method.name},\n"
             f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
-        plt.plot(self._signal_length_options, self._results['likelihoods'])
+
+        # likelihoods = self._results['likelihoods']
+        # i = 1
+        # for key in likelihoods:
+        #     plt.figure(i)
+        #     plt.plot(self._signal_length_options, likelihoods[key], label=key)
+        #     plt.legend(loc="upper right")
+        #     i += 1
+
+        likelihoods = self._results['likelihoods']
+        # plt.figure(i)
+        for i, key in enumerate(likelihoods):
+            plt.plot(self._signal_length_options, likelihoods[key], label=key)
+            plt.legend(loc="upper right")
+
         plt.tight_layout()
 
         if self._save:
@@ -112,16 +132,17 @@ class Experiment2D:
 
 
 def __main__():
-    d = 100
+    d = 50
     Experiment2D(
         name="std-10",
-        n=2000,
-        m=2000,
+        n=500,
+        m=500,
         d=d,
         signal_fraction=1 / 5,
         signal_gen=lambda: Shapes2D.disk(d, 1),
-        length_options=np.arange(d // 2, int(d * 2), 3),
-        noise_std=5,
+        length_options=np.arange(50, int(d * 1.4), 10),
+        # length_optio4ns=[40, 50, 60],
+        noise_std=0.1,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
         save=False

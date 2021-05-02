@@ -11,7 +11,8 @@ import warnings
 # warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
 warnings.filterwarnings('ignore')
 
-np.random.seed(501)
+
+# np.random.seed(501)
 
 
 def add_pulses(y, signal_mask, signal_gen):
@@ -51,15 +52,15 @@ def simulate_data(n, ds, ds_dist, p, k, noise_std):
     return y, pulses
 
 
-T = 20
+T = 1
 noise_std = 1
-n = 1000
-k = 5
-d = 50
-cuts = np.array([1, 0.5, 0.3])
+n = 10000
+k = 40
+d = 100
+cuts = np.array([0.4, 0.7, 1])
+# ds_dist = [0.125, 0.325, 0.55]
+ds_dist = [0.1, 0.8, 0.1]
 ds = np.array(d * cuts, dtype=int)
-# ds_dist = [0.6, 0.3, 0.1]
-ds_dist = [0.4, 0.3, 0.3]
 p = 1,
 signal_filter_gen = lambda d: np.full(d, 1)
 y, pulses = simulate_data(n, ds, ds_dist, p, k, noise_std)

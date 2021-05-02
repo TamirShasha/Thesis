@@ -63,7 +63,7 @@ class LengthExtractor1D:
         k_tag = k
         return -log_binomial(n_tag, k_tag)
 
-    @nb.jit
+    # @nb.jit
     def _calc_prob_y_given_x_k_fast(self, y, x, k):
         n = y.shape[0]
         d = x.shape[0]
@@ -73,7 +73,6 @@ class LengthExtractor1D:
         x_squared = np.square(x)
         for i in range(n - d + 1):
             sum_yx_minus_x_squared[i] = np.sum(x_squared - 2 * x * y[i:i + d])
-
         sum_yx_minus_x_squared *= - 0.5 / self._noise_std ** 2
 
         # Allocating memory
@@ -94,6 +93,7 @@ class LengthExtractor1D:
         log_pd = self._compute_log_pd(n, k, d)
         log_prob_all_noise = self.log_prob_all_noise
         likelihood = log_pd + log_prob_all_noise + mapping[0, k]
+        # print(log_pd, log_prob_all_noise, mapping[0, k])
         return likelihood
 
     def _calc_d_likelihood(self, y, d):
