@@ -121,9 +121,9 @@ def __main__():
         d=100,
         signal_fraction=1 / 4,
         signal_gen=lambda: Shapes2D.disk(100, 1),
-        noise_std=10,
+        noise_std=20,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(30, 140, 10),
+        length_options=np.arange(51, 121, 6),
         plot=True,
         save=False
     ).run()
