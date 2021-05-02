@@ -1,8 +1,6 @@
 import numpy as np
-import numba as nb
 
 
-@nb.jit
 def logsumexp(a, axis=None, keepdims=False):
     """
     To reduce running time I implemented logsumexp myself, the scipy version has too much additional things I don't need
