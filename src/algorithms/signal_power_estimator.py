@@ -18,11 +18,11 @@ def estimate_signal_power(y, noise_std, noise_mean, method: SignalPowerEstimator
 
 def _estimate_signal_power_using_second_moment(y, noise_std, noise_mean):
     y_power = np.sum(np.power(y, 2))
-    noise_power = (noise_std ** 2 - noise_mean ** 2) * y.shape[0]
+    noise_power = (noise_std ** 2 - noise_mean ** 2) * y.size
     signal_power = y_power - noise_power
     return signal_power
 
 
 def _estimate_signal_power_using_first_moment(y, noise_mean):
-    signal_power = np.sum(y) - noise_mean * y.shape[0]
+    signal_power = np.sum(y) - noise_mean * y.size
     return signal_power
