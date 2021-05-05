@@ -12,7 +12,7 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-# np.random.seed(501)
+np.random.seed(500)
 
 
 def add_pulses(y, signal_mask, signal_gen):
@@ -36,7 +36,7 @@ def add_gaus_noise(y, mean, std):
 
 def signal_gen(ds, ds_dist, power):
     def signal():
-        d = np.random.choice(ds, 1, ds_dist)
+        d = np.random.choice(a=ds, size=1, p=ds_dist)
         return np.full(d, power)
 
     return signal
@@ -53,13 +53,13 @@ def simulate_data(n, ds, ds_dist, p, k, noise_std):
 
 
 T = 1
-noise_std = 1
-n = 10000
-k = 40
-d = 100
-cuts = np.array([0.4, 0.7, 1])
+noise_std = 3
+n = 5000
+k = 30
+d = 50
+cuts = np.array([0.3, 0.6, 1])
 # ds_dist = [0.125, 0.325, 0.55]
-ds_dist = [0.1, 0.8, 0.1]
+ds_dist = [0, 0, 1]
 ds = np.array(d * cuts, dtype=int)
 p = 1,
 signal_filter_gen = lambda d: np.full(d, 1)
@@ -67,8 +67,8 @@ y, pulses = simulate_data(n, ds, ds_dist, p, k, noise_std)
 
 # plt.plot(y)
 # plt.show()
-length_options = np.arange(d // 4, int(d * 2), 5)
-# length_options = [d]
+length_options = np.arange(d // 4, int(d * 2), 4)
+# length_options = [64]
 
 
 signals_distributions = [SignalsDistribution(length=l, cuts=list(cuts), distribution=ds_dist,
@@ -85,6 +85,8 @@ for t in range(T):
     likelihoods, d = le.extract()
     likelihoods_1d = likelihoods_1d + np.array(likelihoods)
 
+    print('\n')
+
     le2 = LengthExtractorML1D(data=y,
                               length_distribution_options=signals_distributions, noise_std=noise_std)
     likelihoods2, d2 = le2.extract()
@@ -94,6 +96,7 @@ likelihoods_ml1d /= T
 likelihoods_1d /= T
 
 plt.title(f'ML1d: {length_options[np.argmax(likelihoods_ml1d)]}, 1d: {length_options[np.argmax(likelihoods_1d)]}')
-plt.plot(length_options, likelihoods_ml1d)
-plt.plot(length_options, likelihoods_1d)
+plt.plot(length_options, likelihoods_ml1d, label='multi')
+plt.plot(length_options, likelihoods_1d, label='single')
+plt.legend(loc="upper right")
 plt.show()

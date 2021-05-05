@@ -186,8 +186,7 @@ class LengthExtractorML1D:
                 sum_yx_minus_x_squared[i, j] = np.sum(signals_squared[j] - 2 * signals_dist.signals[j] * y[i: i + d])
 
         sum_yx_minus_x_squared *= - 0.5 / self._noise_std ** 2
-        k = signals_dist.find_expected_occurrences(self._signal_power)  # k1, k2, .. , kl
-        print(k)
+        self._k = signals_dist.find_expected_occurrences(self._signal_power)  # k1, k2, .. , kl
 
         # tic = time.time()
         # # R = self.tmp(n, signals_dist.length, k, sum_yx_minus_x_squared, lens)
@@ -195,22 +194,21 @@ class LengthExtractorML1D:
         # print(f'took {tac - tic} time for tmp')
 
         # tic = time.time()
-        # R = self.tmp3(n, signals_dist.length, k, sum_yx_minus_x_squared, lens)
+        # R = self.tmp3(n, signals_dist.length, self._k, sum_yx_minus_x_squared, lens)
         # tac = time.time()
         # print(f'took {tac - tic} time for tmp3')
         # print(R)
         tic = time.time()
-        R = self.tmp3_circulant_mapping(n, k, sum_yx_minus_x_squared, lens)
-        print(R)
+        R = self.tmp3_circulant_mapping(n, self._k, sum_yx_minus_x_squared, lens)
         tac = time.time()
-        print(f'took {tac - tic} time for circulant tmp3')
+        # print(f'took {tac - tic} time for circulant tmp3')
 
         # Computing remaining parts of log-likelihood
-        log_pd = self._compute_log_pd(n, signals_dist.lengths, k)
+        log_pd = self._compute_log_pd(n, signals_dist.lengths, self._k)
         log_prob_all_noise = self.log_prob_all_noise
-        # print(log_pd, log_prob_all_noise, R)
+        print(f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{R}')
 
-        start_loc = tuple([0] + list(k))
+        start_loc = tuple([0] + list(self._k))
         # likelihood = log_pd + log_prob_all_noise + mapping[start_loc]
         likelihood = log_pd + log_prob_all_noise + R
         return likelihood
@@ -233,6 +231,8 @@ class LengthExtractorML1D:
             tmp_map = np.stack(tmp, axis=-1).reshape(k[0] + 1, k[1] + 1, k[2] + 1, 4)
             tmp_map += sum_yx_minus_x_squared[np.newaxis, np.newaxis, [i], :]
             mapping[i, :-1, :-1, :-1] = logsumexp(tmp_map, axis=-1)
+            if i == 0:
+                print(mapping[i, k[0], k[1], k[2]])
 
         return mapping[0, k[0], k[1], k[2]]
 
@@ -260,15 +260,17 @@ class LengthExtractorML1D:
             tmp_map = np.stack(tmp, axis=-1).reshape(k[0] + 1, k[1] + 1, k[2] + 1, 4)
             tmp_map += sum_yx_minus_x_squared[np.newaxis, np.newaxis, [i], :]
             mapping[j, :-1, :-1, :-1] = logsumexp(tmp_map, axis=-1)
+            # if i == 0:
+            #     print(mapping[j, k[0], k[1], k[2]])
 
-        return mapping[0, k[0], k[1], k[2]]
+        return mapping[j, k[0], k[1], k[2]]
 
     def _calc_length_distribution_likelihood(self, len_dist):
         tic = time.time()
         likelihood = self._calc_likelihood_fast3(len_dist)
         toc = time.time()
 
-        print(f'For d = {len_dist.length} took {toc - tic} seconds, likelihood={likelihood}')
+        print(f'For d = {len_dist.lengths}, k = {self._k}, took {toc - tic} seconds, likelihood={likelihood}\n')
 
         return likelihood
 
