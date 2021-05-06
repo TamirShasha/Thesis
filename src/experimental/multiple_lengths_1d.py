@@ -116,7 +116,8 @@ le4 = LengthExtractorML1D(data=y,
 likelihoods4, d4 = le4.extract()
 likelihoods_ml1d4 = likelihoods_ml1d4 + np.array(likelihoods4)
 
-plt.title(f'ML1d: {length_options[np.argmax(likelihoods_ml1d)]}, 1d: {length_options[np.argmax(likelihoods_1d)]}')
+plt.title(f'ML1d: {length_options[np.argmax(likelihoods_ml1d)]}, 1d: {length_options[np.argmax(likelihoods_1d)]}\n'
+          f'cuts: {cuts}, n={n}, d={d}, k={k}, std={noise_std}')
 plt.plot(length_options, likelihoods_ml1d, label=f'multi {ds_dist}')
 plt.plot(length_options, likelihoods_1d, label='single')
 plt.plot(length_options, likelihoods_ml1d2, label=f'multi {ds_dist2}')

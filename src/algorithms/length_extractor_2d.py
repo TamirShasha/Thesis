@@ -28,7 +28,7 @@ class LengthExtractor2D:
         self._n = self._y.shape[0]
 
         num_of_curves = 2 * int(np.log(np.max(self._y.shape)))
-        self.to_delete = self._create_1d_data_from_curves(20)
+        self.to_delete = self._create_1d_data_from_curves(30)
         print(f'data length: {self.to_delete.shape[0]}')
 
     def _rows_curves(self, jump=None):
@@ -91,11 +91,21 @@ class LengthExtractor2D:
     def extract2(self):
         likelihoods = dict()
 
-        print(f'Running for circle distribution')
-        signals_distributions = [CircleCutsDistribution(length=l, filter_gen=self._signal_filter_gen)
-                                 for l in self._length_options]
-        circle_likelihoods = self._calc_for_distribution(signals_distributions)
-        likelihoods['circle'] = circle_likelihoods
+        # print(f'Running for circle distribution')
+        # signals_distributions = [CircleCutsDistribution(length=l, filter_gen=self._signal_filter_gen)
+        #                          for l in self._length_options]
+        # circle_likelihoods = self._calc_for_distribution(signals_distributions)
+        # likelihoods['circle'] = circle_likelihoods
+
+        for i in [8, 7, 6, 4]:
+            cuts = [0.3, 0.5, 1]
+            dist = [0, 0.1 * i, 1 - 0.1 * i]
+            print(f'Running for {dist} distribution')
+            signals_distributions = [
+                SignalsDistribution(length=l, cuts=cuts, distribution=dist, filter_gen=self._signal_filter_gen)
+                for l in self._length_options]
+            curr_likelihoods = self._calc_for_distribution(signals_distributions)
+            likelihoods[f'dist_{dist}'] = curr_likelihoods
 
         # print(f'Running for ellipse 1:2 distribution')
         # signals_distributions = [Ellipse1t2CutsDistribution(length=l, filter_gen=self._signal_filter_gen)

@@ -42,7 +42,7 @@ class SignalsDistribution:
 class CircleCutsDistribution(SignalsDistribution):
     def __init__(self, length: int, filter_gen: Callable[[int], np.ndarray]):
         cuts = [0.4, 0.7, 1]
-        distribution = [0.1, 0.2, 0.7]
+        distribution = [.0, .6, .4]
         super().__init__(length, cuts, distribution, filter_gen)
 
 

@@ -9,7 +9,7 @@ from src.algorithms.length_extractor_1d import SignalPowerEstimator
 from src.algorithms.length_extractor_2d import LengthExtractor2D
 
 
-# np.random.seed(500)
+np.random.seed(500)
 
 
 class Experiment2D:
@@ -135,14 +135,14 @@ def __main__():
     d = 50
     Experiment2D(
         name="std-10",
-        n=500,
-        m=500,
+        n=1000,
+        m=1000,
         d=d,
         signal_fraction=1 / 5,
-        signal_gen=lambda: Shapes2D.disk(d, 1),
-        length_options=np.arange(50, int(d * 1.4), 10),
+        signal_gen=lambda: Shapes2D.disk(d, d//2, 1),
+        length_options=np.arange(d // 2, int(d * 1.5), 4),
         # length_optio4ns=[40, 50, 60],
-        noise_std=0.1,
+        noise_std=2.5,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
         save=False
