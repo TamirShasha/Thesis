@@ -9,6 +9,9 @@ from src.algorithms.length_extractor_1d import SignalPowerEstimator
 from src.algorithms.length_extractor_2d import LengthExtractor2D
 
 
+# np.random.seed(500)
+
+
 class Experiment2D:
 
     def __init__(self,
@@ -60,7 +63,7 @@ class Experiment2D:
                                 self._noise_std, self._noise_mean)
 
         if length_options is None:
-            length_options = np.arange(self._d // 4, int(self._d), 10)
+            length_options = np.arange(self._d // 4, int(self._d * 1.3), 3)
         self._signal_length_options = length_options
 
         exp_attr = {
@@ -82,25 +85,43 @@ class Experiment2D:
 
     def run(self):
         start_time = time.time()
-        likelihoods, d = self._length_extractor.extract()
+        likelihoods = {}
+        likelihoods = self._length_extractor.extract2()
         end_time = time.time()
+
+        # likelihoods2, d = self._length_extractor.extract()
+        # likelihoods['1d'] = likelihoods2
 
         self._results = {
             "likelihoods": likelihoods,
-            "d": d,
+            "d": 123,
             "total_time": end_time - start_time
         }
 
         self.save_and_plot()
 
-        return likelihoods
+        return None
 
     def save_and_plot(self):
         plt.title(
             f"N={self._n}, M={self._m}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
             f"Signal Power Estimator Method={self._signal_power_estimator_method.name},\n"
             f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
-        plt.plot(self._signal_length_options, self._results['likelihoods'])
+
+        # likelihoods = self._results['likelihoods']
+        # i = 1
+        # for key in likelihoods:
+        #     plt.figure(i)
+        #     plt.plot(self._signal_length_options, likelihoods[key], label=key)
+        #     plt.legend(loc="upper right")
+        #     i += 1
+
+        likelihoods = self._results['likelihoods']
+        # plt.figure(i)
+        for i, key in enumerate(likelihoods):
+            plt.plot(self._signal_length_options, likelihoods[key], label=key)
+            plt.legend(loc="upper right")
+
         plt.tight_layout()
 
         if self._save:
@@ -111,14 +132,17 @@ class Experiment2D:
 
 
 def __main__():
+    d = 100
     Experiment2D(
         name="std-10",
-        n=4000,
-        m=4000,
-        d=300,
-        signal_fraction=1 / 4,
-        signal_gen=lambda: Shapes2D.ellipse(300, 200, 1),
-        noise_std=5,
+        n=2000,
+        m=2000,
+        d=d,
+        signal_fraction=1 / 3,
+        signal_gen=lambda: Shapes2D.ellipse(d, d//2, 1),
+        length_options=np.arange(int(d // 2), int(d * 2), 10),
+        # length_options=[40, 50, 60],
+        noise_std=2.5,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
         save=False
