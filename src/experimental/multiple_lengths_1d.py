@@ -66,6 +66,7 @@ noise_std = 3
 n = 10000
 k = 60
 d = 50
+signal_separation = 20
 cuts = np.array([0.25, 0.5, 1])
 # ds_dist = [0.125, 0.325, 0.55]
 ds_dist = [.0, .7, .3]
@@ -94,16 +95,20 @@ print('\n')
 signals_distributions = [SignalsDistribution(length=l, cuts=list(cuts), distribution=ds_dist,
                                              filter_gen=signal_filter_gen) for l in length_options]
 le2 = LengthExtractorML1D(data=y,
-                          length_distribution_options=signals_distributions, noise_std=noise_std)
+                          length_distribution_options=signals_distributions,
+                          noise_std=noise_std,
+                          signal_separation=signal_separation)
 likelihoods2, d2 = le2.extract()
 likelihoods_ml1d = likelihoods_ml1d + np.array(likelihoods2)
 
 likelihoods_ml1d2 = np.zeros_like(length_options)
 ds_dist2 = [.0, .3, .7]
-signals_distributions2 = [SignalsDistribution(length=l, cuts=list(cuts), distribution=ds_dist2,
+signals_distributions2 = [SignalsDistribution(length=l, cuts=list(cuts), distribution=ds_dist,
                                               filter_gen=signal_filter_gen) for l in length_options]
 le3 = LengthExtractorML1D(data=y,
-                          length_distribution_options=signals_distributions2, noise_std=noise_std)
+                          length_distribution_options=signals_distributions2,
+                          noise_std=noise_std,
+                          signal_separation=0)
 likelihoods3, d3 = le3.extract()
 likelihoods_ml1d2 = likelihoods_ml1d2 + np.array(likelihoods3)
 
@@ -112,7 +117,9 @@ ds_dist4 = [.0, .5, .5]
 signals_distributions4 = [SignalsDistribution(length=l, cuts=list(cuts), distribution=ds_dist4,
                                               filter_gen=signal_filter_gen) for l in length_options]
 le4 = LengthExtractorML1D(data=y,
-                          length_distribution_options=signals_distributions4, noise_std=noise_std)
+                          length_distribution_options=signals_distributions4,
+                          noise_std=noise_std,
+                          signal_separation=signal_separation)
 likelihoods4, d4 = le4.extract()
 likelihoods_ml1d4 = likelihoods_ml1d4 + np.array(likelihoods4)
 

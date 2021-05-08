@@ -41,15 +41,15 @@ class SignalsDistribution:
 
 class CircleCutsDistribution(SignalsDistribution):
     def __init__(self, length: int, filter_gen: Callable[[int], np.ndarray]):
-        cuts = [0.4, 0.7, 1]
+        cuts = [0.4, 0.6, 1]
         distribution = [.0, .6, .4]
         super().__init__(length, cuts, distribution, filter_gen)
 
 
 class Ellipse1t2CutsDistribution(SignalsDistribution):
     def __init__(self, length: int, filter_gen: Callable[[int], np.ndarray]):
-        cuts = [0.4, 0.7, 1]
-        distribution = [0.35, 0.55, 0.1]
+        cuts = [.3, .5, 1]
+        distribution = [.0, .8, 0.2]
         super().__init__(length, cuts, distribution, filter_gen)
 
 
@@ -68,12 +68,13 @@ class LengthExtractorML1D:
                  data,
                  length_distribution_options: List[SignalsDistribution],
                  noise_std,
-                 separation=0,
+                 signal_separation=0,
                  noise_mean=0,
                  signal_power_estimator_method=SPE.FirstMoment,
                  logs=True):
         self._data = data
         self._length_distribution_options = length_distribution_options
+        self._signal_separation = signal_separation
         self._noise_mean = noise_mean
         self._noise_std = noise_std
         self._signal_power_estimator_method = signal_power_estimator_method
@@ -96,14 +97,14 @@ class LengthExtractorML1D:
         return - n * np.log(self._noise_std * (2 * np.pi) ** 0.5) + minus_1_over_twice_variance * np.sum(np.square(y))
 
     @staticmethod
-    def _compute_log_pd(data_length, signals_lengths, signals_occurrences):
+    def _compute_log_pd(data_length, signals_lengths, signals_occurrences, signal_separation=0):
         """
         Compute log(1/|S|), where |S| is the number of ways to insert k signals of length d in n spaces in such they are
         not overlapping. And then coloring them with l colors such that k1,..,kl are the counts of each.
         """
 
         k = np.sum(signals_occurrences)  # total signals occurrences
-        dk = np.sum(signals_lengths * signals_occurrences)  # total signals length
+        dk = np.sum((signals_lengths + signal_separation) * signals_occurrences)  # total signals length
 
         lb = np.sum(np.log(np.arange(1, data_length - dk + k + 1))) - \
              np.sum(np.log(np.arange(1, data_length - dk + 1)))
@@ -131,15 +132,17 @@ class LengthExtractorML1D:
         self._k = signals_dist.find_expected_occurrences(self._signal_power)  # k1, k2, .. , kl
         k = self._k
 
-        max_len = np.max(lens)
-        l1, l2, l3 = lens[0], lens[1], lens[2]
-        shape = np.concatenate([[max_len + 1], np.array(k) + 2])
+        mapping_length = np.max(lens) + self._signal_separation
+        l1, l2, l3 = lens[0] + self._signal_separation, \
+                     lens[1] + self._signal_separation, \
+                     lens[2] + self._signal_separation
+        shape = np.concatenate([[mapping_length + 1], np.array(k) + 2])
 
         mapping = np.full(shape, -np.inf)
         mapping[1, 0, 0, 0] = 0
 
         i_indices = [
-            np.insert(((np.array([i, i + 1, i + l1, i + l2, i + l3]) - (n - 1)) % (max_len + 1)), 0, i)
+            np.insert(((np.array([i, i + 1, i + l1, i + l2, i + l3]) - (n - 1)) % (mapping_length + 1)), 0, i)
             for i in np.arange(n - 1, -1, -1)]
         boundaries_list = [(0, k[0] + 1), (0, k[1] + 1), (0, k[2] + 1)]
         indices = np.array(list(itertools.product(*(range(*b) for b in boundaries_list))))
@@ -156,7 +159,7 @@ class LengthExtractorML1D:
             mapping[j, :-1, :-1, :-1] = logsumexp(tmp_map, axis=-1)
 
         # Computing remaining parts of log-likelihood
-        log_pd = self._compute_log_pd(n, signals_dist.lengths, self._k)
+        log_pd = self._compute_log_pd(n, signals_dist.lengths, self._k, self._signal_separation)
         log_prob_all_noise = self.log_prob_all_noise
         print(f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{mapping[j, k[0], k[1], k[2]]}')
 
