@@ -48,6 +48,9 @@ class LengthExtractor1D:
         return k
 
     def _calc_log_prob_all_is_noise(self):
+        if self._noise_std == 0:
+            return 0
+
         y = self._y
         n = y.shape[0]
         minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2

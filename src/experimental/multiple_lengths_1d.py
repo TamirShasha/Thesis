@@ -62,14 +62,14 @@ def simulate_data(n, ds, ds_dist, p, k, noise_std):
     return y, pulses
 
 
-noise_std = 3
-n = 10000
-k = 60
+noise_std = 0
+n = 1000
+k = 5
 d = 50
-signal_separation = 20
+signal_separation = 0
 cuts = np.array([0.25, 0.5, 1])
 # ds_dist = [0.125, 0.325, 0.55]
-ds_dist = [.0, .7, .3]
+ds_dist = [.0, .0, .1]
 ds = np.array(d * cuts, dtype=int)
 p = 1,
 signal_filter_gen = lambda d: np.full(d, 1)

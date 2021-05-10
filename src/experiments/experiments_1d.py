@@ -56,7 +56,7 @@ class Experiment:
         self._y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
 
         if length_options is None:
-            length_options = np.arange(self._d // 4, int(self._d * 2), 5)
+            length_options = np.arange(self._d // 4, int(self._d * 3), 10)
         self._signal_length_options = length_options
 
         exp_attr = {
@@ -117,9 +117,11 @@ def __main__():
     Experiment(
         name="std-10",
         n=10000,
-        d=55,
-        k=80,
-        noise_std=1,
+        d=50,
+        k=60,
+        signal_fn=lambda d: np.full(d, 1),
+        signal_filter_gen=lambda d: np.full(d, 1/1.2),
+        noise_std=5,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
         save=False
