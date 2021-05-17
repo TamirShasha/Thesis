@@ -40,7 +40,7 @@ class LengthExtractor2D:
         return signal_power
 
     def _calc_single_instance_of_signal_power(self, d):
-        return np.sum(np.power(self._signal_filter_gen(d), 2))
+        return np.sum(self._signal_filter_gen(d))
 
     def _find_expected_occurrences(self, y, d):
         single_signal_power = self._calc_single_instance_of_signal_power(d)
@@ -183,6 +183,7 @@ class LengthExtractor2D:
     def _calc_d_likelihood(self, y, d):
         tic = time.time()
         expected_k = self._find_expected_occurrences(y, d)
+        print(f'Expected k: {expected_k}')
 
         signal_filter = self._signal_filter_gen(d)
         likelihood = self._calc_prob_y_given_x_k_fast(y, signal_filter, expected_k)

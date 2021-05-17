@@ -40,7 +40,8 @@ class LengthExtractor1D:
         return signal_power
 
     def _calc_single_instance_of_signal_power(self, d):
-        return np.sum(np.power(self._signal_filter_gen(d), 2))
+        # return np.sum(np.power(self._signal_filter_gen(d), 2))
+        return np.sum(self._signal_filter_gen(d))
 
     def _find_expected_occurrences(self, y, d):
         single_signal_power = self._calc_single_instance_of_signal_power(d)
