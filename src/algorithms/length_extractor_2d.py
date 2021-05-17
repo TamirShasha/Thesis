@@ -29,7 +29,7 @@ class LengthExtractor2D:
         self._n = self._y.shape[0]
 
         num_of_curves = 2 * int(np.log(np.max(self._y.shape)))
-        self.to_delete = self._create_1d_data_from_curves(100)
+        self.to_delete = self._create_1d_data_from_curves(20)
         print(f'data length: {self.to_delete.shape[0]} x {self.to_delete.shape[1]}')
 
     def _rows_curves(self, jump=None):
@@ -58,52 +58,93 @@ class LengthExtractor2D:
 
         return curves
 
-    def _create_1d_data_from_curves(self, num_of_curves, strategy='random lines'):
+    def _create_1d_data_from_curves(self, num_of_curves, concat_curves=2, strategy='random lines'):
 
         if strategy == 'rows':
             jump = self._y.shape[0] // num_of_curves
             return self._rows_curves(jump)
 
         if strategy == 'random lines':
-            high_power_selection_factor = 10
+            high_power_selection_factor = 100
             curves = self._random_lines_curves(high_power_selection_factor * num_of_curves)
             curves_powers = [
                 estimate_signal_power(curve, self._noise_std, self._noise_mean, SignalPowerEstimator.FirstMoment)
                 for curve in curves]
-            top_curves = np.array(curves)[np.argsort(curves_powers)[-num_of_curves:]]
-            return top_curves
+            top_curves = np.array(curves)[np.argsort(curves_powers)[-num_of_curves * concat_curves:]]
+            top_concatenated_curves = np.array([np.concatenate(x) for x in np.split(top_curves, num_of_curves)])
+            return top_concatenated_curves
 
     def _calc_for_distribution(self, signals_distributions, sep):
         num_of_curves = 2 * int(np.log(np.max(self._y.shape)))
         num_of_curves = 20
 
-        times = int(np.log(self._y.shape[0]))
         times = len(self.to_delete)
+
         print(f'Will average over {times} runs, Num of curves is: {num_of_curves}')
 
+        # data = np.concatenate(self._create_1d_data_from_curves(num_of_curves))
+        data = self.to_delete
+
+        best_ds = []
         sum_likelihoods = np.zeros_like(self._length_options)
         for t in range(times):
             print(f'At iteration {t}')
-            data = np.concatenate(self._create_1d_data_from_curves(num_of_curves))
-            data = self.to_delete[t]
-            likelihoods, d = LengthExtractorML1D(data=data,
+            likelihoods, d = LengthExtractorML1D(data=data[t],
                                                  length_distribution_options=signals_distributions,
                                                  noise_std=self._noise_std,
                                                  signal_separation=sep).extract()
             sum_likelihoods = sum_likelihoods + likelihoods
+            curr_best_d = self._length_options[np.argmax(sum_likelihoods / times)]
+            best_ds.append(curr_best_d)
 
         likelihoods = sum_likelihoods / times
 
-        return likelihoods
+        return likelihoods, best_ds
 
     def extract2(self):
         likelihoods = dict()
+        best_ds = dict()
 
-        print(f'Running for circle distribution')
-        signals_distributions = [CircleCutsDistribution(length=l, filter_gen=self._signal_filter_gen)
-                                 for l in self._length_options]
-        circle_likelihoods = self._calc_for_distribution(signals_distributions, 10)
-        likelihoods['circle'] = circle_likelihoods
+        # print(f'Running for circle distribution')
+        # signals_distributions = [CircleCutsDistribution(length=l, filter_gen=self._signal_filter_gen)
+        #                          for l in self._length_options]
+        # circle_likelihoods, circle_best_ds = self._calc_for_distribution(signals_distributions, 0)
+        # likelihoods['circle'] = circle_likelihoods
+        # best_ds['circle'] = circle_best_ds
+
+        # print(f'Running for circle distribution seperated')
+        # signals_distributions = [CircleCutsDistribution(length=l, filter_gen=self._signal_filter_gen)
+        #                          for l in self._length_options]
+        # circle_likelihoods, circle_best_ds = self._calc_for_distribution(signals_distributions, 30)
+        # likelihoods['circle_sep_30'] = circle_likelihoods
+        # best_ds['circle_sep_30'] = circle_best_ds
+        #
+        # circle_likelihoods, circle_best_ds = self._calc_for_distribution(signals_distributions, 20)
+        # likelihoods['circle_sep_20'] = circle_likelihoods
+        # best_ds['circle_sep_20'] = circle_best_ds
+        #
+        # circle_likelihoods, circle_best_ds = self._calc_for_distribution(signals_distributions, 10)
+        # likelihoods['circle_sep_10'] = circle_likelihoods
+        # best_ds['circle_sep_10'] = circle_best_ds
+
+        # print(f'Running for ellipse 1:2 distribution')
+        # signals_distributions = [Ellipse1t2CutsDistribution(length=l, filter_gen=self._signal_filter_gen)
+        #                          for l in self._length_options]
+        # ellipse_likelihoods, ds = self._calc_for_distribution(signals_distributions, 0)
+        # likelihoods['ellipse'] = ellipse_likelihoods
+        #
+        # print(f'Running for ellipse 1:2 distribution')
+        # signals_distributions = [Ellipse1t2CutsDistribution(length=l, filter_gen=self._signal_filter_gen)
+        #                          for l in self._length_options]
+        # ellipse_likelihoods, ds = self._calc_for_distribution(signals_distributions, 30)
+        # likelihoods['ellipse_sep'] = ellipse_likelihoods
+
+        print('Running for 1d')
+        signals_distributions = [
+            SignalsDistribution(length=l, cuts=[0, 0, 1], distribution=[0, 0, 1], filter_gen=self._signal_filter_gen)
+            for l in self._length_options]
+        curr_likelihoods, dsp = self._calc_for_distribution(signals_distributions, 0)
+        likelihoods[f'1d'] = curr_likelihoods
 
         # for i in [7, 4]:
         #     cuts = [0.3, 0.5, 1]
@@ -137,11 +178,6 @@ class LengthExtractor2D:
         #     curr_likelihoods = self._calc_for_distribution(signals_distributions, 30)
         #     likelihoods[f'dist_{dist}_sep'] = curr_likelihoods
 
-        print(f'Running for ellipse 1:2 distribution')
-        signals_distributions = [Ellipse1t2CutsDistribution(length=l, filter_gen=self._signal_filter_gen)
-                                 for l in self._length_options]
-        ellipse_likelihoods = self._calc_for_distribution(signals_distributions, 10)
-        likelihoods['ellipse'] = ellipse_likelihoods
         #
         # class GeneralCutsDistribution(SignalsDistribution):
         #     def __init__(self, length: int, filter_gen):
@@ -167,7 +203,7 @@ class LengthExtractor2D:
         # general_likelihoods = self._calc_for_distribution(signals_distributions)
         # likelihoods['general2'] = general_likelihoods
 
-        return likelihoods
+        return likelihoods, best_ds
 
     def extract(self):
         # scan over the data to create 1d data

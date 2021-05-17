@@ -9,7 +9,7 @@ from src.algorithms.length_extractor_1d import SignalPowerEstimator
 from src.algorithms.length_extractor_2d import LengthExtractor2D
 
 
-# np.random.seed(500)
+np.random.seed(500)
 
 
 class Experiment2D:
@@ -85,16 +85,12 @@ class Experiment2D:
 
     def run(self):
         start_time = time.time()
-        likelihoods = {}
-        likelihoods = self._length_extractor.extract2()
+        likelihoods, best_ds = self._length_extractor.extract2()
         end_time = time.time()
-
-        # likelihoods2, d = self._length_extractor.extract()
-        # likelihoods['1d'] = likelihoods2
 
         self._results = {
             "likelihoods": likelihoods,
-            "d": 123,
+            "best_ds": best_ds,
             "total_time": end_time - start_time
         }
 
@@ -106,7 +102,7 @@ class Experiment2D:
         plt.title(
             f"N={self._n}, M={self._m}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
             f"Signal Power Estimator Method={self._signal_power_estimator_method.name},\n"
-            f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
+            f"Most likely D=NONE, Took {'%.3f' % (self._results['total_time'])} Seconds")
 
         # likelihoods = self._results['likelihoods']
         # i = 1
@@ -117,9 +113,16 @@ class Experiment2D:
         #     i += 1
 
         likelihoods = self._results['likelihoods']
-        # plt.figure(i)
+        plt.figure(1)
         for i, key in enumerate(likelihoods):
             plt.plot(self._signal_length_options, likelihoods[key], label=key)
+            plt.legend(loc="upper right")
+
+        best_ds = self._results['best_ds']
+        plt.figure(2)
+        for i, key in enumerate(best_ds):
+            error = np.abs(np.array(best_ds[key]) - self._d)
+            plt.plot(np.arange(len(error)), error, label=key)
             plt.legend(loc="upper right")
 
         plt.tight_layout()
@@ -138,11 +141,11 @@ def __main__():
         n=2000,
         m=2000,
         d=d,
-        signal_fraction=1 / 3,
+        signal_fraction=1 / 4,
         signal_gen=lambda: Shapes2D.ellipse(d, d//2, 1),
-        length_options=np.arange(int(d // 2), int(d * 2), 10),
+        length_options=np.arange(int(d // 4), int(d * 2), 10),
         # length_options=[40, 50, 60],
-        noise_std=2.5,
+        noise_std=5,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
         save=False

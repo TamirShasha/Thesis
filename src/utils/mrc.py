@@ -4,6 +4,17 @@ import numpy as np
 from scipy.io import loadmat, savemat
 
 
+def mat_to_npy(file_name):
+    if '.mat' not in file_name:
+        file_name += '.mat'
+    full_mat = loadmat(file_name)
+    key = None
+    for k in full_mat:
+        if '__' not in k:
+            key = k
+    return full_mat[key]
+
+
 def read_file(file_path):
     file_name, file_extention = os.path.splitext(file_path)
     return
@@ -17,12 +28,16 @@ def write_mrc(file_path, x):
 
 
 def read_mrc(file_path):
-    return np.ascontiguousarray(mrcfile.open(file_path).data.T)
+    mrc = np.ascontiguousarray(mrcfile.open(file_path).data.T)
+    # mrc /= np.max(mrc)
+    return mrc
 
 
-import matplotlib.pyplot as plt
-
-file_path = '../experiments/data/001.mrc'
-x = read_mrc(file_path)
-plt.imshow(x, cmap='gray')
-plt.show()
+# import matplotlib.pyplot as plt
+#
+# file_path = '../../../data/clean_one.mrc'
+# x = read_mrc(file_path)
+# x = x + np.random.normal(0, 20, x.shape)
+# write_mrc('../../../data/clean_one_std_20.mrc', x)
+# plt.imshow(x, cmap='gray')
+# plt.show()

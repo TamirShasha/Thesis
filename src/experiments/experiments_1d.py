@@ -8,6 +8,8 @@ from src.algorithms.utils import create_random_k_tuple_sum_to_n
 from src.experiments.data_simulator_1d import add_pulses, add_gaus_noise
 from src.algorithms.length_extractor_1d import LengthExtractor1D, SignalPowerEstimator
 
+np.random.seed(500)
+
 
 class Experiment:
 
@@ -56,7 +58,7 @@ class Experiment:
         self._y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
 
         if length_options is None:
-            length_options = np.arange(self._d // 4, int(self._d * 2), 5)
+            length_options = np.arange(self._d // 4, int(self._d * 3), 10)
         self._signal_length_options = length_options
 
         exp_attr = {
@@ -114,16 +116,49 @@ def __main__():
     #     save=False
     # ).run()
 
-    Experiment(
-        name="std-10",
-        n=10000,
-        d=55,
-        k=80,
-        noise_std=1,
-        signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        plot=True,
-        save=False
-    ).run()
+    # Experiment(
+    #     name="std-10",
+    #     n=3000,
+    #     d=50,
+    #     k=20,
+    #     signal_fn=lambda d: np.full(d, 1),
+    #     signal_filter_gen=lambda d: np.full(d, 1),
+    #     noise_std=2,
+    #     signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
+    #     plot=False,
+    #     save=False
+    # ).run()
+
+    d = 100
+    len_ops = np.arange(d // 4, int(d * 1.5), 10)
+    # len_ops = [50]
+    likelihoods = []
+    names = []
+    # ps = np.arange(1, 3.1, 0.5)
+    ps = [1, 2]
+    for i, p in enumerate(ps):
+        np.random.seed(500)
+
+        names.append(f'p_{p}')
+        likelihoods.append(Experiment(
+            name="std-10",
+            n=30000,
+            d=d,
+            signal_fraction=1 / 5,
+            length_options=len_ops,
+            signal_fn=lambda d: np.full(d, 1),
+            signal_filter_gen=lambda d: np.full(d, p),
+            noise_std=5,
+            signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
+            plot=False,
+            save=False
+        ).run())
+
+    plt.plot(len_ops, np.max(np.array(likelihoods), axis=0))
+    names.append('max')
+
+    plt.legend(names)
+    plt.show()
 
     # Experiment(
     #     name="std-13",
