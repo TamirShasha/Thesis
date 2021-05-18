@@ -7,22 +7,22 @@ class SignalPowerEstimator(Enum):
     SecondMoment = 2
 
 
-def estimate_signal_power(y, noise_std, noise_mean, method: SignalPowerEstimator):
+def estimate_signal_power(data, noise_std, noise_mean, method: SignalPowerEstimator):
     if method == SignalPowerEstimator.FirstMoment:
-        return _estimate_signal_power_using_first_moment(y, noise_mean)
+        return _estimate_signal_power_using_first_moment(data, noise_mean)
     elif method == SignalPowerEstimator.SecondMoment:
-        return _estimate_signal_power_using_second_moment(y, noise_std, noise_mean)
+        return _estimate_signal_power_using_second_moment(data, noise_std, noise_mean)
     else:
         raise Exception("Invalid method for estimating signal power")
 
 
-def _estimate_signal_power_using_second_moment(y, noise_std, noise_mean):
-    y_power = np.sum(np.power(y, 2))
-    noise_power = (noise_std ** 2 - noise_mean ** 2) * y.size
-    signal_power = y_power - noise_power
+def _estimate_signal_power_using_second_moment(data, noise_std, noise_mean):
+    data_power = np.sum(np.power(data, 2))
+    noise_power = (noise_std ** 2 - noise_mean ** 2) * data.size
+    signal_power = data_power - noise_power
     return signal_power
 
 
-def _estimate_signal_power_using_first_moment(y, noise_mean):
-    signal_power = np.sum(y) - noise_mean * y.size
+def _estimate_signal_power_using_first_moment(data, noise_mean):
+    signal_power = np.sum(data) - noise_mean * data.size
     return signal_power
