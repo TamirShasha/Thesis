@@ -2,9 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from src.algorithms.utils import create_random_k_tuple_sum_to_n
-from src.algorithms.length_estimator_1d import LengthExtractor1D, SignalPowerEstimator
-from src.experimental.length_extractor_1d_multiple_length import LengthExtractorML1D, SignalsDistribution
-from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
+from src.algorithms.length_estimator_1d import LengthExtractor1D
+from src.algorithms.multiple_lengths_estimator_1d import MultipleLengthsEstimator1D, SignalsDistribution
 import warnings
 
 # warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
@@ -94,33 +93,33 @@ print('\n')
 
 signals_distributions = [SignalsDistribution(length=l, cuts=list(cuts), distribution=ds_dist,
                                              filter_gen=signal_filter_gen) for l in length_options]
-le2 = LengthExtractorML1D(data=y,
-                          length_distribution_options=signals_distributions,
-                          noise_std=noise_std,
-                          signal_separation=signal_separation)
-likelihoods2, d2 = le2.extract()
+le2 = MultipleLengthsEstimator1D(data=y,
+                                 length_distribution_options=signals_distributions,
+                                 noise_std=noise_std,
+                                 signal_separation=signal_separation)
+likelihoods2, d2 = le2.estimate()
 likelihoods_ml1d = likelihoods_ml1d + np.array(likelihoods2)
 
 likelihoods_ml1d2 = np.zeros_like(length_options)
 ds_dist2 = [.0, .3, .7]
 signals_distributions2 = [SignalsDistribution(length=l, cuts=list(cuts), distribution=ds_dist,
                                               filter_gen=signal_filter_gen) for l in length_options]
-le3 = LengthExtractorML1D(data=y,
-                          length_distribution_options=signals_distributions2,
-                          noise_std=noise_std,
-                          signal_separation=0)
-likelihoods3, d3 = le3.extract()
+le3 = MultipleLengthsEstimator1D(data=y,
+                                 length_distribution_options=signals_distributions2,
+                                 noise_std=noise_std,
+                                 signal_separation=0)
+likelihoods3, d3 = le3.estimate()
 likelihoods_ml1d2 = likelihoods_ml1d2 + np.array(likelihoods3)
 
 likelihoods_ml1d4 = np.zeros_like(length_options)
 ds_dist4 = [.0, .5, .5]
 signals_distributions4 = [SignalsDistribution(length=l, cuts=list(cuts), distribution=ds_dist4,
                                               filter_gen=signal_filter_gen) for l in length_options]
-le4 = LengthExtractorML1D(data=y,
-                          length_distribution_options=signals_distributions4,
-                          noise_std=noise_std,
-                          signal_separation=signal_separation)
-likelihoods4, d4 = le4.extract()
+le4 = MultipleLengthsEstimator1D(data=y,
+                                 length_distribution_options=signals_distributions4,
+                                 noise_std=noise_std,
+                                 signal_separation=signal_separation)
+likelihoods4, d4 = le4.estimate()
 likelihoods_ml1d4 = likelihoods_ml1d4 + np.array(likelihoods4)
 
 plt.title(f'ML1d: {length_options[np.argmax(likelihoods_ml1d)]}, 1d: {length_options[np.argmax(likelihoods_1d)]}\n'

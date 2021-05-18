@@ -1,8 +1,8 @@
 import numpy as np
 from skimage.draw import line
 from src.algorithms.length_estimator_1d import LengthExtractor1D
-from src.experimental.length_extractor_1d_multiple_length import LengthExtractorML1D, CircleCutsDistribution, \
-    Ellipse1t2CutsDistribution, SignalsDistribution
+from src.algorithms.multiple_lengths_estimator_1d import MultipleLengthsEstimator1D, CircleCutsDistribution, \
+    Ellipse1t2CutsDistribution
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 
 
@@ -84,10 +84,10 @@ class LengthEstimator2DCurvesMethod:
         sum_likelihoods = np.zeros_like(self._length_options)
         for t in range(self._num_of_curves):
             print(f'At iteration {t + 1}')
-            likelihoods, d = LengthExtractorML1D(data=data[t],
-                                                 length_distribution_options=signals_distributions,
-                                                 noise_std=self._noise_std,
-                                                 signal_separation=sep).extract()
+            likelihoods, d = MultipleLengthsEstimator1D(data=data[t],
+                                                        length_distribution_options=signals_distributions,
+                                                        noise_std=self._noise_std,
+                                                        signal_separation=sep).estimate()
             sum_likelihoods = sum_likelihoods + likelihoods
             curr_best_length = self._length_options[np.argmax(sum_likelihoods / (t + 1))]
             best_lengths.append(curr_best_length)
