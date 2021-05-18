@@ -6,7 +6,7 @@ from src.constants import ROOT_DIR
 
 from src.experiments.data_simulator_2d import simulate_data, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
-from src.algorithms.length_estimator_2d import LengthExtractor2D
+from src.algorithms.length_estimator_2d_curves_method import LengthExtractor2DCurvesMethod
 
 np.random.seed(500)
 
@@ -73,18 +73,18 @@ class Experiment2D:
         plt.imshow(self._y, cmap='gray')
         plt.show()
 
-        self._length_extractor = LengthExtractor2D(y=self._y,
-                                                   length_options=self._signal_length_options,
-                                                   signal_filter_gen=self._signal_1d_filter_gen,
-                                                   noise_mean=self._noise_mean,
-                                                   noise_std=self._noise_std,
-                                                   signal_power_estimator_method=self._signal_power_estimator_method,
-                                                   exp_attr=exp_attr,
-                                                   logs=self._logs)
+        self._length_extractor = LengthExtractor2DCurvesMethod(data=self._y,
+                                                               length_options=self._signal_length_options,
+                                                               signal_filter_gen=self._signal_1d_filter_gen,
+                                                               noise_mean=self._noise_mean,
+                                                               noise_std=self._noise_std,
+                                                               signal_power_estimator_method=self._signal_power_estimator_method,
+                                                               exp_attr=exp_attr,
+                                                               logs=self._logs)
 
     def run(self):
         start_time = time.time()
-        likelihoods, best_ds = self._length_extractor.extract()
+        likelihoods, best_ds = self._length_extractor._estimate_likelihood_for_1d()
         end_time = time.time()
 
         self._results = {

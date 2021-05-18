@@ -6,7 +6,7 @@ import os
 from src.constants import ROOT_DIR
 from src.utils import mrc
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
-from src.algorithms.length_estimator_2d import LengthExtractor2D
+from src.algorithms.length_estimator_2d_curves_method import LengthExtractor2DCurvesMethod
 from src.algorithms.very_well_separated_2d import LengthExtractor2D as VWS_LengthExtractor2D
 from src.experiments.data_simulator_2d import Shapes2D
 
@@ -54,14 +54,14 @@ class RealDataExperiment:
         # plt.imshow(self._data, cmap='gray')
         # plt.show()
 
-        self._length_extractor_tamir = LengthExtractor2D(y=self._data,
-                                                         length_options=self._signal_length_options,
-                                                         signal_filter_gen=self._signal_1d_filter_gen,
-                                                         noise_mean=self._noise_mean,
-                                                         noise_std=self._noise_std,
-                                                         signal_power_estimator_method=self._signal_power_estimator_method,
-                                                         exp_attr=exp_attr,
-                                                         logs=self._logs)
+        self._length_extractor_tamir = LengthExtractor2DCurvesMethod(data=self._data,
+                                                                     length_options=self._signal_length_options,
+                                                                     signal_filter_gen=self._signal_1d_filter_gen,
+                                                                     noise_mean=self._noise_mean,
+                                                                     noise_std=self._noise_std,
+                                                                     signal_power_estimator_method=self._signal_power_estimator_method,
+                                                                     exp_attr=exp_attr,
+                                                                     logs=self._logs)
 
         self._length_extractor = VWS_LengthExtractor2D(y=self._data,
                                                        length_options=self._signal_length_options,
@@ -74,7 +74,7 @@ class RealDataExperiment:
 
     def run(self):
         start_time = time.time()
-        likelihoods, best_ds = self._length_extractor_tamir.extract2()
+        likelihoods, best_ds = self._length_extractor_tamir.estimate()
         # likelihoods = {}
         # best_ds = {}
         # vws_likelihoods, vws_best_ds = self._length_extractor.extract()
