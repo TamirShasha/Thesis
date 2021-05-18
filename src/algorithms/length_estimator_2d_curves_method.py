@@ -6,7 +6,7 @@ from src.experimental.length_extractor_1d_multiple_length import LengthExtractor
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 
 
-class LengthExtractor2DCurvesMethod:
+class LengthEstimator2DCurvesMethod:
 
     def __init__(self,
                  data,

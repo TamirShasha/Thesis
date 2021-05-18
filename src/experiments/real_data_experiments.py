@@ -6,8 +6,8 @@ import os
 from src.constants import ROOT_DIR
 from src.utils import mrc
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
-from src.algorithms.length_estimator_2d_curves_method import LengthExtractor2DCurvesMethod
-from src.algorithms.very_well_separated_2d import LengthExtractor2D as VWS_LengthExtractor2D
+from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
+from src.algorithms.length_estimator_2d_sep_method import LengthEstimator2DSeparationMethod as VWS_LengthExtractor2D
 from src.experiments.data_simulator_2d import Shapes2D
 
 np.random.seed(500)
@@ -54,7 +54,7 @@ class RealDataExperiment:
         # plt.imshow(self._data, cmap='gray')
         # plt.show()
 
-        self._length_extractor_tamir = LengthExtractor2DCurvesMethod(data=self._data,
+        self._length_extractor_tamir = LengthEstimator2DCurvesMethod(data=self._data,
                                                                      length_options=self._signal_length_options,
                                                                      signal_filter_gen=self._signal_1d_filter_gen,
                                                                      noise_mean=self._noise_mean,

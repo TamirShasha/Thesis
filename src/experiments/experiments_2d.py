@@ -6,7 +6,7 @@ from src.constants import ROOT_DIR
 
 from src.experiments.data_simulator_2d import simulate_data, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
-from src.algorithms.length_estimator_2d_curves_method import LengthExtractor2DCurvesMethod
+from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 
 np.random.seed(500)
 
@@ -73,7 +73,7 @@ class Experiment2D:
         plt.imshow(self._y, cmap='gray')
         plt.show()
 
-        self._length_extractor = LengthExtractor2DCurvesMethod(data=self._y,
+        self._length_extractor = LengthEstimator2DCurvesMethod(data=self._y,
                                                                length_options=self._signal_length_options,
                                                                signal_filter_gen=self._signal_1d_filter_gen,
                                                                noise_mean=self._noise_mean,
