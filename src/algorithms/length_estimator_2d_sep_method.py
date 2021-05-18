@@ -206,6 +206,6 @@ class LengthEstimator2DSeparationMethod:
         return likelihood
 
     def estimate(self):
-        likelihoods = [self._calc_signal_length_likelihood(self._data, d) for d in self._length_options]
-        max_likelihood_length = self._length_options[np.argmax(likelihoods)]
-        return likelihoods, max_likelihood_length
+        likelihoods = [self._calc_signal_length_likelihood(d) for d in self._length_options]
+        max_likely_length = self._length_options[np.argmax(likelihoods)]
+        return {'well_sep': likelihoods}, max_likely_length

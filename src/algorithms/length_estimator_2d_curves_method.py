@@ -77,9 +77,7 @@ class LengthEstimator2DCurvesMethod:
     def _estimate_likelihood_of_distribution(self, signals_distributions, sep=0):
         print(f'Will average over {self._num_of_curves} runs (curves)')
 
-        # data = np.concatenate(self._create_1d_data_from_curves(num_of_curves))
         data = self._curves
-
         best_lengths = []
         sum_likelihoods = np.zeros_like(self._length_options)
         for t in range(self._num_of_curves):
@@ -119,7 +117,7 @@ class LengthEstimator2DCurvesMethod:
 
         return likelihoods, best_lengths
 
-    def estimate(self, distributions=('circle', 'ellipse12', '1d')):
+    def estimate(self, distributions=('1d')):
         likelihoods = dict()
         best_lengths = dict()
 
@@ -135,7 +133,8 @@ class LengthEstimator2DCurvesMethod:
             print(f'Running for ellipse 1:2 distribution')
             signals_distributions = [Ellipse1t2CutsDistribution(length=l, filter_gen=self._signal_filter_gen)
                                      for l in self._length_options]
-            ellipse_likelihoods, ellipse_best_lengths = self._estimate_likelihood_of_distribution(signals_distributions, 0)
+            ellipse_likelihoods, ellipse_best_lengths = self._estimate_likelihood_of_distribution(signals_distributions,
+                                                                                                  0)
             likelihoods['ellipse12'] = ellipse_likelihoods
             best_lengths['ellipse12'] = ellipse_best_lengths
 
@@ -145,4 +144,5 @@ class LengthEstimator2DCurvesMethod:
             likelihoods['one_dim'] = one_d_likelihoods
             best_lengths['one_dim'] = one_d_best_lengths
 
-        return likelihoods, best_lengths
+        most_likely_length = list(best_lengths.values())[0][-1]
+        return likelihoods, most_likely_length
