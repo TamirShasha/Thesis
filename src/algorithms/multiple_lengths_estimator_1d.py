@@ -4,9 +4,7 @@ import time
 from typing import List, Callable
 import itertools
 from src.utils.logsumexp import logsumexp
-# from scipy.special import logsumexp
 
-from src.algorithms.utils import log_binomial
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
 
 
@@ -33,7 +31,7 @@ class SignalsDistribution:
     def _calc_avg_instance_power(self):
         return np.sum(self.lengths * self.power * self.distribution)
 
-    def find_expected_occurrences(self, total_power):
+    def estimate_num_of_signal_occurrences(self, total_power):
         k = int(np.round(total_power / self.avg_instance_power))
         occurrences_dist = np.array(k * self.distribution, dtype=int)
         return occurrences_dist
@@ -62,7 +60,7 @@ class GeneralCutsDistribution(SignalsDistribution):
         super().__init__(length, cuts, distribution, filter_gen)
 
 
-class LengthExtractorML1D:
+class MultipleLengthsEstimator1D:
 
     def __init__(self,
                  data,
@@ -129,7 +127,7 @@ class LengthExtractorML1D:
                 sum_yx_minus_x_squared[i, j] = np.sum(signals_squared[j] - 2 * signals_dist.signals[j] * y[i: i + d])
 
         sum_yx_minus_x_squared *= - 0.5 / self._noise_std ** 2
-        self._k = signals_dist.find_expected_occurrences(self._signal_power)  # k1, k2, .. , kl
+        self._k = signals_dist.estimate_num_of_signal_occurrences(self._signal_power)  # k1, k2, .. , kl
         k = self._k
 
         mapping_length = np.max(lens) + self._signal_separation
@@ -175,7 +173,7 @@ class LengthExtractorML1D:
 
         return likelihood
 
-    def extract(self):
+    def estimate(self):
         likelihoods = [self._calc_length_distribution_likelihood(ld) for ld in self._length_distribution_options]
         ld_best = self._length_distribution_options[np.argmax(likelihoods)]
         return likelihoods, ld_best

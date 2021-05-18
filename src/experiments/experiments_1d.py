@@ -6,7 +6,7 @@ from src.constants import ROOT_DIR
 
 from src.algorithms.utils import create_random_k_tuple_sum_to_n
 from src.experiments.data_simulator_1d import add_pulses, add_gaus_noise
-from src.algorithms.length_extractor_1d import LengthExtractor1D, SignalPowerEstimator
+from src.algorithms.length_estimator_1d import LengthExtractor1D, SignalPowerEstimator
 
 np.random.seed(500)
 
@@ -65,7 +65,7 @@ class Experiment:
             "d": self._d,
             "k": self._k,
         }
-        self._length_extractor = LengthExtractor1D(y=self._y,
+        self._length_extractor = LengthExtractor1D(data=self._y,
                                                    length_options=self._signal_length_options,
                                                    signal_filter_gen=self._signal_filter_gen,
                                                    noise_mean=self._noise_mean,
@@ -76,7 +76,7 @@ class Experiment:
 
     def run(self):
         start_time = time.time()
-        likelihoods, d = self._length_extractor.extract()
+        likelihoods, d = self._length_extractor.estimate()
         end_time = time.time()
 
         self._results = {
