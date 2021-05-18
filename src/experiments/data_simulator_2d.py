@@ -33,21 +33,58 @@ class Shapes2D:
         return np.full((length, length), fill_value)
 
 
-def simulate_data(shape, signal_generator, signal_shape, occurrences, noise_std, noise_mean, collision_threshold=100):
-    data = np.zeros(shape)
+# def simulate_data(shape, signal_generator, signal_shape, occurrences, noise_std, noise_mean, collision_threshold=100):
+#     data = np.zeros(shape)
+#
+#     # add signals
+#     for _ in range(occurrences):
+#         signal = signal_generator()
+#
+#         for t in range(collision_threshold):  # trying to find clean location for new signal, max of threshold times
+#             row = np.random.randint(shape[0] - signal_shape[0])
+#             column = np.random.randint(shape[1] - signal_shape[1])
+#             if np.all(data[row:row + signal_shape[0], column:column + signal_shape[1]] == 0):
+#                 data[row:row + signal_shape[0], column:column + signal_shape[1]] += signal
+#                 break
+#
+#     # add noise
+#     noise = np.random.normal(noise_mean, noise_std, data.shape)
+#
+#     return data + noise
 
-    # add signals
-    for _ in range(occurrences):
-        signal = signal_generator()
 
-        for t in range(collision_threshold):  # trying to find clean location for new signal, max of threshold times
-            row = np.random.randint(shape[0] - signal_shape[0])
-            column = np.random.randint(shape[1] - signal_shape[1])
-            if np.all(data[row:row + signal_shape[0], column:column + signal_shape[1]] == 0):
-                data[row:row + signal_shape[0], column:column + signal_shape[1]] += signal
-                break
+class DataSimulator2D:
+    def __init__(self, rows=2000, columns=2000,
+                 signal_length=100, signal_fraction=1 / 6, signal_gen=lambda: Shapes2D.ellipse(200, 100, 1),
+                 noise_std=3, noise_mean=0,
+                 collision_threshold=100):
+        self.rows = rows
+        self.columns = columns
+        self.signal_fraction = signal_fraction
+        self.signal_gen = signal_gen
+        self.signal_length = signal_length
+        self.noise_std = noise_std
+        self.noise_mean = noise_mean
+        self.collision_threshold = collision_threshold
 
-    # add noise
-    noise = np.random.normal(noise_mean, noise_std, data.shape)
+        self.signal_shape = (signal_length, signal_length)
+        self.occurrences = int((self.rows * self.columns / np.prod(self.signal_shape)) * self.signal_fraction)
 
-    return data + noise
+    def simulate(self):
+        data = np.zeros((self.rows, self.columns))
+
+        # add signals
+        for _ in range(self.occurrences):
+            signal = self.signal_gen()
+
+            for t in range(self.collision_threshold):  # trying to find clean location for new signal, max of threshold
+                row = np.random.randint(self.rows - self.signal_shape[0])
+                column = np.random.randint(self.columns - self.signal_shape[1])
+                if np.all(data[row:row + self.rows, column:column + self.signal_shape[1]] == 0):
+                    data[row:row + self.signal_shape[0], column:column + self.signal_shape[1]] += signal
+                    break
+
+        # add noise
+        noise = np.random.normal(self.noise_mean, self.noise_std, data.shape)
+
+        return data + noise
