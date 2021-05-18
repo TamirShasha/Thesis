@@ -5,8 +5,8 @@ import os
 
 from src.constants import ROOT_DIR
 from src.utils import mrc
-from src.algorithms.length_extractor_1d import SignalPowerEstimator
-from src.algorithms.length_extractor_2d import LengthExtractor2D
+from src.algorithms.length_estimator_1d import SignalPowerEstimator
+from src.algorithms.length_estimator_2d import LengthExtractor2D
 from src.algorithms.very_well_separated_2d import LengthExtractor2D as VWS_LengthExtractor2D
 from src.experiments.data_simulator_2d import Shapes2D
 

@@ -5,9 +5,8 @@ import os
 from src.constants import ROOT_DIR
 
 from src.experiments.data_simulator_2d import simulate_data, Shapes2D
-from src.algorithms.length_extractor_1d import SignalPowerEstimator
-from src.algorithms.length_extractor_2d import LengthExtractor2D
-
+from src.algorithms.length_estimator_1d import SignalPowerEstimator
+from src.algorithms.length_estimator_2d import LengthExtractor2D
 
 np.random.seed(500)
 
@@ -85,7 +84,7 @@ class Experiment2D:
 
     def run(self):
         start_time = time.time()
-        likelihoods, best_ds = self._length_extractor.extract2()
+        likelihoods, best_ds = self._length_extractor.extract()
         end_time = time.time()
 
         self._results = {
@@ -141,9 +140,10 @@ def __main__():
         n=2000,
         m=2000,
         d=d,
-        signal_fraction=1 / 4,
-        signal_gen=lambda: Shapes2D.ellipse(d, d//2, 1),
-        length_options=np.arange(int(d // 4), int(d * 2), 10),
+        signal_fraction=1 / 6,
+        # signal_gen=lambda: Shapes2D.ellipse(d, int(2 * d / 3), 1),
+        signal_gen=lambda: Shapes2D.disk(d, 1),
+        length_options=np.arange(int(d // 4), int(d * 2), 20),
         # length_options=[40, 50, 60],
         noise_std=5,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,

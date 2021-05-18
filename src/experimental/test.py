@@ -1,7 +1,7 @@
 import itertools
 import numpy as np
 from src.experimental.length_extractor_1d_multiple_length import LengthExtractorML1D, SignalsDistribution
-from src.algorithms.length_extractor_1d import LengthExtractor1D
+from src.algorithms.length_estimator_1d import LengthExtractor1D
 from src.experiments.data_simulator_1d import simulate_data
 import matplotlib.pyplot as plt
 

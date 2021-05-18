@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from src.algorithms.utils import create_random_k_tuple_sum_to_n
-from src.algorithms.length_extractor_1d import LengthExtractor1D, SignalPowerEstimator
+from src.algorithms.length_estimator_1d import LengthExtractor1D, SignalPowerEstimator
 from src.experimental.length_extractor_1d_multiple_length import LengthExtractorML1D, SignalsDistribution
 from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
 import warnings
@@ -84,10 +84,10 @@ length_options = np.arange(d // 4, int(d * 2), 4)
 likelihoods_1d = np.zeros_like(length_options)
 likelihoods_ml1d = np.zeros_like(length_options)
 
-le = LengthExtractor1D(y=y,
+le = LengthExtractor1D(data=y,
                        length_options=length_options,
                        noise_std=noise_std)
-likelihoods, d = le.extract()
+likelihoods, d = le.estimate()
 likelihoods_1d = likelihoods_1d + np.array(likelihoods)
 
 print('\n')

@@ -1,7 +1,7 @@
 import numpy as np
 from skimage.draw import line
 import matplotlib.pyplot as plt
-from src.algorithms.length_extractor_1d import LengthExtractor1D
+from src.algorithms.length_estimator_1d import LengthExtractor1D
 from src.experimental.length_extractor_1d_multiple_length import LengthExtractorML1D, CircleCutsDistribution, \
     Ellipse1t2CutsDistribution, SignalsDistribution
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
@@ -28,9 +28,11 @@ class LengthExtractor2D:
         self._exp_attr = exp_attr
         self._n = self._y.shape[0]
 
-        num_of_curves = 2 * int(np.log(np.max(self._y.shape)))
-        self.to_delete = self._create_1d_data_from_curves(20)
-        print(f'data length: {self.to_delete.shape[0]} x {self.to_delete.shape[1]}')
+        self._num_of_curves = 2 * int(np.log(np.max(self._y.shape)))
+        self._1d_data = self._create_1d_data_from_curves(num_of_curves=self._num_of_curves,
+                                                         high_power_selection_factor=100,
+                                                         concat_curves=5)
+        print(f'data length: {self._1d_data.shape[0]} x {self._1d_data.shape[1]}')
 
     def _rows_curves(self, jump=None):
         mat = self._y
@@ -58,14 +60,14 @@ class LengthExtractor2D:
 
         return curves
 
-    def _create_1d_data_from_curves(self, num_of_curves, concat_curves=2, strategy='random lines'):
+    def _create_1d_data_from_curves(self, num_of_curves, concat_curves=2,
+                                    high_power_selection_factor=100, strategy='random lines'):
 
         if strategy == 'rows':
             jump = self._y.shape[0] // num_of_curves
             return self._rows_curves(jump)
 
         if strategy == 'random lines':
-            high_power_selection_factor = 100
             curves = self._random_lines_curves(high_power_selection_factor * num_of_curves)
             curves_powers = [
                 estimate_signal_power(curve, self._noise_std, self._noise_mean, SignalPowerEstimator.FirstMoment)
@@ -75,15 +77,14 @@ class LengthExtractor2D:
             return top_concatenated_curves
 
     def _calc_for_distribution(self, signals_distributions, sep):
-        num_of_curves = 2 * int(np.log(np.max(self._y.shape)))
         num_of_curves = 20
 
-        times = len(self.to_delete)
+        times = len(self._1d_data)
 
         print(f'Will average over {times} runs, Num of curves is: {num_of_curves}')
 
         # data = np.concatenate(self._create_1d_data_from_curves(num_of_curves))
-        data = self.to_delete
+        data = self._1d_data
 
         best_ds = []
         sum_likelihoods = np.zeros_like(self._length_options)
@@ -206,21 +207,24 @@ class LengthExtractor2D:
         return likelihoods, best_ds
 
     def extract(self):
-        # scan over the data to create 1d data
-        num_of_curves = 2 * int(np.log(np.max(self._y.shape)))
-        y_1d = self._create_1d_data_from_curves(num_of_curves)
-        y_1d = self.to_delete
+        print(f'Will average over {self._num_of_curves} runs (curves)')
 
-        print(f'data 1d length is {y_1d.shape[0]}')
+        best_ds = []
+        sum_likelihoods = np.zeros_like(self._length_options)
+        for t in range(self._num_of_curves):
+            print(f'At iteration {t}')
+            likelihoods, d = LengthExtractor1D(data=self._1d_data[t],
+                                               length_options=self._length_options,
+                                               signal_filter_gen=self._signal_filter_gen,
+                                               noise_mean=self._noise_mean,
+                                               noise_std=self._noise_std,
+                                               signal_power_estimator_method=self._signal_power_estimator_method,
+                                               exp_attr=self._exp_attr,
+                                               logs=self._logs).estimate()
+            sum_likelihoods = sum_likelihoods + likelihoods
+            curr_best_d = self._length_options[np.argmax(sum_likelihoods / self._length_options)]
+            best_ds.append(curr_best_d)
 
-        # create length extractor
-        length_extractor_1d = LengthExtractor1D(y=y_1d,
-                                                length_options=self._length_options,
-                                                signal_filter_gen=self._signal_filter_gen,
-                                                noise_mean=self._noise_mean,
-                                                noise_std=self._noise_std,
-                                                signal_power_estimator_method=self._signal_power_estimator_method,
-                                                exp_attr=self._exp_attr,
-                                                logs=self._logs)
-        likelihoods, d = length_extractor_1d.extract()
-        return likelihoods, d
+        likelihoods = sum_likelihoods / self._num_of_curves
+
+        return {'1d': likelihoods}, {'1d': best_ds}

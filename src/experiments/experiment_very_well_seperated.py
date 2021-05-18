@@ -5,7 +5,7 @@ import os
 from src.constants import ROOT_DIR
 
 from src.experiments.data_simulator_2d import simulate_data, Shapes2D
-from src.algorithms.length_extractor_1d import SignalPowerEstimator
+from src.algorithms.length_estimator_1d import SignalPowerEstimator
 from src.algorithms.very_well_separated_2d import LengthExtractor2D
 
 
