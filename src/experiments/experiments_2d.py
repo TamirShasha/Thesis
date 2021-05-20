@@ -23,8 +23,8 @@ class Experiment2D:
                  name=str(time.time()),
                  mrc: Micrograph = None,
                  simulator=DataSimulator2D(),
-                 signal_2d_filter_gen=lambda d: Shapes2D.disk(d, 1),
-                 signal_1d_filter_gen=lambda d: np.full(d, 1),
+                 signal_2d_filter_gen=lambda d, p=1: Shapes2D.disk(d, p),
+                 signal_1d_filter_gen=lambda d, p=1: np.full(d, p),
                  signal_power_estimator_method=SignalPowerEstimator.Exact,
                  length_options=None,
                  estimation_method: EstimationMethod = EstimationMethod.WellSeparation,
@@ -72,14 +72,18 @@ class Experiment2D:
 
         if estimation_method == EstimationMethod.WellSeparation:
             print(f'Estimating signal length using well separation method')
-            self._length_estimator = LengthEstimator2DSeparationMethod(data=self._data,
-                                                                       length_options=self._signal_length_options,
-                                                                       signal_filter_gen=signal_2d_filter_gen,
-                                                                       noise_mean=self._noise_mean,
-                                                                       noise_std=self._noise_std,
-                                                                       signal_power_estimator_method=signal_power_estimator_method,
-                                                                       exp_attr=exp_attr,
-                                                                       logs=self._logs)
+            self._length_estimator = \
+                LengthEstimator2DSeparationMethod(data=self._data,
+                                                  length_options=self._signal_length_options,
+                                                  signal_area_fraction_boundaries=(0.1, 0.4),
+                                                  signal_num_of_occurrences_boundaries=(10, 150),
+                                                  num_of_power_options=7,
+                                                  signal_filter_gen=signal_2d_filter_gen,
+                                                  noise_mean=self._noise_mean,
+                                                  noise_std=self._noise_std,
+                                                  signal_power_estimator_method=signal_power_estimator_method,
+                                                  exp_attr=exp_attr,
+                                                  logs=self._logs)
         else:
             print(f'Estimating signal length using curves method')
             self._length_estimator = LengthEstimator2DCurvesMethod(data=self._data,
@@ -130,17 +134,19 @@ def __main__():
     sim_data = DataSimulator2D(rows=2000,
                                columns=2000,
                                signal_length=200,
+                               signal_power=1,
                                signal_fraction=1 / 5,
                                signal_gen=lambda d, p: Shapes2D.disk(d, p),
-                               noise_std=3, noise_mean=0)
+                               noise_std=5,
+                               noise_mean=0)
 
     Experiment2D(
         # mrc=MICROGRAPHS['simple_3'],
         simulator=sim_data,
-        estimation_method=EstimationMethod.Curves,
+        estimation_method=EstimationMethod.WellSeparation,
         name="std-10",
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(50, 151, 10),
+        length_options=np.arange(50, 251, 20),
         plot=True,
         save=False
     ).run()
