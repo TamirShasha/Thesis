@@ -11,8 +11,6 @@ from src.algorithms.length_estimator_2d_sep_method import LengthEstimator2DSepar
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.experiments.micrograph import Micrograph, MICROGRAPHS
 
-np.random.seed(405)
-
 
 class EstimationMethod(Enum):
     Curves = 0,
@@ -132,14 +130,14 @@ def __main__():
     sim_data = DataSimulator2D(rows=2000,
                                columns=2000,
                                signal_length=200,
-                               signal_fraction=1 / 6,
-                               signal_gen=lambda: Shapes2D.ellipse(200, 100, 1),
+                               signal_fraction=1 / 5,
+                               signal_gen=lambda d, p: Shapes2D.disk(d, p),
                                noise_std=3, noise_mean=0)
 
     Experiment2D(
         # mrc=MICROGRAPHS['simple_3'],
         simulator=sim_data,
-        estimation_method=EstimationMethod.WellSeparation,
+        estimation_method=EstimationMethod.Curves,
         name="std-10",
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         length_options=np.arange(50, 151, 10),
