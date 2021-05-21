@@ -11,8 +11,6 @@ from src.algorithms.length_estimator_2d_sep_method import LengthEstimator2DSepar
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.experiments.micrograph import Micrograph, MICROGRAPHS
 
-np.random.seed(405)
-
 
 class EstimationMethod(Enum):
     Curves = 0,
@@ -25,8 +23,8 @@ class Experiment2D:
                  name=str(time.time()),
                  mrc: Micrograph = None,
                  simulator=DataSimulator2D(),
-                 signal_2d_filter_gen=lambda d: Shapes2D.disk(d, 1),
-                 signal_1d_filter_gen=lambda d: np.full(d, 1),
+                 signal_2d_filter_gen=lambda d, p=1: Shapes2D.disk(d, p),
+                 signal_1d_filter_gen=lambda d, p=1: np.full(d, p),
                  signal_power_estimator_method=SignalPowerEstimator.Exact,
                  length_options=None,
                  estimation_method: EstimationMethod = EstimationMethod.WellSeparation,
@@ -48,7 +46,6 @@ class Experiment2D:
             self._noise_std = simulator.noise_std
             self._noise_mean = simulator.noise_mean
             self._signal_length = simulator.signal_length
-
         else:
             print(f'Loading given micrograph from {mrc.name}')
             self._data = mrc.load_mrc()
@@ -74,14 +71,18 @@ class Experiment2D:
 
         if estimation_method == EstimationMethod.WellSeparation:
             print(f'Estimating signal length using well separation method')
-            self._length_estimator = LengthEstimator2DSeparationMethod(data=self._data,
-                                                                       length_options=self._signal_length_options,
-                                                                       signal_filter_gen=signal_2d_filter_gen,
-                                                                       noise_mean=self._noise_mean,
-                                                                       noise_std=self._noise_std,
-                                                                       signal_power_estimator_method=signal_power_estimator_method,
-                                                                       exp_attr=exp_attr,
-                                                                       logs=self._logs)
+            self._length_estimator = \
+                LengthEstimator2DSeparationMethod(data=self._data,
+                                                  length_options=self._signal_length_options,
+                                                  signal_area_fraction_boundaries=(.05, .4),
+                                                  signal_num_of_occurrences_boundaries=(10, 150),
+                                                  num_of_power_options=7,
+                                                  signal_filter_gen=signal_2d_filter_gen,
+                                                  noise_mean=self._noise_mean,
+                                                  noise_std=self._noise_std,
+                                                  signal_power_estimator_method=signal_power_estimator_method,
+                                                  exp_attr=exp_attr,
+                                                  logs=self._logs)
         else:
             print(f'Estimating signal length using curves method')
             self._length_estimator = LengthEstimator2DCurvesMethod(data=self._data,
@@ -132,9 +133,11 @@ def __main__():
     sim_data = DataSimulator2D(rows=2000,
                                columns=2000,
                                signal_length=200,
-                               signal_fraction=1 / 6,
-                               signal_gen=lambda: Shapes2D.ellipse(200, 100, 1),
-                               noise_std=3, noise_mean=0)
+                               signal_power=1,
+                               signal_fraction=1 / 5,
+                               signal_gen=lambda d, p: Shapes2D.ellipse(d, d // 2, p),
+                               noise_std=5,
+                               noise_mean=0)
 
     Experiment2D(
         # mrc=MICROGRAPHS['simple_3'],
@@ -142,7 +145,7 @@ def __main__():
         estimation_method=EstimationMethod.WellSeparation,
         name="std-10",
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(50, 151, 10),
+        length_options=np.arange(50, 251, 20),
         plot=True,
         save=False
     ).run()
