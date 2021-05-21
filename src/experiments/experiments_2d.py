@@ -46,7 +46,6 @@ class Experiment2D:
             self._noise_std = simulator.noise_std
             self._noise_mean = simulator.noise_mean
             self._signal_length = simulator.signal_length
-
         else:
             print(f'Loading given micrograph from {mrc.name}')
             self._data = mrc.load_mrc()
@@ -75,7 +74,7 @@ class Experiment2D:
             self._length_estimator = \
                 LengthEstimator2DSeparationMethod(data=self._data,
                                                   length_options=self._signal_length_options,
-                                                  signal_area_fraction_boundaries=(0.1, 0.4),
+                                                  signal_area_fraction_boundaries=(.05, .4),
                                                   signal_num_of_occurrences_boundaries=(10, 150),
                                                   num_of_power_options=7,
                                                   signal_filter_gen=signal_2d_filter_gen,
@@ -136,7 +135,7 @@ def __main__():
                                signal_length=200,
                                signal_power=1,
                                signal_fraction=1 / 5,
-                               signal_gen=lambda d, p: Shapes2D.disk(d, p),
+                               signal_gen=lambda d, p: Shapes2D.ellipse(d, d // 2, p),
                                noise_std=5,
                                noise_mean=0)
 

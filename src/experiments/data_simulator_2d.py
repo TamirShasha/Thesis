@@ -91,10 +91,12 @@ class DataSimulator2D:
                     break
 
             if t == self.collision_threshold - 1:
-                print(f'Failed to simulate dataset with {self.occurrences} instances. '
+                print(f'Failed to simulate dataset with {self.occurrences} occurrences. '
                       f'Reduced to {o + 1}')
                 self.occurrences = o + 1
                 break
+
+        print(f'Total signal area fraction is {np.count_nonzero(data) / np.prod(data.shape)}')
 
         # add noise
         noise = np.random.normal(self.noise_mean, self.noise_std, data.shape)
