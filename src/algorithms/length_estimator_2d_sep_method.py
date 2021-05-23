@@ -48,12 +48,18 @@ class LengthEstimator2DSeparationMethod:
         self._signal_instance_power_options_estimation = self._estimate_possible_instance_of_signal_power()
         print(f'Power options are: {self._signal_instance_power_options_estimation}')
 
+        # self._signal_instance_power_options_estimation = [0.46, 0.52, 0.58]
+
     def _estimate_possible_instance_of_signal_power(self):
         self._signal_instance_power_options_estimation = np.zeros_like(self._num_of_power_options)
         f_min, f_max = self._signal_area_fraction_boundaries
+        xxx = np.round(np.linspace(f_min, f_max, self._num_of_power_options), 2)
+
         p_max = np.round(self._signal_power / (np.prod(self._data.shape) * f_min), 2)
         p_min = np.round(self._signal_power / (np.prod(self._data.shape) * f_max), 2)
-        power_options = np.round(np.linspace(p_min, p_max, self._num_of_power_options), 2)
+
+        # power_options = np.round(np.linspace(p_min, p_max, self._num_of_power_options), 2)
+        power_options = np.round(self._signal_power / (np.prod(self._data.shape) * xxx), 2)
 
         return power_options
 
@@ -220,10 +226,10 @@ class LengthEstimator2DSeparationMethod:
 
         for i, signal_power in enumerate(self._signal_instance_power_options_estimation):
             expected_num_of_occurrences = self._estimate_num_of_signal_occurrences(signal_length, signal_power)
+
             single_signal_area = np.count_nonzero(self._signal_filter_gen(signal_length, signal_power))
             total_signal_area = single_signal_area * expected_num_of_occurrences
             signal_area_fraction = total_signal_area / np.prod(self._data.shape)
-
             print(f'Calculating likelihood for length={signal_length} and power={signal_power}.'
                   f'Expected occurrences is: {expected_num_of_occurrences},'
                   f'Total area fraction is {signal_area_fraction}')

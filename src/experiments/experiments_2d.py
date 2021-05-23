@@ -11,6 +11,8 @@ from src.algorithms.length_estimator_2d_sep_method import LengthEstimator2DSepar
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.experiments.micrograph import Micrograph, MICROGRAPHS
 
+np.random.seed(500)
+
 
 class EstimationMethod(Enum):
     Curves = 0,
@@ -76,7 +78,7 @@ class Experiment2D:
                                                   length_options=self._signal_length_options,
                                                   signal_area_fraction_boundaries=(.05, .4),
                                                   signal_num_of_occurrences_boundaries=(10, 150),
-                                                  num_of_power_options=7,
+                                                  num_of_power_options=12,
                                                   signal_filter_gen=signal_2d_filter_gen,
                                                   noise_mean=self._noise_mean,
                                                   noise_std=self._noise_std,
@@ -112,7 +114,7 @@ class Experiment2D:
     def save_and_plot(self):
         plt.title(
             f"N={self._rows}, M={self._columns}, D={self._signal_length}, K={self._num_of_occurrences}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
-            f"Signal Power Estimator Method={self._signal_power_estimator_method.name},\n"
+            f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"
             f"Most likely D={self._results['most_likely_length']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
 
         likelihoods = self._results['likelihoods']
@@ -135,7 +137,7 @@ def __main__():
                                signal_length=200,
                                signal_power=1,
                                signal_fraction=1 / 5,
-                               signal_gen=lambda d, p: Shapes2D.ellipse(d, d // 2, p),
+                               signal_gen=lambda d, p: Shapes2D.ellipse(d, int(d / 1.5), p),
                                noise_std=5,
                                noise_mean=0)
 
@@ -145,7 +147,7 @@ def __main__():
         estimation_method=EstimationMethod.WellSeparation,
         name="std-10",
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(50, 251, 20),
+        length_options=np.arange(50, 451, 20),
         plot=True,
         save=False
     ).run()

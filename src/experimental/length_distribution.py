@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from skimage.draw import line, ellipse, disk
+from sklearn.mixture import GaussianMixture
+import math
+import scipy
 
 
 def plot_circle_cut_length_hist(radius):
@@ -8,8 +11,8 @@ def plot_circle_cut_length_hist(radius):
     img = np.zeros((n, n))
     rr, cc = disk((n // 2, n // 2), radius, shape=(n, n))
     img[rr, cc] = 1
-    # plot_cut_length_hist(img, 2 * radius)
-    plot_3_bins_cut_dist(img, 2 * radius)
+    plot_cut_length_hist(img, 2 * radius)
+    # plot_3_bins_cut_dist(img, 2 * radius)
 
 
 def plot_ellipse_cut_length_hist(major_radius, minor_radius):
@@ -26,8 +29,8 @@ def plot_ellipse_cut_length_hist(major_radius, minor_radius):
 
 def plot_cut_length_hist(img, max_cut):
     n = img.shape[0]
-    m = 500
-    num_of_bins = 10
+    m = 1000
+    num_of_bins = 50
     bin_size = max_cut // num_of_bins
     intersections = np.zeros(max_cut // bin_size)
     total_intersection_events = 0
@@ -50,7 +53,8 @@ def plot_cut_length_hist(img, max_cut):
         img[rr, cc] -= 1
 
     normed_intersections = np.array(intersections) / total_intersection_events
-    names = [f'{np.round(i * bin_size / max_cut, 2)}' for i in range(intersections.shape[0])]
+    cuts = [np.round(i * bin_size / max_cut, 2) for i in range(intersections.shape[0])]
+    names = [f'{cut}' for cut in cuts]
 
     avg = (np.sum(
         (np.arange(1, intersections.shape[0] + 1) * bin_size) * intersections) / total_intersection_events) / max_cut
@@ -61,8 +65,20 @@ def plot_cut_length_hist(img, max_cut):
     # plt.bar(names, normed_intersections)
     # plt.show()
 
+    # X = [[cuts[i], normed_intersections[i]] for i in range(len(cuts))]
+    gmm = GaussianMixture(n_components=3)
+    gm = gmm.fit(normed_intersections)
+    print(gm.means_)
+    print(gm.covariances_)
+
+    mu = 0
+    variance = 1
+    sigma = math.sqrt(variance)
+    # x = np.linspace(mu - 3 * sigma, mu + 3 * sigma, 100)
+    plt.plot(cuts, scipy.stats.norm.pdf(cuts, gm.means_[0], gm.covariances_[0]))
+
     plt.title(f'sumed: {avg}')
-    plt.bar(names, np.cumsum(normed_intersections))
+    # plt.bar(names, normed_intersections)
     plt.show()
 
 
@@ -106,8 +122,8 @@ def plot_3_bins_cut_dist(img, max_length, bars=None):
 
 
 def __main__():
-    # plot_circle_cut_length_hist(300)
-    plot_ellipse_cut_length_hist(300, 100)
+    plot_circle_cut_length_hist(300)
+    # plot_ellipse_cut_length_hist(300, 100)
 
 
 if __name__ == '__main__':

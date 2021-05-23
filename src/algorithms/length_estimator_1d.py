@@ -7,7 +7,7 @@ from src.algorithms.utils import log_binomial
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
 
 
-class SignalPowerEstimator(SPE, Enum):
+class SignalPowerEstimator(SPE):
     Exact = "Exact Power"
 
 

@@ -1,10 +1,9 @@
 import numpy as np
-from enum import Enum
 
 
-class SignalPowerEstimator(Enum):
-    FirstMoment = 1
-    SecondMoment = 2
+class SignalPowerEstimator:
+    FirstMoment = "First Moment"
+    SecondMoment = "Second Moment"
 
 
 def estimate_signal_power(data, noise_std, noise_mean, method: SignalPowerEstimator):
