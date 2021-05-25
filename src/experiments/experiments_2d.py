@@ -137,8 +137,8 @@ def __main__():
                                signal_length=200,
                                signal_power=1,
                                signal_fraction=1 / 5,
-                               signal_gen=lambda d, p: Shapes2D.ellipse(d, int(d / 1.5), p),
-                               noise_std=5,
+                               signal_gen=lambda d, p: Shapes2D.disk(d, p),
+                               noise_std=10,
                                noise_mean=0)
 
     Experiment2D(

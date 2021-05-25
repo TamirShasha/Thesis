@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from skimage.draw import line, ellipse, disk
 from sklearn.mixture import GaussianMixture
 import math
-import scipy
+import scipy.stats as stats
 
 
 def plot_circle_cut_length_hist(radius):
@@ -25,6 +25,34 @@ def plot_ellipse_cut_length_hist(major_radius, minor_radius):
     plt.show()
     # plot_cut_length_hist(img, 2 * major_radius)
     plot_3_bins_cut_dist(img, 2 * major_radius)
+
+
+def get_cuts(img, total_cuts):
+    n = img.shape[0]
+    cuts = []
+    m = total_cuts
+
+    while m > 0:
+        sides = np.random.choice(4, 2, replace=False)
+        points = np.array([(0, np.random.randint(n)), (n - 1, np.random.randint(n)),
+                           (np.random.randint(n), 0), (np.random.randint(n), n - 1)])
+        first_point, second_point = points[sides]
+
+        rr, cc = line(first_point[0], first_point[1], second_point[0], second_point[1])
+        img[rr, cc] += 1
+
+        intersection_len = np.sum((img == 2))
+        if intersection_len > 0:
+            cuts.append(intersection_len)
+            m -= 1
+            if m % 1000 == 0:
+                print(m)
+
+        img[rr, cc] -= 1
+
+    cuts = np.array(cuts)
+    cuts = cuts / np.max(cuts)
+    return cuts
 
 
 def plot_cut_length_hist(img, max_cut):
@@ -66,16 +94,16 @@ def plot_cut_length_hist(img, max_cut):
     # plt.show()
 
     # X = [[cuts[i], normed_intersections[i]] for i in range(len(cuts))]
-    gmm = GaussianMixture(n_components=3)
-    gm = gmm.fit(normed_intersections)
+    gmm = GaussianMixture(n_components=1, covariance_type='full')
+    gm = gmm.fit(list(zip(cuts, normed_intersections)))
     print(gm.means_)
-    print(gm.covariances_)
+    print(np.sqrt(gm.covariances_))
 
-    mu = 0
-    variance = 1
-    sigma = math.sqrt(variance)
-    # x = np.linspace(mu - 3 * sigma, mu + 3 * sigma, 100)
-    plt.plot(cuts, scipy.stats.norm.pdf(cuts, gm.means_[0], gm.covariances_[0]))
+    # mu = 0
+    # variance = 1
+    # sigma = math.sqrt(variance)
+    # # x = np.linspace(mu - 3 * sigma, mu + 3 * sigma, 100)
+    # # plt.plot(cuts, scipy.stats.norm.pdf(cuts, gm.means_[0], gm.covariances_[0]))
 
     plt.title(f'sumed: {avg}')
     # plt.bar(names, normed_intersections)
@@ -121,9 +149,36 @@ def plot_3_bins_cut_dist(img, max_length, bars=None):
     plt.show()
 
 
+def circle_img(radius):
+    n = 3 * radius
+    img = np.zeros((n, n))
+    rr, cc = disk((n // 2, n // 2), radius, shape=(n, n))
+    img[rr, cc] = 1
+    return img
+
+
+def gmm_cuts(img, total_cuts=10000):
+    cuts = get_cuts(img, total_cuts).reshape(-1, 1)
+
+    hx, hy, _ = plt.hist(cuts, bins=50, density=1, color="lightblue")
+    plt.title('Gaussian mixture example 01')
+    plt.grid()
+    plt.show()
+
+    gmm = GaussianMixture(n_components=3, covariance_type='full').fit(cuts)
+    print(gmm.means_)
+    print(gmm.covariances_)
+    x = np.linspace(0, 1, 100)
+    for mu, sig in zip(gmm.means_, np.sqrt(gmm.covariances_)):
+        plt.plot(x, stats.norm.pdf(x, mu[0], sig[0][0]))
+    plt.show()
+
+
 def __main__():
-    plot_circle_cut_length_hist(300)
+    # plot_circle_cut_length_hist(300)
     # plot_ellipse_cut_length_hist(300, 100)
+    circle = circle_img(300)
+    gmm_cuts(circle)
 
 
 if __name__ == '__main__':

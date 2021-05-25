@@ -1,33 +1,30 @@
+from sklearn import mixture
+
 import numpy as np
+import matplotlib.pyplot as plt
 
-np.random.seed(501)
+mu_0 = 5.0
+srd_0 = 2.0
 
-# n, d, p, k, noise_std = 1000, 70, 1, 3, 1
-# signal_filter_gen = lambda l: np.full(l, 1)
-#
-# data, pulses = simulate_data(n, d, p, k, noise_std)
-# length_options = np.arange(d // 2, int(d * 1.3), 2)
-# # length_options = [35]
-# ld = [SignalsDistribution(l, [1, 0], [1, 0], signal_filter_gen) for l in length_options]
-# likelihoods, best_ld = LengthExtractorML1D(data, ld, noise_std).extract()
-# print(f'best length dist is: {best_ld.length}')
-#
-# le = LengthExtractor1D(y=data, length_options=length_options, signal_filter_gen=signal_filter_gen, noise_std=noise_std)
-# likelihoods2, d_best = le.extract()
-#
-# plt.plot(length_options, likelihoods2)
-# plt.plot(length_options, likelihoods)
-# plt.show()
+data = np.random.randn(100000)
+data = data * srd_0 + mu_0
 
-# v = LengthExtractorML1D._compute_log_pd(1000, np.array([35, 0]), np.array([6, 0]))
-# print(v)
-#
-# from src.algorithms.utils import log_binomial
-# v2 = log_binomial(1000 - 34*6, 6)
-# print(v2)
+data = data.reshape(-1, 1)
 
-d = 8
-n = 20
+print(data.shape)
 
-for i in np.arange(n - 1, -1, -1):
-    print((np.array([i, i + 1, i + 4, i + 7]) - (n - 1)) % d)
+hx, hy, _ = plt.hist(data, bins=50, density=1, color="lightblue")
+
+plt.ylim(0.0, max(hx) + 0.05)
+plt.title('Gaussian mixture example 01')
+plt.grid()
+
+plt.xlim(mu_0 - 4 * srd_0, mu_0 + 4 * srd_0)
+
+plt.savefig("example_gmm_01.png", bbox_inches='tight')
+plt.show()
+
+gmm = mixture.GaussianMixture(n_components=1, covariance_type='full').fit(data)
+
+print(gmm.means_)
+print(np.sqrt(gmm.covariances_))
