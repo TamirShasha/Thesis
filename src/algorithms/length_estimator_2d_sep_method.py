@@ -7,6 +7,7 @@ from scipy.signal import convolve
 
 from src.algorithms.utils import log_binomial
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
+from src.utils.logger import logger
 
 
 class SignalPowerEstimator(SPE, Enum):
@@ -43,10 +44,10 @@ class LengthEstimator2DSeparationMethod:
 
         self.log_prob_all_noise = self._calc_log_prob_all_is_noise()
         self._signal_power = self._estimate_full_signal_power()
-        print(f'Full signal power: {self._signal_power}')
+        logger.debug(f'Full signal power: {self._signal_power}')
 
         self._signal_instance_power_options_estimation = self._estimate_possible_instance_of_signal_power()
-        print(f'Power options are: {self._signal_instance_power_options_estimation}')
+        logger.info(f'Power options are: {self._signal_instance_power_options_estimation}')
 
         # self._signal_instance_power_options_estimation = [0.46, 0.52, 0.58]
 
@@ -230,7 +231,7 @@ class LengthEstimator2DSeparationMethod:
             single_signal_area = np.count_nonzero(self._signal_filter_gen(signal_length, signal_power))
             total_signal_area = single_signal_area * expected_num_of_occurrences
             signal_area_fraction = total_signal_area / np.prod(self._data.shape)
-            print(f'Calculating likelihood for length={signal_length} and power={signal_power}.'
+            logger.debug(f'Calculating likelihood for length={signal_length} and power={signal_power}.'
                   f'Expected occurrences is: {expected_num_of_occurrences},'
                   f'Total area fraction is {signal_area_fraction}')
 
@@ -239,14 +240,14 @@ class LengthEstimator2DSeparationMethod:
             else:
                 signal_filter = self._signal_filter_gen(signal_length, signal_power)
                 likelihood = self._calc_length_likelihood(signal_filter, expected_num_of_occurrences)
-            print(f'Likelihood = {likelihood}\n')
+            logger.debug(f'Likelihood = {likelihood}\n')
 
             likelihoods[i] = likelihood
 
         toc = time.time()
 
         if self._logs:
-            print(
+            logger.debug(
                 f"For Length={signal_length} took total time of {toc - tic} seconds")
 
         return likelihoods

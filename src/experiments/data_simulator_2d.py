@@ -1,5 +1,6 @@
 import numpy as np
 from skimage.draw import ellipse, disk
+import logging
 
 
 class Shapes2D:
@@ -31,26 +32,6 @@ class Shapes2D:
     @staticmethod
     def square(length, fill_value):
         return np.full((length, length), fill_value)
-
-
-# def simulate_data(shape, signal_generator, signal_shape, occurrences, noise_std, noise_mean, collision_threshold=100):
-#     data = np.zeros(shape)
-#
-#     # add signals
-#     for _ in range(occurrences):
-#         signal = signal_generator()
-#
-#         for t in range(collision_threshold):  # trying to find clean location for new signal, max of threshold times
-#             row = np.random.randint(shape[0] - signal_shape[0])
-#             column = np.random.randint(shape[1] - signal_shape[1])
-#             if np.all(data[row:row + signal_shape[0], column:column + signal_shape[1]] == 0):
-#                 data[row:row + signal_shape[0], column:column + signal_shape[1]] += signal
-#                 break
-#
-#     # add noise
-#     noise = np.random.normal(noise_mean, noise_std, data.shape)
-#
-#     return data + noise
 
 
 class DataSimulator2D:
@@ -91,14 +72,15 @@ class DataSimulator2D:
                     break
 
             if t == self.collision_threshold - 1:
-                print(f'Failed to simulate dataset with {self.occurrences} occurrences. '
+                logging.warning(f'Failed to simulate dataset with {self.occurrences} occurrences. '
                       f'Reduced to {o + 1}')
                 self.occurrences = o + 1
                 break
 
-        print(f'Total signal area fraction is {np.count_nonzero(data) / np.prod(data.shape)}')
+        logging.info(f'Total signal area fraction is {np.count_nonzero(data) / np.prod(data.shape)}\n')
 
         # add noise
+        np.random.seed(10)
         noise = np.random.normal(self.noise_mean, self.noise_std, data.shape)
 
         return data + noise

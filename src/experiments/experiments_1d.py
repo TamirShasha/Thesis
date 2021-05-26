@@ -3,12 +3,15 @@ import matplotlib.pyplot as plt
 import time
 import os
 from src.constants import ROOT_DIR
+import logging
 
 from src.algorithms.utils import create_random_k_tuple_sum_to_n
 from src.experiments.data_simulator_1d import add_pulses, add_gaus_noise
 from src.algorithms.length_estimator_1d import LengthExtractor1D, SignalPowerEstimator
+from src.utils.logger import logger
 
 np.random.seed(500)
+logger.setLevel(logging.INFO)
 
 
 class Experiment:
@@ -51,7 +54,7 @@ class Experiment:
         if signal_filter_gen is None:
             self._signal_filter_gen = self._signal_fn
 
-        print('Arranging data...')
+        logger.info('Arranging data...')
         signal_mask = create_random_k_tuple_sum_to_n(self._n - self._d * self._k, self._k + 1)
         self._clean_y = np.zeros(self._n)
         self._y_with_signals = add_pulses(self._clean_y, signal_mask, self._signal)
