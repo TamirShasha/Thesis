@@ -6,6 +6,7 @@ import itertools
 from src.utils.logsumexp import logsumexp
 
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
+from src.utils.logger import logger
 
 
 class SignalsDistribution:
@@ -159,7 +160,7 @@ class MultipleLengthsEstimator1D:
         # Computing remaining parts of log-likelihood
         log_pd = self._compute_log_pd(n, signals_dist.lengths, self._k, self._signal_separation)
         log_prob_all_noise = self.log_prob_all_noise
-        print(f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{mapping[j, k[0], k[1], k[2]]}')
+        logger.debug(f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{mapping[j, k[0], k[1], k[2]]}')
 
         likelihood = log_pd + log_prob_all_noise + mapping[j, k[0], k[1], k[2]]
         return likelihood
@@ -169,7 +170,7 @@ class MultipleLengthsEstimator1D:
         likelihood = self._estimate_likelihood(len_dist)
         toc = time.time()
 
-        print(f'For d = {len_dist.lengths}, k = {self._k}, took {toc - tic} seconds, likelihood={likelihood}\n')
+        logger.debug(f'For d = {len_dist.lengths}, k = {self._k}, took {toc - tic} seconds, likelihood={likelihood}\n')
 
         return likelihood
 

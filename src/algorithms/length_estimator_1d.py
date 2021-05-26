@@ -1,6 +1,7 @@
 import numpy as np
 import numba as nb
 import time
+import logging
 from enum import Enum
 
 from src.algorithms.utils import log_binomial
@@ -99,7 +100,7 @@ class LengthExtractor1D:
         log_pd = self._compute_log_pd(n, expected_num_of_occurrences, d)
         log_prob_all_noise = self.log_prob_all_noise
         likelihood = log_pd + log_prob_all_noise + mapping[0, expected_num_of_occurrences]
-        print(f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{mapping[0, expected_num_of_occurrences]}')
+        logging.debug(f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{mapping[0, expected_num_of_occurrences]}')
         return likelihood
 
     def _calc_signal_length_likelihood(self, d):
@@ -111,7 +112,7 @@ class LengthExtractor1D:
         toc = time.time()
 
         if self._logs:
-            print(
+            logging.debug(
                 f"For D={d}, likelihood={likelihood}, Expected K={expected_num_of_signal_occurrences}, Time={toc - tic}\n")
 
         return likelihood
