@@ -14,7 +14,7 @@ from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.utils.logger import logger
 
 np.random.seed(500)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 class EstimationMethod(Enum):
@@ -156,9 +156,9 @@ def __main__():
         # mrc=MICROGRAPHS['simple_3'],
         name=f"expy",
         simulator=sim_data,
-        estimation_method=EstimationMethod.Curves,
+        estimation_method=EstimationMethod.WellSeparation,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(20, 451, 10),
+        length_options=np.arange(50, 451, 20),
         plot=False,
         save=True
     ).run()
