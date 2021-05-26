@@ -41,6 +41,9 @@ class Experiment2D:
                  logs=True):
         self._name = name  # Experiment name
         self._signal_power_estimator_method = signal_power_estimator_method
+        self._estimation_method = estimation_method
+        self._data_simulator = simulator
+        self._mrc = mrc
 
         self._plot = plot
         self._save = save
@@ -121,18 +124,35 @@ class Experiment2D:
         return likelihoods
 
     def save_and_plot(self):
+        fig, (mrc, results) = plt.subplots(1, 2)
 
-        plt.title(
-            f"N={self._rows}, M={self._columns}, D={self._signal_length}, K={self._num_of_occurrences}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
-            f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"
-            f"Most likely D={self._results['most_likely_length']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
+        title = f"MRC size=({self._rows}, {self._columns}), " \
+                f"Signal length={self._signal_length}\n"
+
+        if self._mrc is None:
+            title += f"Signal power={self._data_simulator.signal_power}, " \
+                     f"Signal area coverage={int(np.round(self._data_simulator.signal_fraction, 2) * 100)}% \n"
+        else:
+            title += f"MRC={self._mrc}"
+
+        title += f"Noise\u007E\u2115({self._noise_mean}, {self._noise_std}), " \
+                 f"SPE={self._signal_power_estimator_method},\n" \
+                 f"Estimation method={self._estimation_method.name}\n" \
+                 f"Most likely length={self._results['most_likely_length']}, " \
+                 f"Took {int(self._results['total_time'])} seconds"
+        fig.suptitle(title)
+
+        mrc.imshow(self._data, cmap='gray')
 
         likelihoods = self._results['likelihoods']
-        plt.figure(1)
         for i, key in enumerate(likelihoods):
-            plt.plot(self._signal_length_options, likelihoods[key], label=key)
-            plt.legend(loc="upper right")
-        plt.tight_layout()
+            results.plot(self._signal_length_options, likelihoods[key], label=key)
+            results.legend(loc="upper right")
+
+        results.set_xlabel('Lengths')
+        results.set_ylabel('Likelihood')
+
+        fig.tight_layout()
 
         if self._save:
             fig_path = os.path.join(ROOT_DIR,
@@ -159,8 +179,8 @@ def __main__():
         estimation_method=EstimationMethod.WellSeparation,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         length_options=np.arange(50, 451, 20),
-        plot=False,
-        save=True
+        plot=True,
+        save=False
     ).run()
 
 
