@@ -1,24 +1,5 @@
 import numpy as np
 
-from src.utils.memoize import Memoize
-
-
-@Memoize
-def _find_all_signal_mask_combinations(k, n):
-    if k == 1:
-        return np.array([n])
-
-    combinations = []
-    for i in np.arange(n + 1):
-        tmp = _find_all_signal_mask_combinations(k - 1, n - i)
-        combinations.extend(np.column_stack((np.array([[i] * len(tmp)]).T, tmp)))
-    return np.array(combinations)
-
-
-def create_all_signal_mask_combs(signal_size, num_of_bars, size_of_bars):
-    num_of_free_spots = signal_size - num_of_bars * size_of_bars
-    return _find_all_signal_mask_combinations(num_of_bars + 1, num_of_free_spots)
-
 
 def create_random_k_tuple_sum_to_n(n, k):
     """
@@ -67,18 +48,6 @@ def log_binomial(n, k):
     nominator = np.sum(np.log(np.arange(n) + 1))
     denominator = np.sum(np.log(np.arange(k) + 1)) + np.sum(np.log(np.arange(n - k) + 1))
     return nominator - denominator
-
-
-@Memoize
-def _find_all_signal_mask_combinations(k, n):
-    if k == 1:
-        return np.array([n])
-
-    combinations = []
-    for i in np.arange(n + 1):
-        tmp = _find_all_signal_mask_combinations(k - 1, n - i)
-        combinations.extend(np.column_stack((np.array([[i] * len(tmp)]).T, tmp)))
-    return np.array(combinations)
 
 
 def downample_signal(signal, d):
