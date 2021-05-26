@@ -3,6 +3,7 @@ import numba as nb
 import time
 import logging
 from enum import Enum
+import src.algorithms.utils as utils
 
 from src.algorithms.utils import log_binomial
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
@@ -30,7 +31,7 @@ class LengthExtractor1D:
         self._exp_attr = exp_attr
         self._n = self._data.shape[0]
 
-        self.log_prob_all_noise = self._calc_log_prob_all_is_noise()
+        self.log_prob_all_noise = utils.log_prob_all_is_noise(self._data, self._noise_std)
         self._signal_power = self._estimate_full_signal_power()
 
     def _estimate_full_signal_power(self):
@@ -50,54 +51,16 @@ class LengthExtractor1D:
         k = int(np.round(self._signal_power / single_signal_power))
         return k
 
-    def _calc_log_prob_all_is_noise(self):
-        if self._noise_std == 0:
-            return 0
-
-        y = self._data
-        n = y.shape[0]
-        minus_1_over_twice_variance = - 0.5 / self._noise_std ** 2
-        return - n * np.log(self._noise_std * (2 * np.pi) ** 0.5) + minus_1_over_twice_variance * np.sum(np.square(y))
-
-    @staticmethod
-    def _compute_log_pd(data_length, num_of_occurrences, signal_length):
-        """
-        Compute log(1/|S|), where |S| is the number of ways to insert k signals of length d in n spaces in such they are
-        not overlapping.
-        """
-        n_tag = data_length - (signal_length - 1) * num_of_occurrences
-        k_tag = num_of_occurrences
-        return -log_binomial(n_tag, k_tag)
-
-    # @nb.jit
     def _calc_length_likelihood(self, signal_filter, expected_num_of_occurrences):
         y = self._data
         n = self._data.shape[0]
         d = signal_filter.shape[0]
 
-        # Precomputing stuff
-        sum_yx_minus_x_squared = np.zeros(n - d + 1)
-        x_squared = np.square(signal_filter)
-        for i in range(n - d + 1):
-            sum_yx_minus_x_squared[i] = np.sum(x_squared - 2 * signal_filter * y[i:i + d])
-        sum_yx_minus_x_squared *= - 0.5 / self._noise_std ** 2
-
-        # Allocating memory
-        # Default is -inf everywhere as there are many places where the probability is 0 (when i > n - k * d)
-        # when k=0 the probability is 1
-        mapping = np.full((n + 1, expected_num_of_occurrences + 1), -np.inf)
-        mapping[:, 0] = 0
-
-        # Filling values one by one, skipping irrelevant values
-        # We already filled values when k=0 (=0) and when i>n-k*d
-        # Values in  i<(k-curr_k)*d are not used for the computation of mapping[0,k]
-        for curr_k in range(1, expected_num_of_occurrences + 1):
-            for i in range(n - curr_k * d, (expected_num_of_occurrences - curr_k) * d - 1, -1):
-                mapping[i, curr_k] = np.logaddexp(sum_yx_minus_x_squared[i] + mapping[i + d, curr_k - 1],
-                                                  mapping[i + 1, curr_k])
+        sum_yx_minus_x_squared = utils.log_probability_filter_on_each_pixel(y, signal_filter, self._noise_std)
+        mapping = utils.dynamic_programming_1d(n, expected_num_of_occurrences, d, sum_yx_minus_x_squared)
 
         # Computing remaining parts of log-likelihood
-        log_pd = self._compute_log_pd(n, expected_num_of_occurrences, d)
+        log_pd = -utils.log_size_S_1d(n, expected_num_of_occurrences, d)
         log_prob_all_noise = self.log_prob_all_noise
         likelihood = log_pd + log_prob_all_noise + mapping[0, expected_num_of_occurrences]
         logging.debug(f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{mapping[0, expected_num_of_occurrences]}')

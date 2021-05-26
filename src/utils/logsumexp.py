@@ -1,4 +1,5 @@
 import numpy as np
+import numba as nb
 
 
 def logsumexp(a, axis=None, keepdims=False):
@@ -16,3 +17,16 @@ def logsumexp(a, axis=None, keepdims=False):
         a_max = np.squeeze(a_max, axis=axis)
     output += a_max
     return output
+
+
+@nb.jit
+def logsumexp_simple(a):
+    """
+    same as logsumexp but without axis and keepdims options so numba works
+    :param a:
+    :return:
+    """
+    a_max = np.max(a)
+    if a_max == -np.inf:
+        return -np.inf
+    return np.log(np.sum(np.exp(a - a_max))) + a_max

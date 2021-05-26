@@ -145,7 +145,7 @@ def __main__():
         names.append(f'p_{p}')
         likelihoods.append(Experiment(
             name="std-10",
-            n=30000,
+            n=3000,
             d=d,
             signal_fraction=1 / 5,
             length_options=len_ops,
