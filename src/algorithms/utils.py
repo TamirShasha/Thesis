@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.signal import convolve
 import numba as nb
-from src.utils.logsumexp import logsumexp, logsumexp_simple
+from src.utils.logsumexp import logsumexp_simple
 
 
 def create_random_k_tuple_sum_to_n(n, k):
@@ -216,10 +216,10 @@ def dynamic_programming_2d(n, k, d, constants):
     return dynamic_programming_2d_after_pre_compute(n, k, d, pre_compute_per_row_per_k)
 
 
-# @nb.jit
+@nb.jit
 def dynamic_programming_2d_after_pre_compute(n, k, d, constants):
     max_k_in_row = min(n // d, k)
-
+    constants = constants[:, ::-1].copy()
     # Allocating memory
     # Default is -inf everywhere as there are many places where the probability is 0 (when i > n - d)
     # when k=0 the probability is 1
@@ -227,20 +227,10 @@ def dynamic_programming_2d_after_pre_compute(n, k, d, constants):
     mapping[:, 0] = 0
 
     # Filling values one by one, skipping irrelevant values
-    mapping = np.full((n + 1, k + 1), -np.inf)
-    mapping[:, 0] = 0
-    # max_k = curr_k
-    for curr_k in range(1, max_k_in_row):
-        curr_constants = np.flip(constants[:, :curr_k], 1)
+    for curr_k in range(1, k + 1):
+        max_k = min(curr_k, max_k_in_row)
         for i in range(n - d, -1, -1):
-            mapping[i, curr_k] = logsumexp_simple(mapping[i + d, :curr_k] + curr_constants[i])
-            mapping[i, curr_k] = np.logaddexp(mapping[i, curr_k], mapping[i + 1, curr_k])
-
-    max_k = max_k_in_row
-    constants = np.flip(constants, 1)
-    for curr_k in range(max_k_in_row, k + 1):
-        for i in range(n - d, -1, -1):
-            mapping[i, curr_k] = logsumexp_simple(mapping[i + d, curr_k - max_k:curr_k] + constants[i])
+            mapping[i, curr_k] = logsumexp_simple(mapping[i + d, curr_k - max_k:curr_k] + constants[i, -max_k:])
             mapping[i, curr_k] = np.logaddexp(mapping[i, curr_k], mapping[i + 1, curr_k])
 
     return mapping
