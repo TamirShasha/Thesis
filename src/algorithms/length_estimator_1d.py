@@ -1,19 +1,19 @@
 import numpy as np
 import numba as nb
 import time
-import logging
 from enum import Enum
 import src.algorithms.utils as utils
 
 from src.algorithms.utils import log_binomial
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
+from src.utils.logger import logger
 
 
 class SignalPowerEstimator(SPE):
     Exact = "Exact Power"
 
 
-class LengthExtractor1D:
+class LengthEstimator1D:
 
     def __init__(self, data, length_options, noise_std,
                  noise_mean=0,
@@ -56,6 +56,9 @@ class LengthExtractor1D:
         n = self._data.shape[0]
         d = signal_filter.shape[0]
 
+        if n < d * expected_num_of_occurrences:
+            return -np.inf
+
         sum_yx_minus_x_squared = utils.log_probability_filter_on_each_pixel(y, signal_filter, self._noise_std)
         mapping = utils.dynamic_programming_1d(n, expected_num_of_occurrences, d, sum_yx_minus_x_squared)
 
@@ -63,7 +66,8 @@ class LengthExtractor1D:
         log_pd = -utils.log_size_S_1d(n, expected_num_of_occurrences, d)
         log_prob_all_noise = self.log_prob_all_noise
         likelihood = log_pd + log_prob_all_noise + mapping[0, expected_num_of_occurrences]
-        logging.debug(f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{mapping[0, expected_num_of_occurrences]}')
+        logger.debug(
+            f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{mapping[0, expected_num_of_occurrences]}')
         return likelihood
 
     def _calc_signal_length_likelihood(self, d):
@@ -75,7 +79,7 @@ class LengthExtractor1D:
         toc = time.time()
 
         if self._logs:
-            logging.debug(
+            logger.debug(
                 f"For D={d}, likelihood={likelihood}, Expected K={expected_num_of_signal_occurrences}, Time={toc - tic}\n")
 
         return likelihood
