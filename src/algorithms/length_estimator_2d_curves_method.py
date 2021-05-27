@@ -1,7 +1,7 @@
 import numpy as np
 from skimage.draw import line
 
-from src.algorithms.length_estimator_1d import LengthExtractor1D
+from src.algorithms.length_estimator_1d import LengthEstimator1D
 from src.algorithms.multiple_lengths_estimator_1d import MultipleLengthsEstimator1D, CircleCutsDistribution, \
     Ellipse1t2CutsDistribution
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
@@ -35,9 +35,9 @@ class LengthEstimator2DCurvesMethod:
         self._num_of_power_options = num_of_power_options
         self._n = self._data.shape[0]
 
-        self._num_of_curves = 3 * int(np.log(np.max(self._data.shape)))
+        self._num_of_curves = 10 * int(np.log(np.max(self._data.shape)))
         self._curves = self._create_curves(num=self._num_of_curves,
-                                           high_power_selection_factor=100,
+                                           high_power_selection_factor=10,
                                            concat=1)
         logger.info(f'data length: {self._curves.shape[0]} x {self._curves.shape[1]}')
         # print(f'data length: {self._curves.shape[0]} x {self._curves.shape[1]}')
@@ -120,13 +120,15 @@ class LengthEstimator2DCurvesMethod:
     def _estimate_likelihood_for_1d(self, signal_avg_power):
         logger.debug(f'Will average over {self._num_of_curves} runs (curves)')
 
-        filter_gen = lambda l: self._signal_filter_gen(l, signal_avg_power)
+        separation_percentage = 0
+        filter_gen = lambda l: np.concatenate([self._signal_filter_gen(l, signal_avg_power),
+                                               np.zeros(int(l * separation_percentage))])
 
         best_lengths = []
         sum_likelihoods = np.zeros_like(self._length_options)
         for t in range(self._num_of_curves):
             logger.debug(f'At iteration {t}')
-            likelihoods, best_len = LengthExtractor1D(data=self._curves[t],
+            likelihoods, best_len = LengthEstimator1D(data=self._curves[t],
                                                       length_options=self._length_options,
                                                       signal_filter_gen=filter_gen,
                                                       noise_mean=self._noise_mean,

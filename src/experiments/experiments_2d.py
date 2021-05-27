@@ -5,6 +5,7 @@ import os
 from src.constants import ROOT_DIR
 from enum import Enum
 import logging
+from datetime import datetime
 
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
@@ -14,7 +15,7 @@ from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.utils.logger import logger
 
 np.random.seed(500)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 class EstimationMethod(Enum):
@@ -41,6 +42,9 @@ class Experiment2D:
                  logs=True):
         self._name = name  # Experiment name
         self._signal_power_estimator_method = signal_power_estimator_method
+        self._estimation_method = estimation_method
+        self._data_simulator = simulator
+        self._mrc = mrc
 
         self._plot = plot
         self._save = save
@@ -121,22 +125,40 @@ class Experiment2D:
         return likelihoods
 
     def save_and_plot(self):
+        fig, (mrc, results) = plt.subplots(1, 2)
 
-        plt.title(
-            f"N={self._rows}, M={self._columns}, D={self._signal_length}, K={self._num_of_occurrences}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
-            f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"
-            f"Most likely D={self._results['most_likely_length']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
+        title = f"MRC size=({self._rows}, {self._columns}), " \
+                f"Signal length={self._signal_length}\n"
+
+        if self._mrc is None:
+            title += f"Signal power={self._data_simulator.signal_power}, " \
+                     f"Signal area coverage={int(np.round(self._data_simulator.signal_fraction, 2) * 100)}% \n"
+        else:
+            title += f"MRC={self._mrc}"
+
+        title += f"Noise\u007E\u2115({self._noise_mean}, {self._noise_std}), " \
+                 f"SPE={self._signal_power_estimator_method},\n" \
+                 f"Estimation method={self._estimation_method.name}\n" \
+                 f"Most likely length={self._results['most_likely_length']}, " \
+                 f"Took {int(self._results['total_time'])} seconds"
+        fig.suptitle(title)
+
+        mrc.imshow(self._data, cmap='gray')
 
         likelihoods = self._results['likelihoods']
-        plt.figure(1)
         for i, key in enumerate(likelihoods):
-            plt.plot(self._signal_length_options, likelihoods[key], label=key)
-            plt.legend(loc="upper right")
-        plt.tight_layout()
+            results.plot(self._signal_length_options, likelihoods[key], label=key)
+            results.legend(loc="upper right")
+
+        results.set_xlabel('Lengths')
+        results.set_ylabel('Likelihood')
+
+        fig.tight_layout()
 
         if self._save:
+            date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
             fig_path = os.path.join(ROOT_DIR,
-                                    f'src/experiments/plots/{self._name}.png')
+                                    f'src/experiments/plots/{date_time}_{self._name}.png')
             plt.savefig(fname=fig_path)
         if self._plot:
             plt.show()
@@ -156,10 +178,10 @@ def __main__():
         # mrc=MICROGRAPHS['simple_3'],
         name=f"expy",
         simulator=sim_data,
-        estimation_method=EstimationMethod.WellSeparation,
+        estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(50, 451, 20),
-        plot=False,
+        length_options=np.arange(20, 351, 10),
+        plot=True,
         save=True
     ).run()
 

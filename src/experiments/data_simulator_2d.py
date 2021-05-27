@@ -73,7 +73,7 @@ class DataSimulator2D:
 
             if t == self.collision_threshold - 1:
                 logging.warning(f'Failed to simulate dataset with {self.occurrences} occurrences. '
-                      f'Reduced to {o + 1}')
+                                f'Reduced to {o + 1}')
                 self.occurrences = o + 1
                 break
 
