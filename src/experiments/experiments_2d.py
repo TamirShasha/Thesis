@@ -5,6 +5,7 @@ import os
 from src.constants import ROOT_DIR
 from enum import Enum
 import logging
+from datetime import datetime
 
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
@@ -14,7 +15,7 @@ from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.utils.logger import logger
 
 np.random.seed(500)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 class EstimationMethod(Enum):
@@ -155,8 +156,9 @@ class Experiment2D:
         fig.tight_layout()
 
         if self._save:
+            date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
             fig_path = os.path.join(ROOT_DIR,
-                                    f'src/experiments/plots/{self._name}.png')
+                                    f'src/experiments/plots/{date_time}_{self._name}.png')
             plt.savefig(fname=fig_path)
         if self._plot:
             plt.show()
@@ -176,11 +178,11 @@ def __main__():
         # mrc=MICROGRAPHS['simple_3'],
         name=f"expy",
         simulator=sim_data,
-        estimation_method=EstimationMethod.WellSeparation,
+        estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(50, 451, 20),
+        length_options=np.arange(20, 351, 10),
         plot=True,
-        save=False
+        save=True
     ).run()
 
 
