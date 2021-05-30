@@ -35,6 +35,16 @@ def create_random_k_tuple_sum_to_n(n, k):
     return np.array(output)
 
 
+def random_1d_ws_positions(n, k, d):
+    signal_mask = create_random_k_tuple_sum_to_n(n - d * k, k + 1)
+    s_cum = np.cumsum(signal_mask)
+    positions = np.zeros(k)
+    for i in np.arange(s_cum.shape[0] - 1):
+        start = s_cum[i] + d * i
+        positions[i] = start
+    return positions
+
+
 def log_num_k_sums_to_n(n, k):
     """
     Compute the log number of #{k tuples that sum to n}.
@@ -216,7 +226,7 @@ def dynamic_programming_2d(n, k, d, constants):
     return dynamic_programming_2d_after_pre_compute(n, k, d, pre_compute_per_row_per_k)
 
 
-@nb.jit
+# @nb.jit
 def dynamic_programming_2d_after_pre_compute(n, k, d, constants):
     max_k_in_row = min(n // d, k)
     constants = constants[:, ::-1].copy()

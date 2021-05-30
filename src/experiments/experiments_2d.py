@@ -170,9 +170,10 @@ def __main__():
                                signal_length=200,
                                signal_power=1,
                                signal_fraction=1 / 6,
-                               signal_gen=lambda d, p: Shapes2D.ellipse(d, d / 1.5, p),
-                               noise_std=10,
-                               noise_mean=0)
+                               signal_gen=lambda d, p: Shapes2D.disk(d, p),
+                               noise_std=3,
+                               noise_mean=0,
+                               method='VWS')
 
     Experiment2D(
         # mrc=MICROGRAPHS['simple_3'],
