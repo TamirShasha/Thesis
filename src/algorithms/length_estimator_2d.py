@@ -1,12 +1,17 @@
 import numpy as np
 from skimage.draw import line
 import matplotlib.pyplot as plt
+from enum import Enum
 
-from src.algorithms.length_estimator_1d import LengthEstimator1D
-from src.algorithms.multiple_lengths_estimator_1d import MultipleLengthsEstimator1D, CircleCutsDistribution, \
-    Ellipse1t2CutsDistribution
+from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
+from src.algorithms.length_estimator_2d_sep_method import LengthEstimator2DSeparationMethod
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 from src.utils.logger import logger
+
+
+class EstimationMethod(Enum):
+    Curves = 0,
+    WellSeparation = 1
 
 
 class LengthEstimator2D:
@@ -21,6 +26,7 @@ class LengthEstimator2D:
                  noise_mean,
                  noise_std,
                  signal_power_estimator_method,
+                 estimation_method,
                  exp_attr,
                  num_of_power_options=10,
                  logs=True):
@@ -33,6 +39,7 @@ class LengthEstimator2D:
         self._noise_mean = noise_mean
         self._noise_std = noise_std
         self._signal_power_estimator_method = signal_power_estimator_method
+        self._estimation_method = estimation_method
         self._logs = logs
         self._exp_attr = exp_attr
         self._num_of_power_options = num_of_power_options
@@ -110,4 +117,34 @@ class LengthEstimator2D:
         return dpk, mask
 
     def estimate(self):
-        return {}, 0
+        if self._estimation_method == EstimationMethod.Curves:
+            logger.info(f'Estimating signal length using well separation method')
+            length_estimator = \
+                LengthEstimator2DCurvesMethod(data=self._data,
+                                              length_options=self._length_options,
+                                              power_options=self._avg_signal_power_options,
+                                              num_of_occ_estimation=self._dpk,
+                                              tuples_mask=self._dpk_mask,
+                                              signal_filter_gen_1d=self._signal_filter_gen_1d,
+                                              noise_mean=self._noise_mean,
+                                              noise_std=self._noise_std,
+                                              signal_power_estimator_method=self._signal_power_estimator_method,
+                                              exp_attr=self._exp_attr,
+                                              logs=self._logs)
+        else:
+            logger.info(f'Estimating signal length using curves method')
+            # self._length_estimator = LengthEstimator2D(data=self._data,
+            #                                            length_options=self._signal_length_options,
+            #                                            signal_area_fraction_boundaries=signal_area_coverage_boundaries,
+            #                                            signal_num_of_occurrences_boundaries=signal_num_of_occurrences_boundaries,
+            #                                            num_of_power_options=num_of_power_options,
+            #                                            signal_filter_gen_1d=signal_1d_filter_gen,
+            #                                            signal_filter_gen_2d=signal_2d_filter_gen,
+            #                                            noise_mean=self._noise_mean,
+            #                                            noise_std=self._noise_std,
+            #                                            signal_power_estimator_method=signal_power_estimator_method,
+            #                                            exp_attr=self._exp_attr,
+            #                                            logs=self._logs)
+
+        likelihoods, most_likely_length = length_estimator.estimate()
+        return likelihoods, most_likely_length

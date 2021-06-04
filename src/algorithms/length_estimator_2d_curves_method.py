@@ -13,26 +13,26 @@ class LengthEstimator2DCurvesMethod:
     def __init__(self,
                  data,
                  length_options,
-                 signal_filter_gen,
-                 signal_area_fraction_boundaries,
-                 signal_num_of_occurrences_boundaries,
+                 power_options,
+                 num_of_occ_estimation,
+                 tuples_mask,
+                 signal_filter_gen_1d,
                  noise_mean,
                  noise_std,
                  signal_power_estimator_method,
                  exp_attr,
-                 num_of_power_options=10,
                  logs=True):
         self._data = data
         self._length_options = length_options
-        self._signal_filter_gen = signal_filter_gen
-        self._signal_area_fraction_boundaries = signal_area_fraction_boundaries
-        self._signal_num_of_occurrences_boundaries = signal_num_of_occurrences_boundaries
+        self._signal_filter_gen = signal_filter_gen_1d
+        self._power_options = power_options
+        self._num_of_occ_estimation = num_of_occ_estimation
+        self._tuples_mask = tuples_mask
         self._noise_mean = noise_mean
         self._noise_std = noise_std
         self._signal_power_estimator_method = signal_power_estimator_method
         self._logs = logs
         self._exp_attr = exp_attr
-        self._num_of_power_options = num_of_power_options
         self._n = self._data.shape[0]
 
         # self._num_of_curves = 10 * int(np.square(self._noise_std)) * int(np.log(np.max(self._data.shape)))
@@ -41,18 +41,6 @@ class LengthEstimator2DCurvesMethod:
                                            high_power_selection_factor=10,
                                            concat=1)
         logger.info(f'data length: {self._curves.shape[0]} x {self._curves.shape[1]}')
-        # print(f'data length: {self._curves.shape[0]} x {self._curves.shape[1]}')
-
-        self._signal_power = estimate_signal_power(self._data, self._noise_std, self._noise_mean,
-                                                   method=self._signal_power_estimator_method)
-        if self._signal_power < 0:
-            self._data = -self._data
-            self._signal_power = estimate_signal_power(self._data, self._noise_std, self._noise_mean,
-                                                       method=self._signal_power_estimator_method)
-        logger.info(f'Full signal power: {self._signal_power}')
-
-        self._avg_signal_power_options = self._estimate_avg_signal_power_options()
-        logger.info(f'Avg signal power options: {self._avg_signal_power_options}\n')
 
     def _rows_curves(self, jump=None):
         mat = self._data
@@ -94,13 +82,6 @@ class LengthEstimator2DCurvesMethod:
             top_curves = np.array(curves)[np.argsort(curves_powers)[-num * concat:]]
             top_concatenated_curves = np.array([np.concatenate(x) for x in np.split(top_curves, num)])
             return top_concatenated_curves
-
-    def _estimate_avg_signal_power_options(self):
-        self._signal_instance_power_options_estimation = np.zeros_like(self._num_of_power_options)
-        f_min, f_max = self._signal_area_fraction_boundaries
-        area_coverage = np.round(np.linspace(f_min, f_max, self._num_of_power_options), 2)
-        power_options = np.round(self._signal_power / (np.prod(self._data.shape) * area_coverage), 2)
-        return power_options
 
     def _estimate_likelihood_of_distribution(self, signals_distributions, sep=0):
         logger.debug(f'Will average over {self._num_of_curves} runs (curves)')
@@ -155,8 +136,8 @@ class LengthEstimator2DCurvesMethod:
         if 'circle' in distributions:
             logger.info(f'Running for circle distribution')
 
-            likelihoods_circle = np.zeros(shape=(len(self._avg_signal_power_options), len(self._length_options)))
-            for i, power in enumerate(self._avg_signal_power_options):
+            likelihoods_circle = np.zeros(shape=(len(self._power_options), len(self._length_options)))
+            for i, power in enumerate(self._power_options):
                 logger.debug(f'Calculating likelihood for power={power}')
                 filter_gen = lambda l: self._signal_filter_gen(l, power)
                 signals_distributions = [CircleCutsDistribution(length=l, filter_gen=filter_gen)
@@ -169,8 +150,8 @@ class LengthEstimator2DCurvesMethod:
         if 'ellipse12' in distributions:
             logger.info(f'Running for ellipse 1:2 distribution')
 
-            likelihoods_ellipse12 = np.zeros(shape=(len(self._avg_signal_power_options), len(self._length_options)))
-            for i, power in enumerate(self._avg_signal_power_options):
+            likelihoods_ellipse12 = np.zeros(shape=(len(self._power_options), len(self._length_options)))
+            for i, power in enumerate(self._power_options):
                 filter_gen = lambda l: self._signal_filter_gen(l, power)
                 signals_distributions = [Ellipse1t2CutsDistribution(length=l, filter_gen=filter_gen)
                                          for l in self._length_options]
@@ -182,8 +163,8 @@ class LengthEstimator2DCurvesMethod:
         if '1d' in distributions:
             logger.info('Running for 1d')
 
-            likelihoods_1d = np.zeros(shape=(len(self._avg_signal_power_options), len(self._length_options)))
-            for i, power in enumerate(self._avg_signal_power_options):
+            likelihoods_1d = np.zeros(shape=(len(self._power_options), len(self._length_options)))
+            for i, power in enumerate(self._power_options):
                 logger.info(f'Running for 1d, power={power}')
                 one_d_likelihoods, one_d_best_lengths = self._estimate_likelihood_for_1d(power)
                 likelihoods_1d[i] = one_d_likelihoods

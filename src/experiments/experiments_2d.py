@@ -11,17 +11,12 @@ from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
 from src.algorithms.length_estimator_2d_sep_method import LengthEstimator2DSeparationMethod
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
-from src.algorithms.length_estimator_2d import LengthEstimator2D
+from src.algorithms.length_estimator_2d import LengthEstimator2D, EstimationMethod
 from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.utils.logger import logger
 
 np.random.seed(500)
-logger.setLevel(logging.DEBUG)
-
-
-class EstimationMethod(Enum):
-    Curves = 0,
-    WellSeparation = 1
+logger.setLevel(logging.INFO)
 
 
 class Experiment2D:
@@ -82,34 +77,49 @@ class Experiment2D:
         # plt.imshow(self._data, cmap='gray')
         # plt.show()
 
-        if estimation_method == EstimationMethod.WellSeparation:
-            logger.info(f'Estimating signal length using well separation method')
-            self._length_estimator = \
-                LengthEstimator2DSeparationMethod(data=self._data,
-                                                  length_options=self._signal_length_options,
-                                                  signal_area_fraction_boundaries=signal_area_coverage_boundaries,
-                                                  signal_num_of_occurrences_boundaries=signal_num_of_occurrences_boundaries,
-                                                  num_of_power_options=num_of_power_options,
-                                                  signal_filter_gen=signal_2d_filter_gen,
-                                                  noise_mean=self._noise_mean,
-                                                  noise_std=self._noise_std,
-                                                  signal_power_estimator_method=signal_power_estimator_method,
-                                                  exp_attr=self._exp_attr,
-                                                  logs=self._logs)
-        else:
-            logger.info(f'Estimating signal length using curves method')
-            self._length_estimator = LengthEstimator2D(data=self._data,
-                                                       length_options=self._signal_length_options,
-                                                       signal_area_fraction_boundaries=signal_area_coverage_boundaries,
-                                                       signal_num_of_occurrences_boundaries=signal_num_of_occurrences_boundaries,
-                                                       num_of_power_options=num_of_power_options,
-                                                       signal_filter_gen_1d=signal_1d_filter_gen,
-                                                       signal_filter_gen_2d=signal_2d_filter_gen,
-                                                       noise_mean=self._noise_mean,
-                                                       noise_std=self._noise_std,
-                                                       signal_power_estimator_method=signal_power_estimator_method,
-                                                       exp_attr=self._exp_attr,
-                                                       logs=self._logs)
+        self._length_estimator = LengthEstimator2D(data=self._data,
+                                                   length_options=self._signal_length_options,
+                                                   signal_area_fraction_boundaries=signal_area_coverage_boundaries,
+                                                   signal_num_of_occurrences_boundaries=signal_num_of_occurrences_boundaries,
+                                                   num_of_power_options=num_of_power_options,
+                                                   signal_filter_gen_1d=signal_1d_filter_gen,
+                                                   signal_filter_gen_2d=signal_2d_filter_gen,
+                                                   noise_mean=self._noise_mean,
+                                                   noise_std=self._noise_std,
+                                                   signal_power_estimator_method=signal_power_estimator_method,
+                                                   estimation_method=estimation_method,
+                                                   exp_attr=self._exp_attr,
+                                                   logs=self._logs)
+
+        # if estimation_method == EstimationMethod.WellSeparation:
+        #     logger.info(f'Estimating signal length using well separation method')
+        #     self._length_estimator = \
+        #         LengthEstimator2DSeparationMethod(data=self._data,
+        #                                           length_options=self._signal_length_options,
+        #                                           signal_area_fraction_boundaries=signal_area_coverage_boundaries,
+        #                                           signal_num_of_occurrences_boundaries=signal_num_of_occurrences_boundaries,
+        #                                           num_of_power_options=num_of_power_options,
+        #                                           signal_filter_gen=signal_2d_filter_gen,
+        #                                           noise_mean=self._noise_mean,
+        #                                           noise_std=self._noise_std,
+        #                                           signal_power_estimator_method=signal_power_estimator_method,
+        #                                           exp_attr=self._exp_attr,
+        #                                           logs=self._logs)
+        # else:
+        #     logger.info(f'Estimating signal length using curves method')
+        #     self._length_estimator = LengthEstimator2D(data=self._data,
+        #                                                length_options=self._signal_length_options,
+        #                                                signal_area_fraction_boundaries=signal_area_coverage_boundaries,
+        #                                                signal_num_of_occurrences_boundaries=signal_num_of_occurrences_boundaries,
+        #                                                num_of_power_options=num_of_power_options,
+        #                                                signal_filter_gen_1d=signal_1d_filter_gen,
+        #                                                signal_filter_gen_2d=signal_2d_filter_gen,
+        #                                                noise_mean=self._noise_mean,
+        #                                                noise_std=self._noise_std,
+        #                                                signal_power_estimator_method=signal_power_estimator_method,
+        #                                                estimation_method=estimation_method,
+        #                                                exp_attr=self._exp_attr,
+        #                                                logs=self._logs)
 
     def run(self):
         start_time = time.time()
@@ -183,6 +193,7 @@ def __main__():
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         length_options=np.arange(100, 451, 10),
+        signal_area_coverage_boundaries=(0.05, 0.2),
         plot=True,
         save=True
     ).run()
