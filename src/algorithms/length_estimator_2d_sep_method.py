@@ -45,6 +45,10 @@ class LengthEstimator2DSeparationMethod:
 
         self.log_prob_all_noise = utils.log_prob_all_is_noise(self._data, self._noise_std)
         self._signal_power = self._estimate_full_signal_power()
+        if self._signal_power < 0:
+            self._data = -self._data
+            self._signal_power = estimate_signal_power(self._data, self._noise_std, self._noise_mean,
+                                                       method=self._signal_power_estimator_method)
         logger.debug(f'Full signal power: {self._signal_power}')
 
         self._signal_instance_power_options_estimation = self._estimate_possible_instance_of_signal_power()
@@ -61,7 +65,7 @@ class LengthEstimator2DSeparationMethod:
         p_min = np.round(self._signal_power / (np.prod(self._data.shape) * f_max), 2)
 
         # power_options = np.round(np.linspace(p_min, p_max, self._num_of_power_options), 2)
-        power_options = np.round(self._signal_power / (np.prod(self._data.shape) * xxx), 2)
+        power_options = np.round(self._signal_power / (np.prod(self._data.shape) * xxx), 4)
 
         return power_options
 
@@ -120,8 +124,8 @@ class LengthEstimator2DSeparationMethod:
             total_signal_area = single_signal_area * expected_num_of_occurrences
             signal_area_fraction = total_signal_area / np.prod(self._data.shape)
             logger.debug(f'Calculating likelihood for length={signal_length} and power={signal_power}.'
-                  f'Expected occurrences is: {expected_num_of_occurrences},'
-                  f'Total area fraction is {signal_area_fraction}')
+                         f'Expected occurrences is: {expected_num_of_occurrences},'
+                         f'Total area fraction is {signal_area_fraction}')
 
             if expected_num_of_occurrences < min_occurrences or expected_num_of_occurrences > max_occurrences:
                 likelihood = -np.inf

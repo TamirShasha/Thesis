@@ -15,7 +15,7 @@ from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.utils.logger import logger
 
 np.random.seed(500)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 class EstimationMethod(Enum):
@@ -169,18 +169,18 @@ def __main__():
                                columns=2000,
                                signal_length=200,
                                signal_power=1,
-                               signal_fraction=1 / 6,
+                               signal_fraction=1 / 5,
                                signal_gen=lambda d, p: Shapes2D.disk(d, p),
-                               noise_std=3,
+                               noise_std=5,
                                noise_mean=0)
 
     Experiment2D(
-        # mrc=MICROGRAPHS['simple_3'],
+        mrc=MICROGRAPHS['whitened002'],
         name=f"expy",
-        simulator=sim_data,
-        estimation_method=EstimationMethod.Curves,
+        # simulator=sim_data,
+        estimation_method=EstimationMethod.WellSeparation,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(20, 351, 10),
+        length_options=np.arange(100, 251, 50),
         plot=True,
         save=True
     ).run()

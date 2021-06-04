@@ -35,7 +35,8 @@ class LengthEstimator2DCurvesMethod:
         self._num_of_power_options = num_of_power_options
         self._n = self._data.shape[0]
 
-        self._num_of_curves = 10 * int(np.log(np.max(self._data.shape)))
+        # self._num_of_curves = 10 * int(np.square(self._noise_std)) * int(np.log(np.max(self._data.shape)))
+        self._num_of_curves = 100 * int(np.log(np.max(self._data.shape)))
         self._curves = self._create_curves(num=self._num_of_curves,
                                            high_power_selection_factor=10,
                                            concat=1)
@@ -44,7 +45,11 @@ class LengthEstimator2DCurvesMethod:
 
         self._signal_power = estimate_signal_power(self._data, self._noise_std, self._noise_mean,
                                                    method=self._signal_power_estimator_method)
-        logger.debug(f'Full signal power: {self._signal_power}')
+        if self._signal_power < 0:
+            self._data = -self._data
+            self._signal_power = estimate_signal_power(self._data, self._noise_std, self._noise_mean,
+                                                       method=self._signal_power_estimator_method)
+        logger.info(f'Full signal power: {self._signal_power}')
 
         self._avg_signal_power_options = self._estimate_avg_signal_power_options()
         logger.info(f'Avg signal power options: {self._avg_signal_power_options}\n')

@@ -34,10 +34,12 @@ def read_mrc(file_path):
 
 
 # import matplotlib.pyplot as plt
-#
-# file_path = '../../../data/clean_one.mrc'
+
+# file_path = '../../../data/002white.mat'
 # x = read_mrc(file_path)
+# x = mat_to_npy(file_path)
 # x = x + np.random.normal(0, 20, x.shape)
-# write_mrc('../../../data/clean_one_std_20.mrc', x)
-# plt.imshow(x, cmap='gray')
+# write_mrc('../../../data/002white.mrc', x)
+# y = read_mrc('../../../data/002white.mrc')
+# plt.imshow(y, cmap='gray')
 # plt.show()
