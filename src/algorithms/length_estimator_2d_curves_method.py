@@ -15,7 +15,7 @@ class LengthEstimator2DCurvesMethod:
                  length_options,
                  power_options,
                  num_of_occ_estimation,
-                 tuples_mask,
+                 num_of_occ_estimation_mask,
                  signal_filter_gen_1d,
                  noise_mean,
                  noise_std,
@@ -27,7 +27,7 @@ class LengthEstimator2DCurvesMethod:
         self._signal_filter_gen = signal_filter_gen_1d
         self._power_options = power_options
         self._num_of_occ_estimation = num_of_occ_estimation
-        self._tuples_mask = tuples_mask
+        self._tuples_mask = num_of_occ_estimation_mask
         self._noise_mean = noise_mean
         self._noise_std = noise_std
         self._signal_power_estimator_method = signal_power_estimator_method
@@ -38,7 +38,7 @@ class LengthEstimator2DCurvesMethod:
         # self._num_of_curves = 10 * int(np.square(self._noise_std)) * int(np.log(np.max(self._data.shape)))
         self._num_of_curves = 100 * int(np.log(np.max(self._data.shape)))
         self._curves = self._create_curves(num=self._num_of_curves,
-                                           high_power_selection_factor=10,
+                                           high_power_selection_factor=2,
                                            concat=1)
         logger.info(f'data length: {self._curves.shape[0]} x {self._curves.shape[1]}')
 
@@ -103,32 +103,44 @@ class LengthEstimator2DCurvesMethod:
 
         return likelihoods, best_lengths
 
-    def _estimate_likelihood_for_1d(self, signal_avg_power):
+    def _estimate_likelihood_for_1d(self, signal_avg_power, lengths_mask):
         logger.debug(f'Will average over {self._num_of_curves} runs (curves)')
 
         separation_percentage = 0
         filter_gen = lambda l: np.concatenate([self._signal_filter_gen(l, signal_avg_power),
                                                np.zeros(int(l * separation_percentage))])
 
+        length_options = self._length_options[lengths_mask]
+
+        non_inf_threshold = 0.3
         best_lengths = []
-        sum_likelihoods = np.zeros_like(self._length_options)
+        non_inf_count = np.zeros_like(length_options)
+        sum_likelihoods = np.zeros_like(length_options, dtype=float)
         for t in range(self._num_of_curves):
             logger.debug(f'At iteration {t}')
             likelihoods, best_len = LengthEstimator1D(data=self._curves[t],
-                                                      length_options=self._length_options,
+                                                      length_options=length_options,
                                                       signal_filter_gen=filter_gen,
                                                       noise_mean=self._noise_mean,
                                                       noise_std=self._noise_std,
                                                       signal_power_estimator_method=self._signal_power_estimator_method,
                                                       exp_attr=self._exp_attr,
                                                       logs=self._logs).estimate()
-            sum_likelihoods = sum_likelihoods + likelihoods
-            curr_best_length = self._length_options[np.argmax(sum_likelihoods / (t + 1))]
+
+            non_inf_count += np.where(likelihoods == -np.inf, 0, 1)
+            sum_likelihoods += np.where(likelihoods == -np.inf, 0, likelihoods)
+            # sum_likelihoods = sum_likelihoods + likelihoods
+            curr_best_length = length_options[np.argmax(sum_likelihoods / (t + 1))]
             best_lengths.append(curr_best_length)
 
-        likelihoods = sum_likelihoods / self._num_of_curves
+        # likelihoods = sum_likelihoods / self._num_of_curves
+        likelihoods = sum_likelihoods / non_inf_count
+        likelihoods[non_inf_count / self._num_of_curves < non_inf_threshold] = -np.inf
 
-        return likelihoods, best_lengths
+        full_likelihoods = np.full_like(self._length_options, fill_value=-np.inf, dtype=float)
+        full_likelihoods[lengths_mask] = likelihoods
+
+        return full_likelihoods, best_lengths
 
     def estimate(self, distributions=('1d')):
         likelihoods = dict()
@@ -166,10 +178,12 @@ class LengthEstimator2DCurvesMethod:
             likelihoods_1d = np.zeros(shape=(len(self._power_options), len(self._length_options)))
             for i, power in enumerate(self._power_options):
                 logger.info(f'Running for 1d, power={power}')
-                one_d_likelihoods, one_d_best_lengths = self._estimate_likelihood_for_1d(power)
+                one_d_likelihoods, one_d_best_lengths = self._estimate_likelihood_for_1d(power, self._tuples_mask[i])
                 likelihoods_1d[i] = one_d_likelihoods
+                # likelihoods[f'1d_{power}'] = one_d_likelihoods
 
             likelihoods['1d'] = np.max(likelihoods_1d, 0)
 
         most_likely_length = self._length_options[np.argmax(likelihoods['1d'])]
+        # most_likely_length = 0
         return likelihoods, most_likely_length
