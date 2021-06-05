@@ -62,7 +62,8 @@ class LengthEstimator1D:
         # Computing remaining parts of log-likelihood
         log_pd = -utils.log_size_S_1d(n, expected_num_of_occurrences, d)
         log_prob_all_noise = self.log_prob_all_noise
-        likelihood = log_pd + log_prob_all_noise + mapping[0, expected_num_of_occurrences]
+        # likelihood = log_pd + log_prob_all_noise + mapping[0, expected_num_of_occurrences]
+        likelihood = log_pd + mapping[0, expected_num_of_occurrences]
         logger.debug(
             f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{mapping[0, expected_num_of_occurrences]}')
         return likelihood
@@ -84,4 +85,4 @@ class LengthEstimator1D:
     def estimate(self):
         likelihoods = [self._calc_signal_length_likelihood(d) for d in self._length_options]
         max_likelihood_length = self._length_options[np.argmax(likelihoods)]
-        return likelihoods, max_likelihood_length
+        return np.array(likelihoods), max_likelihood_length
