@@ -1,5 +1,4 @@
 import numpy as np
-from skimage.draw import line
 import matplotlib.pyplot as plt
 from enum import Enum
 

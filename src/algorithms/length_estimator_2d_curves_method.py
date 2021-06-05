@@ -129,11 +129,9 @@ class LengthEstimator2DCurvesMethod:
 
             non_inf_count += np.where(likelihoods == -np.inf, 0, 1)
             sum_likelihoods += np.where(likelihoods == -np.inf, 0, likelihoods)
-            # sum_likelihoods = sum_likelihoods + likelihoods
             curr_best_length = length_options[np.argmax(sum_likelihoods / (t + 1))]
             best_lengths.append(curr_best_length)
 
-        # likelihoods = sum_likelihoods / self._num_of_curves
         likelihoods = sum_likelihoods / non_inf_count
         likelihoods[non_inf_count / self._num_of_curves < non_inf_threshold] = -np.inf
 
