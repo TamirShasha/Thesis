@@ -36,7 +36,7 @@ class LengthEstimator2DCurvesMethod:
         self._n = self._data.shape[0]
 
         # self._num_of_curves = 10 * int(np.square(self._noise_std)) * int(np.log(np.max(self._data.shape)))
-        self._num_of_curves = 100 * int(np.log(np.max(self._data.shape)))
+        self._num_of_curves = 200 * int(np.log(np.max(self._data.shape)))
         self._curves = self._create_curves(num=self._num_of_curves,
                                            high_power_selection_factor=2,
                                            concat=1)

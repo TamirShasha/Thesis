@@ -2,6 +2,7 @@ import numpy as np
 from skimage.draw import ellipse, disk
 from src.algorithms.utils import dynamic_programming_2d, log_size_S_1d, random_1d_ws_positions
 import logging
+import matplotlib.pyplot as plt
 
 
 class Shapes2D:
@@ -34,10 +35,36 @@ class Shapes2D:
     def square(length, fill_value):
         return np.full((length, length), fill_value)
 
+    @staticmethod
+    def gaussian(length, sigma):
+        x = np.linspace(-1, 1, length)
+        y = np.linspace(-1, 1, length)
+        X, Y = np.meshgrid(x, y)
+        term1 = 1 / (2 * np.pi * np.square(sigma))
+        term2 = np.square(X / sigma) + np.square(Y / sigma)
+        signal = term1 * np.exp(-term2 / 2)
+        # signal2 = np.square(X / sigma) + np.square(Y / sigma)
+        # signal2 = np.sqrt(np.max(signal2) - signal2)
+        return signal
+
+    @staticmethod
+    def double_disk(large_diam, small_diam, fill_value_large, fill_value_small):
+        signal = np.zeros(shape=(large_diam, large_diam))
+
+        r, c = large_diam // 2, large_diam // 2
+        rr, cc = disk((r, c), large_diam // 2)
+        signal[rr, cc] = fill_value_large
+
+        rr, cc = disk((r, c), small_diam // 2)
+        signal[rr, cc] = fill_value_small
+
+        return signal
+
 
 class DataSimulator2D:
     def __init__(self, rows=2000, columns=2000, signal_length=100, signal_power=1, signal_fraction=1 / 6,
-                 signal_gen=lambda d, p: Shapes2D.disk(d, p), noise_std=3, noise_mean=0, method='BF', collision_threshold=100):
+                 signal_gen=lambda d, p: Shapes2D.disk(d, p), noise_std=3, noise_mean=0, method='BF',
+                 collision_threshold=100):
         self.rows = rows
         self.columns = columns
         self.signal_fraction = signal_fraction
@@ -78,12 +105,8 @@ class DataSimulator2D:
             for t in range(self.collision_threshold):  # trying to find clean location for new signal, max of threshold
                 row = np.random.randint(self.rows - self.signal_shape[0])
                 column = np.random.randint(self.columns - self.signal_shape[1])
-                # first insert the signal
-                data[row:row + self.signal_shape[0], column:column + self.signal_shape[1]] += signal
-                # second, check if collision has occurred, if so, remove the signal, if not, continue to next
-                if np.any(data == 2 * self.signal_power):
-                    data[row:row + self.signal_shape[0], column:column + self.signal_shape[1]] -= signal
-                else:
+                if np.all(data[row:row + self.signal_shape[0], column:column + self.signal_shape[1]] == 0):
+                    data[row:row + self.signal_shape[0], column:column + self.signal_shape[1]] += signal
                     break
 
             if t == self.collision_threshold - 1:
