@@ -62,6 +62,9 @@ class Experiment2D:
         self._rows = self._data.shape[0]
         self._columns = self._data.shape[1]
 
+        plt.imshow(self._data, cmap='gray')
+        plt.show()
+
         if length_options is None:
             length_options = np.arange(self._signal_length // 4, int(self._signal_length), 10)
         self._signal_length_options = length_options
@@ -146,20 +149,20 @@ class Experiment2D:
 def __main__():
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
-                               signal_length=200,
+                               signal_length=250,
                                signal_power=1,
-                               signal_fraction=1 / 5,
-                               signal_gen=lambda d, p: Shapes2D.disk(d, p),
+                               signal_fraction=1 / 6,
+                               signal_gen=lambda d, p: Shapes2D.double_disk(d, d // 2, p, 2 * p),
                                noise_std=5,
                                noise_mean=0)
 
     Experiment2D(
-        # mrc=MICROGRAPHS['whitened002'],
+        # mrc=MICROGRAPHS['whitened002_x10'],
         name=f"expy",
         simulator=sim_data,
-        estimation_method=EstimationMethod.WellSeparation,
+        estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(10, 100, 10),
+        length_options=np.arange(50, 400, 10),
         signal_num_of_occurrences_boundaries=(20, 200),
         signal_area_coverage_boundaries=(0.05, 0.3),
         num_of_power_options=10,
