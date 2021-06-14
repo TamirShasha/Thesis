@@ -10,6 +10,7 @@ from datetime import datetime
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
 from src.algorithms.length_estimator_2d_sep_method import LengthEstimator2DSeparationMethod
+from src.algorithms.length_estimator_2d_ws_method import LengthEstimator2DWellSeparated
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.utils.logger import logger
@@ -78,8 +79,10 @@ class Experiment2D:
             "k": self._num_of_occurrences,
         }
 
-        # plt.imshow(self._data, cmap='gray')
-        # plt.show()
+        for _ in range(10):
+            plt.imshow(self._data, cmap='gray')
+            plt.show()
+            self._data = simulator.simulate()
 
         if estimation_method == EstimationMethod.WellSeparation:
             logger.info(f'Estimating signal length using well separation method')

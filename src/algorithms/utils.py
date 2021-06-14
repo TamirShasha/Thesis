@@ -226,7 +226,7 @@ def dynamic_programming_2d(n, k, d, constants):
     return dynamic_programming_2d_after_pre_compute(n, k, d, pre_compute_per_row_per_k)
 
 
-# @nb.jit
+@nb.jit
 def dynamic_programming_2d_after_pre_compute(n, k, d, constants):
     max_k_in_row = min(n // d, k)
     constants = constants[:, ::-1].copy()
@@ -242,5 +242,47 @@ def dynamic_programming_2d_after_pre_compute(n, k, d, constants):
         for i in range(n - d, -1, -1):
             mapping[i, curr_k] = logsumexp_simple(mapping[i + d, curr_k - max_k:curr_k] + constants[i, -max_k:])
             mapping[i, curr_k] = np.logaddexp(mapping[i, curr_k], mapping[i + 1, curr_k])
+
+    return mapping
+
+
+def dynamic_programming_2d_well_separated(n, k, d, constants):
+    max_k_in_row = min(n // d, k)
+    constants_both_axis = np.row_stack([constants, constants.T])
+    pre_compute = dynamic_programming_1d_many(n, max_k_in_row, d, constants_both_axis)
+
+    constant_rows = pre_compute[:n - d + 1, :n - d + 1].copy()
+    constant_cols = pre_compute[n - d + 1:, :n - d + 1].transpose((1, 0, 2)).copy()
+
+    # Allocating memory
+    # Default is -inf everywhere as there are many places where the probability is 0 (when i > n - k * d)
+    # when k=0 the probability is 1
+    mapping = np.full((n + 1, n + 1, k + 1), -np.inf)
+    mapping[:, :, 0] = 0
+
+    for curr_k in range(1, k + 1):
+        for i in range(n - d, -1, -1):
+            print('{}/{}'.format(curr_k, k), '{}/{}'.format(n - d - i, n - d))
+            max_k = min(curr_k, (n - i) // d)
+            row_pre_compute = logsumexp_simple(mapping[i + d, i, curr_k - max_k:curr_k] + constant_rows[i, i, -max_k:])
+            col_pre_compute = logsumexp_simple(mapping[i, i + d, curr_k - max_k:curr_k] + constant_cols[i, i, -max_k:])
+            mapping[i, i, curr_k] = logsumexp_simple([mapping[i + 1, i, curr_k], mapping[i, i + 1, curr_k],
+                                                  row_pre_compute, col_pre_compute])
+            for r in range(i - 1, -1, -1):
+                max_k_in_col = min(curr_k, (n - r) // d)
+                row_pre_compute = logsumexp_simple(
+                    mapping[r + d, i, curr_k - max_k:curr_k] + constant_rows[r, i, -max_k:])
+                col_pre_compute = logsumexp_simple(
+                    mapping[r, i + d, curr_k - max_k_in_col:curr_k] + constant_cols[r, i, -max_k_in_col:])
+                mapping[r, i, curr_k] = logsumexp_simple([mapping[r + 1, i, curr_k], mapping[r, i + 1, curr_k],
+                                                      row_pre_compute, col_pre_compute])
+            for c in range(i - 1, -1, -1):
+                max_k_in_row = min(curr_k, (n - c) // d)
+                row_pre_compute = logsumexp_simple(
+                    mapping[i + d, c, curr_k - max_k_in_row:curr_k] + constant_rows[i, c, -max_k_in_row:])
+                col_pre_compute = logsumexp_simple(
+                    mapping[i, c + d, curr_k - max_k:curr_k] + constant_cols[i, c, -max_k:])
+                mapping[i, c, curr_k] = logsumexp_simple([mapping[i + 1, c, curr_k], mapping[i, c + 1, curr_k],
+                                                      row_pre_compute, col_pre_compute])
 
     return mapping
