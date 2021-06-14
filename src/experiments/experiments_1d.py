@@ -4,6 +4,7 @@ import time
 import os
 from src.constants import ROOT_DIR
 import logging
+from datetime import datetime
 
 from src.algorithms.utils import create_random_k_tuple_sum_to_n
 from src.experiments.data_simulator_1d import add_pulses, add_gaus_noise
@@ -30,6 +31,7 @@ class Experiment:
                  length_options=None,
                  plot=True,
                  save=True,
+                 save_dir=os.path.join(ROOT_DIR, f'src/experiments/plots/'),
                  logs=True):
         self._name = name
         self._signal_fn = signal_fn
@@ -44,6 +46,7 @@ class Experiment:
 
         self._plot = plot
         self._save = save
+        self._save_dir = save_dir
         self._logs = logs
         self._results = {}
 
@@ -95,13 +98,14 @@ class Experiment:
     def save_and_plot(self):
         plt.title(
             f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
-            f"Signal Power Estimator Method={self._signal_power_estimator_method.name},\n"
+            f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"
             f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
         plt.plot(self._signal_length_options, self._results['likelihoods'])
         plt.tight_layout()
 
         if self._save:
-            fig_path = os.path.join(ROOT_DIR, f'src/experiments/plots/{self._name}.png')
+            date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+            fig_path = os.path.join(self._save_dir, f'{date_time}_{self._name}.png')
             plt.savefig(fname=fig_path)
         if self._plot:
             plt.show()

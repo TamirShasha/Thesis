@@ -28,6 +28,7 @@ class LengthEstimator2D:
                  estimation_method,
                  exp_attr,
                  num_of_power_options=10,
+                 plot=True,
                  logs=True):
         self._data = data
         self._length_options = length_options
@@ -40,6 +41,7 @@ class LengthEstimator2D:
         self._signal_power_estimator_method = signal_power_estimator_method
         self._estimation_method = estimation_method
         self._logs = logs
+        self._plot = plot
         self._exp_attr = exp_attr
         self._num_of_power_options = num_of_power_options
         self._n = self._data.shape[0]
@@ -98,26 +100,27 @@ class LengthEstimator2D:
 
                 mask[i, j] = is_possible
 
-        fig, ax = plt.subplots()
-        ax.imshow(dpk, aspect='auto')
+        if self._plot:
+            fig, ax = plt.subplots()
+            ax.imshow(dpk, aspect='auto')
 
-        ax.set_xticks(np.arange(len(self._length_options)))
-        ax.set_yticks(np.arange(len(self._avg_signal_power_options)))
-        ax.set_xticklabels(self._length_options)
-        ax.set_yticklabels(self._avg_signal_power_options)
+            ax.set_xticks(np.arange(len(self._length_options)))
+            ax.set_yticks(np.arange(len(self._avg_signal_power_options)))
+            ax.set_xticklabels(self._length_options)
+            ax.set_yticklabels(self._avg_signal_power_options)
 
-        plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
-                 rotation_mode="anchor")
+            plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+                     rotation_mode="anchor")
 
-        for i in range(len(self._length_options)):
-            for j in range(len(self._avg_signal_power_options)):
-                color = "w" if mask[j, i] else "r"
-                ax.text(i, j, dpk[j, i],
-                        ha="center", va="center", color=color)
+            for i in range(len(self._length_options)):
+                for j in range(len(self._avg_signal_power_options)):
+                    color = "w" if mask[j, i] else "r"
+                    ax.text(i, j, dpk[j, i],
+                            ha="center", va="center", color=color)
 
-        ax.set_title("Power & Length combinations")
-        fig.tight_layout()
-        plt.show()
+            ax.set_title("Power & Length combinations")
+            fig.tight_layout()
+            plt.show()
 
         return dpk, mask
 

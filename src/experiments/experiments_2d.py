@@ -32,6 +32,7 @@ class Experiment2D:
                  estimation_method: EstimationMethod = EstimationMethod.WellSeparation,
                  plot=True,
                  save=True,
+                 save_dir=os.path.join(ROOT_DIR, f'src/experiments/plots/'),
                  logs=True):
         self._name = name  # Experiment name
         self._signal_power_estimator_method = signal_power_estimator_method
@@ -41,6 +42,7 @@ class Experiment2D:
 
         self._plot = plot
         self._save = save
+        self._save_dir = save_dir
         self._logs = logs
         self._results = {}
 
@@ -62,8 +64,9 @@ class Experiment2D:
         self._rows = self._data.shape[0]
         self._columns = self._data.shape[1]
 
-        plt.imshow(self._data, cmap='gray')
-        plt.show()
+        if self._plot:
+            plt.imshow(self._data, cmap='gray')
+            plt.show()
 
         if length_options is None:
             length_options = np.arange(self._signal_length // 4, int(self._signal_length), 10)
@@ -86,7 +89,8 @@ class Experiment2D:
                                                    signal_power_estimator_method=signal_power_estimator_method,
                                                    estimation_method=estimation_method,
                                                    exp_attr=self._exp_attr,
-                                                   logs=self._logs)
+                                                   logs=self._logs,
+                                                   plot=self._plot)
 
     def run(self):
         start_time = time.time()
@@ -139,8 +143,7 @@ class Experiment2D:
 
         if self._save:
             date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
-            fig_path = os.path.join(ROOT_DIR,
-                                    f'src/experiments/plots/{date_time}_{self._name}.png')
+            fig_path = os.path.join(self._save_dir, f'{date_time}_{self._name}.png')
             plt.savefig(fname=fig_path)
         if self._plot:
             plt.show()
