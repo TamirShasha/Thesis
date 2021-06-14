@@ -2,7 +2,8 @@ import numpy as np
 
 
 def apply_CTF(image, CTF):
-    return
+    out = np.fft.fftshift(np.fft.fft2(image))
+    return np.fft.ifft2(np.fft.ifftshift(out * CTF))
 
 
 def cryo_CTF_Relion(square_side, pixel_size, defocus_u, defocus_v, defocus_angle, spherical_aberration, amplitude_contrast, voltage=300):
