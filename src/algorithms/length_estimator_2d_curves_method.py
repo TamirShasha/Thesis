@@ -40,6 +40,9 @@ class LengthEstimator2DCurvesMethod:
         self._curves = self._create_curves(num=self._num_of_curves,
                                            high_power_selection_factor=2,
                                            concat=1)
+
+        self._cut_fix_factor = 0.7
+
         logger.info(f'data length: {self._curves.shape[0]} x {self._curves.shape[1]}')
 
     def _rows_curves(self, jump=None):
@@ -110,7 +113,7 @@ class LengthEstimator2DCurvesMethod:
         filter_gen = lambda l: np.concatenate([self._signal_filter_gen(l, signal_avg_power),
                                                np.zeros(int(l * separation_percentage))])
 
-        length_options = self._length_options[lengths_mask]
+        length_options = (np.int32(self._length_options * self._cut_fix_factor))[lengths_mask]
 
         if length_options.size == 0:
             return np.full_like(self._length_options, fill_value=-np.inf, dtype=float), []
@@ -141,7 +144,9 @@ class LengthEstimator2DCurvesMethod:
         full_likelihoods = np.full_like(self._length_options, fill_value=-np.inf, dtype=float)
         full_likelihoods[lengths_mask] = likelihoods
 
-        return full_likelihoods, best_lengths
+        fixed_best_lengths = np.array(best_lengths) // self._cut_fix_factor
+
+        return full_likelihoods, fixed_best_lengths
 
     def estimate(self):
         likelihoods = dict()

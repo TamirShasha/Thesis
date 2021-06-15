@@ -196,7 +196,7 @@ def __main__():
         signal_num_of_occurrences_boundaries=(20, 200),
         signal_area_coverage_boundaries=(0.05, 0.3),
         num_of_power_options=10,
-        plot=True,
+        plot=False,
         save=True
     ).run()
 
