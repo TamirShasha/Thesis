@@ -90,7 +90,8 @@ class DataSimulator2D:
 
         self.signal_area = np.count_nonzero(self.signal_gen(signal_length, signal_power))
         self.signal_shape = (signal_length, signal_length)
-        self.occurrences = int(self.signal_fraction * self.rows * self.columns / self.signal_area)
+        self.mrc_area = self.rows * self.columns
+        self.occurrences = int(self.signal_fraction * self.mrc_area / self.signal_area)
         self.snr = self._calc_snr()
 
         logger.info(f'SNR is {np.round(self.snr, 3)}')
@@ -202,7 +203,7 @@ class DataSimulator2D:
         CTF = cryo_CTF_Relion(data.shape[0], pixel_size, defocus_u, defocus_v, defocus_angle, spherical_aberration,
                               amplitude_contrast)
 
-        return np.real(apply_CTF(data, CTF))
+        return -np.real(apply_CTF(data, CTF))
 
     def _calc_snr(self):
         signal = self.signal_gen(self.signal_length, self.signal_power)
@@ -211,6 +212,7 @@ class DataSimulator2D:
             signal = self._apply_ctf_on_signal(signal)
 
         avg_signal_power = np.nansum(np.square(signal * signal_support)) / np.nansum(signal_support)
-        snr = avg_signal_power / np.square(self.noise_std)
+        fraction = self.occurrences * self.signal_area / self.mrc_area
+        snr = (avg_signal_power / np.square(self.noise_std)) * fraction
 
         return snr

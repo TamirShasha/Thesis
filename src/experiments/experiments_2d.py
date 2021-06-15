@@ -182,7 +182,7 @@ def __main__():
                                signal_power=10,
                                signal_fraction=1 / 6,
                                signal_gen=Shapes2D.sphere,
-                               noise_std=3,
+                               noise_std=5,
                                noise_mean=0,
                                apply_ctf=True)
 
