@@ -13,7 +13,7 @@ from src.algorithms.length_estimator_2d import LengthEstimator2D, EstimationMeth
 from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.utils.logger import logger
 
-np.random.seed(500)
+# np.random.seed(500)
 logger.setLevel(logging.INFO)
 
 
@@ -123,7 +123,7 @@ class Experiment2D:
         if self._mrc is None:
             title += f"Signal power={self._data_simulator.signal_power}, " \
                      f"Signal area coverage={int(np.round(self._data_simulator.signal_fraction, 2) * 100)}% \n" \
-                     f"SNR={np.round(self._data_simulator.snr, 3)} "
+                     f"SNR={self._data_simulator.snr}db "
         else:
             title += f"MRC={self._mrc.name}\n"
 
@@ -178,9 +178,9 @@ class Experiment2D:
 def __main__():
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
-                               signal_length=250,
+                               signal_length=150,
                                signal_power=10,
-                               signal_fraction=1 / 6,
+                               signal_fraction=1 / 7,
                                signal_gen=Shapes2D.sphere,
                                noise_std=5,
                                noise_mean=0,

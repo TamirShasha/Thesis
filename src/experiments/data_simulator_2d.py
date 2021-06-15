@@ -94,7 +94,7 @@ class DataSimulator2D:
         self.occurrences = int(self.signal_fraction * self.mrc_area / self.signal_area)
         self.snr = self._calc_snr()
 
-        logger.info(f'SNR is {np.round(self.snr, 3)}')
+        logger.info(f'SNR is {self.snr}db')
 
     def simulate(self):
 
@@ -215,4 +215,5 @@ class DataSimulator2D:
         fraction = self.occurrences * self.signal_area / self.mrc_area
         snr = (avg_signal_power / np.square(self.noise_std)) * fraction
 
-        return snr
+        db = int(10 * np.log10(snr))
+        return db
