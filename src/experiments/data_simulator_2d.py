@@ -1,8 +1,10 @@
 import numpy as np
 from skimage.draw import ellipse, disk
-from src.algorithms.utils import dynamic_programming_2d, log_size_S_1d, random_1d_ws_positions
-import logging
 import matplotlib.pyplot as plt
+
+from src.utils.logger import logger
+from src.algorithms.utils import dynamic_programming_2d, log_size_S_1d, random_1d_ws_positions
+from src.utils.CTF_Relion import apply_CTF, cryo_CTF_Relion
 
 
 class Shapes2D:
@@ -60,11 +62,20 @@ class Shapes2D:
 
         return signal
 
+    @staticmethod
+    def sphere(length, power):
+        signal = np.zeros(shape=(length, length))
+        radius = length // 2
+        rr, cc = disk((radius, radius), radius)
+        signal[rr, cc] = power * np.sqrt(1 - np.square((rr - radius) / radius) - np.square((cc - radius) / radius))
+
+        return signal
+
 
 class DataSimulator2D:
     def __init__(self, rows=2000, columns=2000, signal_length=100, signal_power=1, signal_fraction=1 / 6,
                  signal_gen=lambda d, p: Shapes2D.disk(d, p), noise_std=3, noise_mean=0, method='BF',
-                 collision_threshold=100):
+                 collision_threshold=100, apply_ctf=False):
         self.rows = rows
         self.columns = columns
         self.signal_fraction = signal_fraction
@@ -75,10 +86,14 @@ class DataSimulator2D:
         self.noise_mean = noise_mean
         self.method = method
         self.collision_threshold = collision_threshold
+        self.apply_ctf = apply_ctf
 
         self.signal_area = np.count_nonzero(self.signal_gen(signal_length, signal_power))
         self.signal_shape = (signal_length, signal_length)
         self.occurrences = int(self.signal_fraction * self.rows * self.columns / self.signal_area)
+        self.snr = self._calc_snr()
+
+        logger.info(f'SNR is {np.round(self.snr, 3)}')
 
     def simulate(self):
 
@@ -88,19 +103,27 @@ class DataSimulator2D:
             data = self._simulate_signal_vws()
         else:
             raise ValueError('method = {} is not supported, try bf or vws'.format(self.method))
-        logging.info(f'Total signal area fraction is {np.count_nonzero(data) / np.prod(data.shape)}\n')
+        logger.info(f'Total signal area fraction is {np.count_nonzero(data) / np.prod(data.shape)}\n')
 
         # add noise
         noise = self._random_gaussian_noise()
 
-        return data + noise
+        simulated_data = data + noise
+
+        return simulated_data
+
+    def create_signal_instance(self):
+        signal = self.signal_gen(self.signal_length, self.signal_power)
+        if self.apply_ctf:
+            signal = self._apply_ctf_on_signal(signal)
+        return signal
 
     def _simulate_signal_bf(self):
         data = np.zeros((self.rows, self.columns))
 
         # add signals
         for o in range(self.occurrences):
-            signal = self.signal_gen(self.signal_length, self.signal_power)
+            signal = self.create_signal_instance()
 
             for t in range(self.collision_threshold):  # trying to find clean location for new signal, max of threshold
                 row = np.random.randint(self.rows - self.signal_shape[0])
@@ -110,8 +133,8 @@ class DataSimulator2D:
                     break
 
             if t == self.collision_threshold - 1:
-                logging.warning(f'Failed to simulate dataset with {self.occurrences} occurrences. '
-                                f'Reduced to {o + 1}')
+                logger.warning(f'Failed to simulate dataset with {self.occurrences} occurrences. '
+                               f'Reduced to {o + 1}')
                 self.occurrences = o + 1
                 break
 
@@ -167,3 +190,27 @@ class DataSimulator2D:
 
     def _random_gaussian_noise(self):
         return np.random.normal(self.noise_mean, self.noise_std, (self.rows, self.columns))
+
+    def _apply_ctf_on_signal(self, data):
+        pixel_size = 1.3399950228756292
+        defocus_u = 2334.4699219
+        defocus_v = 2344.5949219
+        defocus_angle = 0.6405358529352114
+        spherical_aberration = 2.0
+        amplitude_contrast = 0.1
+
+        CTF = cryo_CTF_Relion(data.shape[0], pixel_size, defocus_u, defocus_v, defocus_angle, spherical_aberration,
+                              amplitude_contrast)
+
+        return np.real(apply_CTF(data, CTF))
+
+    def _calc_snr(self):
+        signal = self.signal_gen(self.signal_length, self.signal_power)
+        signal_support = signal != 0
+        if self.apply_ctf:
+            signal = self._apply_ctf_on_signal(signal)
+
+        avg_signal_power = np.nansum(np.square(signal * signal_support)) / np.nansum(signal_support)
+        snr = avg_signal_power / np.square(self.noise_std)
+
+        return snr

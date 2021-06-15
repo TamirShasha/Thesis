@@ -6,7 +6,8 @@ def apply_CTF(image, CTF):
     return np.fft.ifft2(np.fft.ifftshift(out * CTF))
 
 
-def cryo_CTF_Relion(square_side, pixel_size, defocus_u, defocus_v, defocus_angle, spherical_aberration, amplitude_contrast, voltage=300):
+def cryo_CTF_Relion(square_side, pixel_size, defocus_u, defocus_v, defocus_angle, spherical_aberration,
+                    amplitude_contrast, voltage=300):
     """
         Compute the contrast transfer function corresponding an n x n image with
         the sampling interval DetectorPixelSize.
@@ -31,8 +32,8 @@ def cryo_CTF_Relion(square_side, pixel_size, defocus_u, defocus_v, defocus_angle
     df = DFavg + DFdiff * np.cos(2 * (theta - defocus_angle)) / 2
     k2 = np.pi * wave_length * df
     # 10**6 converts spherical_aberration from mm to nm
-    k4 = np.pi / 2*10**6 * spherical_aberration * wave_length**3
-    chi = k4 * s**4 - k2 * s**2
+    k4 = np.pi / 2 * 10 ** 6 * spherical_aberration * wave_length ** 3
+    chi = k4 * s ** 4 - k2 * s ** 2
 
     return np.sqrt(1 - amplitude_contrast ** 2) * np.sin(chi) - amplitude_contrast * np.cos(chi)
 
@@ -60,8 +61,8 @@ def radius_norm(n: int, origin=None):
         origin = np.ceil((n + 1) / 2)
 
     a, b = origin[0], origin[1]
-    y, x = np.meshgrid(np.arange(1-a, n[0]-a+1)/n[0],
-                       np.arange(1-b, n[1]-b+1)/n[1])  # zero at x,y
+    y, x = np.meshgrid(np.arange(1 - a, n[0] - a + 1) / n[0],
+                       np.arange(1 - b, n[1] - b + 1) / n[1])  # zero at x,y
     radius = np.sqrt(x ** 2 + y ** 2)
 
     theta = np.arctan2(x, y)
@@ -93,6 +94,8 @@ def voltage_to_wavelength(voltage, version='aspire'):
 
 ## Example
 # import matplotlib.pyplot as plt
+# from src.experiments.data_simulator_2d import Shapes2D
+#
 # pixel_size = 1.3399950228756292
 # DefocusU = 2334.4699219
 # DefocusV = 2344.5949219
@@ -101,6 +104,11 @@ def voltage_to_wavelength(voltage, version='aspire'):
 # amplitude_contrast = 0.1
 #
 # CTF = cryo_CTF_Relion(300, pixel_size, DefocusU, DefocusV, DefocusAngle, spherical_aberration, amplitude_contrast)
+# gaussian = Shapes2D.gaussian(300, 1)
+# ctf_applied = apply_CTF(gaussian, CTF)
+# x = -np.real(ctf_applied)
+# plt.imshow(-np.real(ctf_applied))
+# plt.show()
 #
 # plt.imshow(CTF)
 # plt.show()

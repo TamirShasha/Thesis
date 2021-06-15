@@ -112,6 +112,9 @@ class LengthEstimator2DCurvesMethod:
 
         length_options = self._length_options[lengths_mask]
 
+        if length_options.size == 0:
+            return np.full_like(self._length_options, fill_value=-np.inf, dtype=float), []
+
         non_inf_threshold = 0.3
         best_lengths = []
         non_inf_count = np.zeros_like(length_options)
@@ -140,7 +143,21 @@ class LengthEstimator2DCurvesMethod:
 
         return full_likelihoods, best_lengths
 
-    def estimate(self, distributions=('1d')):
+    def estimate(self):
+        likelihoods = dict()
+
+        likelihoods_1d = np.zeros(shape=(len(self._power_options), len(self._length_options)))
+        for i, power in enumerate(self._power_options):
+            logger.info(f'Running for power={power}')
+            power_likelihoods, one_d_best_lengths = self._estimate_likelihood_for_1d(power, self._tuples_mask[i])
+            likelihoods_1d[i] = power_likelihoods
+            likelihoods[f'p_{power}'] = power_likelihoods
+
+        likelihoods['max'] = np.max(likelihoods_1d, 0)
+        most_likely_length = self._length_options[np.argmax(likelihoods['max'])]
+        return likelihoods, most_likely_length
+
+    def estimate_old(self, distributions=('1d')):
         likelihoods = dict()
 
         if 'circle' in distributions:

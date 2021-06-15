@@ -97,5 +97,6 @@ class LengthEstimator2DSeparationMethod:
         for i, signal_power in enumerate(self._power_options):
             likelihoods_dict[f'p_{signal_power}'] = likelihoods[:, i]
 
-        # max_likely_length = self._length_options[np.argmax(likelihoods)]
-        return likelihoods_dict, 0
+        likelihoods_dict['max'] = np.max(likelihoods, axis=1)
+        max_likely_length = self._length_options[np.argmax(likelihoods_dict['max'])]
+        return likelihoods_dict, max_likely_length

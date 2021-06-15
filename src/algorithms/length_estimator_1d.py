@@ -83,6 +83,9 @@ class LengthEstimator1D:
         return likelihood
 
     def estimate(self):
+        if self._length_options.size == 0:
+            return [], -np.inf
+
         likelihoods = [self._calc_signal_length_likelihood(d) for d in self._length_options]
         max_likelihood_length = self._length_options[np.argmax(likelihoods)]
         return np.array(likelihoods), max_likelihood_length

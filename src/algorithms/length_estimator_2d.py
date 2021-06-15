@@ -50,6 +50,7 @@ class LengthEstimator2D:
                                                    method=self._signal_power_estimator_method)
 
         if self._signal_power < 0:
+            logger.info('Signal power is negative, flipping data.')
             self._data = -self._data
             self._signal_power = estimate_signal_power(self._data, self._noise_std, self._noise_mean,
                                                        method=self._signal_power_estimator_method)
@@ -57,6 +58,12 @@ class LengthEstimator2D:
 
         self._avg_signal_power_options = self._estimate_avg_signal_power_options()
         self._dpk, self._dpk_mask = self._generate_dpk_tuples()
+
+        if self._plot:
+            fig, ax = plt.subplots()
+            self.generate_dpk_plot_table(ax)
+            fig.tight_layout()
+            plt.show()
 
         logger.info('Done preprocessing .\n')
 
@@ -100,29 +107,30 @@ class LengthEstimator2D:
 
                 mask[i, j] = is_possible
 
-        if self._plot:
-            fig, ax = plt.subplots()
-            ax.imshow(dpk, aspect='auto')
-
-            ax.set_xticks(np.arange(len(self._length_options)))
-            ax.set_yticks(np.arange(len(self._avg_signal_power_options)))
-            ax.set_xticklabels(self._length_options)
-            ax.set_yticklabels(self._avg_signal_power_options)
-
-            plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
-                     rotation_mode="anchor")
-
-            for i in range(len(self._length_options)):
-                for j in range(len(self._avg_signal_power_options)):
-                    color = "w" if mask[j, i] else "r"
-                    ax.text(i, j, dpk[j, i],
-                            ha="center", va="center", color=color)
-
-            ax.set_title("Power & Length combinations")
-            fig.tight_layout()
-            plt.show()
-
         return dpk, mask
+
+    def generate_dpk_plot_table(self, ax):
+        ax.imshow(self._dpk, aspect='auto')
+
+        ax.set_xticks(np.arange(len(self._length_options)))
+        ax.set_yticks(np.arange(len(self._avg_signal_power_options)))
+        ax.set_xticklabels(self._length_options)
+        ax.set_yticklabels(self._avg_signal_power_options)
+
+        plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+                 rotation_mode="anchor")
+
+        for i in range(len(self._length_options)):
+            for j in range(len(self._avg_signal_power_options)):
+                color = "w" if self._dpk_mask[j, i] else "r"
+                if self._dpk[j, i] >= 1000:
+                    font_size = 'xx-small'
+                else:
+                    font_size = 'x-small'
+                ax.text(i, j, self._dpk[j, i],
+                        ha="center", va="center", color=color, fontsize=font_size)
+
+        ax.set_title("Power & Length combinations")
 
     def estimate(self):
         if self._estimation_method == EstimationMethod.Curves:

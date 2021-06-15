@@ -39,6 +39,7 @@ def run_2d_baseline_experiment(exp_name, signal_gen, noise_std, method):
                                noise_std=noise_std,
                                noise_mean=0)
 
+    print('#### START NEW EXPERIMENT ####')
     Experiment2D(
         name=exp_name,
         simulator=sim_data,
@@ -52,6 +53,7 @@ def run_2d_baseline_experiment(exp_name, signal_gen, noise_std, method):
         save=True,
         save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/')
     ).run()
+    print('#### DONE EXPERIMENT ####')
 
 
 def ellipse23(d, p):
@@ -65,19 +67,18 @@ def ellipse12(d, p):
 """
 1D Experiments
 """
-run_1d_baseline_experiment('1D_10k_300_3std', 100000, 3)
-run_1d_baseline_experiment('1D_30k_300_5std', 30000, 5)
-run_1d_baseline_experiment('1D_50k_300_8std', 50000, 8)
-run_1d_baseline_experiment('1D_100k_300_10std', 100000, 10)
-run_1d_baseline_experiment('1D_200k_300_12std', 200000, 12)
-run_1d_baseline_experiment('1D_400k_300_12std', 400000, 15)
+# run_1d_baseline_experiment('1D_10k_300_3std', 300000, 3)
+# run_1d_baseline_experiment('1D_30k_300_5std', 400000, 5)
+# run_1d_baseline_experiment('1D_50k_300_8std', 500000, 8)
+# run_1d_baseline_experiment('1D_100k_300_10std', 600000, 10)
+# run_1d_baseline_experiment('1D_200k_300_12std', 700000, 12)
+# run_1d_baseline_experiment('1D_400k_300_12std', 800000, 15)
 
 """
 2D Disk Experiments with noise std 3,5,8,10,12,15
 """
-run_2d_baseline_experiment('2D_4000x4000_disk_300_curves_3std', Shapes2D.disk, 3, EstimationMethod.Curves)
+# run_2d_baseline_experiment('2D_4000x4000_disk_300_curves_3std', Shapes2D.disk, 3, EstimationMethod.Curves)
 run_2d_baseline_experiment('2D_4000x4000_disk_300_vws_3std', Shapes2D.disk, 3, EstimationMethod.WellSeparation)
-
 run_2d_baseline_experiment('2D_4000x4000_disk_300_curves_5std', Shapes2D.disk, 5, EstimationMethod.Curves)
 run_2d_baseline_experiment('2D_4000x4000_disk_300_vws_5std', Shapes2D.disk, 5, EstimationMethod.WellSeparation)
 

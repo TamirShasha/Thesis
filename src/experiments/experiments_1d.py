@@ -110,6 +110,8 @@ class Experiment:
         if self._plot:
             plt.show()
 
+        plt.close()
+
 
 def __main__():
     # Experiment(

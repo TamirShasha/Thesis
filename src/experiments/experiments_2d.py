@@ -5,6 +5,7 @@ import os
 from src.constants import ROOT_DIR
 import logging
 from datetime import datetime
+import pathlib
 
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
@@ -21,7 +22,7 @@ class Experiment2D:
     def __init__(self,
                  name=str(time.time()),
                  mrc: Micrograph = None,
-                 simulator=DataSimulator2D(),
+                 simulator=None,
                  signal_2d_filter_gen=lambda d, p=1: Shapes2D.disk(d, p),
                  signal_1d_filter_gen=lambda d, p=1: np.full(d, p),
                  signal_power_estimator_method=SignalPowerEstimator.Exact,
@@ -48,11 +49,15 @@ class Experiment2D:
 
         if mrc is None:
             logger.info(f'Simulating data, number of occurrences is {simulator.occurrences}')
+            if simulator is None:
+                simulator = DataSimulator2D()
+
             self._data = simulator.simulate()
             self._num_of_occurrences = simulator.occurrences
             self._noise_std = simulator.noise_std
             self._noise_mean = simulator.noise_mean
             self._signal_length = simulator.signal_length
+            self._applied_ctf = simulator.apply_ctf
         else:
             logger.info(f'Loading given micrograph from {mrc.name}')
             self._data = mrc.load_mrc()
@@ -60,10 +65,12 @@ class Experiment2D:
             self._noise_std = mrc.noise_std
             self._noise_mean = mrc.noise_mean
             self._signal_length = mrc.signal_length
+            self._applied_ctf = True
 
         self._rows = self._data.shape[0]
         self._columns = self._data.shape[1]
 
+        plt.rcParams["figure.figsize"] = (16, 9)
         if self._plot:
             plt.imshow(self._data, cmap='gray')
             plt.show()
@@ -108,19 +115,21 @@ class Experiment2D:
         return likelihoods
 
     def save_and_plot(self):
-        fig, (mrc, results) = plt.subplots(1, 2)
+        fig, ((mrc, results), (particle, dpk_table)) = plt.subplots(2, 2)
 
         title = f"MRC size=({self._rows}, {self._columns}), " \
                 f"Signal length={self._signal_length}\n"
 
         if self._mrc is None:
             title += f"Signal power={self._data_simulator.signal_power}, " \
-                     f"Signal area coverage={int(np.round(self._data_simulator.signal_fraction, 2) * 100)}% \n"
+                     f"Signal area coverage={int(np.round(self._data_simulator.signal_fraction, 2) * 100)}% \n" \
+                     f"SNR={np.round(self._data_simulator.snr, 3)} "
         else:
             title += f"MRC={self._mrc.name}\n"
 
         title += f"Noise\u007E\u2115({self._noise_mean}, {self._noise_std}), " \
-                 f"SPE={self._signal_power_estimator_method},\n" \
+                 f"CTF={self._applied_ctf}\n" \
+                 f"SPE={self._signal_power_estimator_method}, " \
                  f"Estimation method={self._estimation_method.name}\n" \
                  f"Most likely length={self._results['most_likely_length']}, " \
                  f"Took {int(self._results['total_time'])} seconds"
@@ -130,34 +139,52 @@ class Experiment2D:
 
         likelihoods = self._results['likelihoods']
         for i, key in enumerate(likelihoods):
+            if key == 'max':
+                pass
             key_likelihood = likelihoods[key]
             ths = np.percentile(key_likelihood[key_likelihood != -np.inf], 10)
             to_plot = np.where(key_likelihood >= ths, key_likelihood, None)
-            results.plot(self._signal_length_options, to_plot, label=key)
-            results.legend(loc="upper right")
+            results.plot(self._signal_length_options, to_plot, label=key, alpha=0.3)
 
         results.set_xlabel('Lengths')
         results.set_ylabel('Likelihood')
 
+        results_max = results.twinx()
+        results_max.plot(self._signal_length_options, likelihoods['max'], label='max')
+
+        results.legend(loc="upper right")
+
+        if self._data_simulator:
+            particle.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
+
+        self._length_estimator.generate_dpk_plot_table(dpk_table)
+
         fig.tight_layout()
 
         if self._save:
-            date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
-            fig_path = os.path.join(self._save_dir, f'{date_time}_{self._name}.png')
+            curr_date = str(datetime.now().strftime("%d-%m-%Y"))
+            dir_path = os.path.join(self._save_dir, curr_date)
+            pathlib.Path(dir_path).mkdir(parents=True, exist_ok=True)
+
+            curr_time = str(datetime.now().strftime("%H-%M-%S"))
+            fig_path = os.path.join(dir_path, f'{curr_time}_{self._name}.png')
             plt.savefig(fname=fig_path)
         if self._plot:
             plt.show()
+
+        plt.close()
 
 
 def __main__():
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
                                signal_length=250,
-                               signal_power=1,
+                               signal_power=10,
                                signal_fraction=1 / 6,
-                               signal_gen=lambda d, p: Shapes2D.double_disk(d, d // 2, p, 2 * p),
-                               noise_std=5,
-                               noise_mean=0)
+                               signal_gen=Shapes2D.sphere,
+                               noise_std=3,
+                               noise_mean=0,
+                               apply_ctf=True)
 
     Experiment2D(
         # mrc=MICROGRAPHS['whitened002_x10'],
