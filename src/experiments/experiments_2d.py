@@ -10,7 +10,7 @@ import pathlib
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
 from src.algorithms.length_estimator_2d import LengthEstimator2D, EstimationMethod
-from src.experiments.micrograph import Micrograph, MICROGRAPHS
+from src.experiments.micrograph import Micrograph
 from src.utils.logger import logger
 
 # np.random.seed(500)
@@ -178,11 +178,11 @@ class Experiment2D:
 def __main__():
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
-                               signal_length=150,
+                               signal_length=200,
                                signal_power=10,
-                               signal_fraction=1 / 7,
+                               signal_fraction=1 / 8,
                                signal_gen=Shapes2D.sphere,
-                               noise_std=5,
+                               noise_std=7,
                                noise_mean=0,
                                apply_ctf=True)
 

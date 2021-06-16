@@ -4,7 +4,7 @@ from enum import Enum
 
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.algorithms.length_estimator_2d_sep_method import LengthEstimator2DSeparationMethod
-from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
+from src.algorithms.signal_power_estimator import estimate_signal_power
 from src.utils.logger import logger
 
 

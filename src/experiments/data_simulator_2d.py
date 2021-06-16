@@ -1,6 +1,5 @@
 import numpy as np
 from skimage.draw import ellipse, disk
-import matplotlib.pyplot as plt
 
 from src.utils.logger import logger
 from src.algorithms.utils import dynamic_programming_2d, log_size_S_1d, random_1d_ws_positions

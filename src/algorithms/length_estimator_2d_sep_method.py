@@ -3,7 +3,7 @@ import time
 from enum import Enum
 import src.algorithms.utils as utils
 
-from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator as SPE
+from src.algorithms.signal_power_estimator import SignalPowerEstimator as SPE
 from src.utils.logger import logger
 
 
