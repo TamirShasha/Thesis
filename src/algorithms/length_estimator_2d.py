@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from enum import Enum
+from multiprocessing import Pool
 
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.algorithms.length_estimator_2d_sep_method import LengthEstimator2DSeparationMethod
