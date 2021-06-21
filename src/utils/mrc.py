@@ -32,8 +32,14 @@ def read_mrc(file_path):
     # mrc /= np.max(mrc)
     return mrc
 
-
-import matplotlib.pyplot as plt
+#
+# import matplotlib.pyplot as plt
+#
+# file_path = '../../../data/projections.npy'
+# m = np.load(file_path)
+# print(m.shape)
+# plt.imshow(m[:, :, 1])
+# plt.show()
 
 # file_path = '../../../data/002white.mat'
 # x = read_mrc(file_path)

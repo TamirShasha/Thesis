@@ -11,6 +11,7 @@ from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
 from src.algorithms.length_estimator_2d import LengthEstimator2D, EstimationMethod
 from src.experiments.micrograph import Micrograph
+from src.experiments.particles_projections import PARTICLE_250
 from src.utils.logger import logger
 
 # np.random.seed(500)
@@ -141,10 +142,7 @@ class Experiment2D:
         for i, key in enumerate(likelihoods):
             if key == 'max':
                 pass
-            key_likelihood = likelihoods[key]
-            ths = np.percentile(key_likelihood[key_likelihood != -np.inf], 10)
-            to_plot = np.where(key_likelihood >= ths, key_likelihood, None)
-            results.plot(self._signal_length_options, to_plot, label=key, alpha=0.3)
+            results.plot(self._signal_length_options, likelihoods[key], label=key, alpha=0.3)
 
         results.set_xlabel('Lengths')
         results.set_ylabel('Likelihood')
@@ -152,7 +150,7 @@ class Experiment2D:
         results_max = results.twinx()
         results_max.plot(self._signal_length_options, likelihoods['max'], label='max')
 
-        results.legend(loc="upper right")
+        results.legend(loc="lower right")
 
         if self._data_simulator:
             particle.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
@@ -178,13 +176,13 @@ class Experiment2D:
 def __main__():
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
-                               signal_length=200,
+                               signal_length=PARTICLE_250.particle_length,
                                signal_power=10,
-                               signal_fraction=1 / 8,
-                               signal_gen=Shapes2D.sphere,
-                               noise_std=7,
+                               signal_fraction=1 / 12,
+                               signal_gen=PARTICLE_250.get_signal_gen(),
+                               noise_std=5,
                                noise_mean=0,
-                               apply_ctf=True)
+                               apply_ctf=False)
 
     Experiment2D(
         # mrc=MICROGRAPHS['whitened002_x10'],
@@ -193,10 +191,10 @@ def __main__():
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         length_options=np.arange(50, 400, 10),
-        signal_num_of_occurrences_boundaries=(20, 200),
-        signal_area_coverage_boundaries=(0.05, 0.3),
+        signal_num_of_occurrences_boundaries=(30, 200),
+        signal_area_coverage_boundaries=(0.02, 0.15),
         num_of_power_options=10,
-        plot=False,
+        plot=True,
         save=True
     ).run()
 
