@@ -153,7 +153,7 @@ class LengthEstimator2DCurvesMethod:
 
         likelihoods_arr = np.zeros(shape=(len(self._power_options), len(self._length_options)))
         for i, power in enumerate(self._power_options):
-            logger.info(f'Running for power={power}')
+            logger.info(f'Running for power={power} ({i + 1}/{len(self._power_options)})')
             power_likelihoods, one_d_best_lengths = self._estimate_likelihood_for_1d(power, self._tuples_mask[i])
             likelihoods_arr[i] = power_likelihoods
             likelihoods[f'p_{power}'] = power_likelihoods

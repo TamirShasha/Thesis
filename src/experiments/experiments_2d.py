@@ -10,7 +10,7 @@ import pathlib
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
 from src.algorithms.length_estimator_2d import LengthEstimator2D, EstimationMethod
-from src.experiments.micrograph import Micrograph
+from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.experiments.particles_projections import PARTICLE_250
 from src.utils.logger import logger
 
@@ -176,11 +176,12 @@ class Experiment2D:
 def __main__():
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
-                               signal_length=PARTICLE_250.particle_length,
-                               signal_power=10,
-                               signal_fraction=1 / 12,
-                               signal_gen=PARTICLE_250.get_signal_gen(),
-                               noise_std=5,
+                               signal_length=250,
+                               signal_power=1,
+                               signal_fraction=1 / 6,
+                               # signal_gen=PARTICLE_250.get_signal_gen(),
+                               signal_gen=Shapes2D.sphere,
+                               noise_std=1,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -190,9 +191,9 @@ def __main__():
         simulator=sim_data,
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(50, 400, 10),
-        signal_num_of_occurrences_boundaries=(30, 200),
-        signal_area_coverage_boundaries=(0.02, 0.15),
+        length_options=np.arange(50, 350, 10),
+        signal_num_of_occurrences_boundaries=(20, 150),
+        signal_area_coverage_boundaries=(0.05, 0.20),
         num_of_power_options=10,
         plot=True,
         save=True

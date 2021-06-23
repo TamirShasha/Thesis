@@ -32,8 +32,8 @@ class _ParticleProjectionsDatasets:
         return signal * (signal > 0)
 
     @staticmethod
-    def normalize(signal):
-        return signal / np.nansum(signal) * np.nansum(signal > 0)
+    def normalize(signal, power):
+        return power * signal / np.nansum(signal) * np.nansum(signal > 0)
 
     def crop(self, signal):
         return crop(signal, (self.particle_length, self.particle_length))
@@ -47,18 +47,18 @@ class _ParticleProjectionsDatasets:
             idx = np.random.randint(num_of_projections)
             signal = signals[:, :, idx]
 
+            if 'crop' in self._pre_process:
+                signal = crop(signal, (self.particle_length, self.particle_length))
             if 'average' in self._pre_process:
                 signal = _ParticleProjectionsDatasets.average(signal)
             if 'positive' in self._pre_process:
                 signal = _ParticleProjectionsDatasets.positive(signal)
             if 'normalize' in self._pre_process:
-                signal = _ParticleProjectionsDatasets.normalize(signal)
-            if 'crop' in self._pre_process:
-                signal = crop(signal, (self.particle_length, self.particle_length))
+                signal = _ParticleProjectionsDatasets.normalize(signal, p)
 
             return signal
 
         return signal_gen
 
 
-PARTICLE_250 = _ParticleProjectionsDatasets('projections.npy', 250)
+PARTICLE_250 = _ParticleProjectionsDatasets('projections.npy', 200, preprocess=('crop', 'normalize'))

@@ -70,6 +70,16 @@ class Shapes2D:
 
         return signal
 
+    @staticmethod
+    def sphere_with_negative_edges(length, power):
+        signal = np.zeros(shape=(length, length))
+        radius = length // 2
+        rr, cc = disk((radius, radius), radius)
+        signal[rr, cc] = power * (
+                np.sqrt(1 - np.square((rr - radius) / radius) - np.square((cc - radius) / radius)) - 0.3)
+
+        return signal
+
 
 class DataSimulator2D:
     def __init__(self, rows=2000, columns=2000, signal_length=100, signal_power=1, signal_fraction=1 / 6,
@@ -199,10 +209,16 @@ class DataSimulator2D:
         spherical_aberration = 2.0
         amplitude_contrast = 0.1
 
-        CTF = cryo_CTF_Relion(data.shape[0], pixel_size, defocus_u, defocus_v, defocus_angle, spherical_aberration,
-                              amplitude_contrast)
+        h, w = data.shape
+        data_pad = np.zeros(shape=(3 * h, 3 * w))
+        data_pad[h:2 * h, w:2 * w] = data
 
-        return -np.real(apply_CTF(data, CTF))
+        CTF = cryo_CTF_Relion(data_pad.shape[0], pixel_size, defocus_u, defocus_v, defocus_angle, spherical_aberration,
+                              amplitude_contrast)
+        data_pad_ctf = -np.real(apply_CTF(data_pad, CTF))
+        signal_ctf = data_pad_ctf[h:2 * h, w:2 * w]
+
+        return signal_ctf
 
     def _calc_snr(self):
         signal = self.signal_gen(self.signal_length, self.signal_power)
@@ -211,6 +227,8 @@ class DataSimulator2D:
             signal = self._apply_ctf_on_signal(signal)
 
         avg_signal_power = np.nansum(np.square(signal * signal_support)) / np.nansum(signal_support)
+        print(f'single particle snr: {avg_signal_power / np.square(self.noise_std)}')
+
         fraction = self.occurrences * self.signal_area / self.mrc_area
         snr = (avg_signal_power / np.square(self.noise_std)) * fraction
 
