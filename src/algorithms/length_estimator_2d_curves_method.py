@@ -4,6 +4,7 @@ from skimage.draw import line, line_nd
 from src.algorithms.length_estimator_1d import LengthEstimator1D
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 from src.utils.logger import logger
+from src.utils.logsumexp import logsumexp
 
 
 class LengthEstimator2DCurvesMethod:
@@ -34,7 +35,7 @@ class LengthEstimator2DCurvesMethod:
         self._n = self._data.shape[0]
 
         # self._num_of_curves = 200 * int(np.log(np.max(self._data.shape)))
-        self._num_of_curves = 400
+        self._num_of_curves = 200
         self._curves = self._create_curves(num=self._num_of_curves)
 
         self._cut_fix_factor = 0.7
@@ -106,23 +107,25 @@ class LengthEstimator2DCurvesMethod:
         best_lengths = []
         non_inf_count = np.zeros_like(length_options)
         sum_likelihoods = np.zeros_like(length_options, dtype=float)
+        likelihoods = np.zeros(shape=(self._num_of_curves, len(length_options)))
         for t in range(self._num_of_curves):
             logger.debug(f'At iteration {t}')
-            likelihoods, best_len = LengthEstimator1D(data=self._curves[t],
-                                                      length_options=length_options,
-                                                      signal_filter_gen=filter_gen,
-                                                      noise_mean=self._noise_mean,
-                                                      noise_std=self._noise_std,
-                                                      signal_power_estimator_method=self._signal_power_estimator_method,
-                                                      separation=0,
-                                                      exp_attr=self._exp_attr,
-                                                      logs=self._logs).estimate()
+            likelihoods[t], best_len = LengthEstimator1D(data=self._curves[t],
+                                                         length_options=length_options,
+                                                         signal_filter_gen=filter_gen,
+                                                         noise_mean=self._noise_mean,
+                                                         noise_std=self._noise_std,
+                                                         signal_power_estimator_method=self._signal_power_estimator_method,
+                                                         separation=0,
+                                                         exp_attr=self._exp_attr,
+                                                         logs=self._logs).estimate()
 
-            non_inf_count += np.where(likelihoods == -np.inf, 0, 1)
-            sum_likelihoods += np.where(likelihoods == -np.inf, 0, likelihoods)
+            non_inf_count += np.where(likelihoods[t] == -np.inf, 0, 1)
+            sum_likelihoods += np.where(likelihoods[t] == -np.inf, 0, likelihoods[t])
             curr_best_length = length_options[np.argmax(sum_likelihoods / (t + 1))]
             best_lengths.append(curr_best_length)
 
+        likelihoods = logsumexp(likelihoods, axis=0) - np.log(500)
         likelihoods = sum_likelihoods / non_inf_count
         likelihoods[non_inf_count / self._num_of_curves < non_inf_threshold] = -np.inf
 

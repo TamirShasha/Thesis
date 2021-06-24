@@ -14,7 +14,7 @@ from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.experiments.particles_projections import PARTICLE_250
 from src.utils.logger import logger
 
-# np.random.seed(500)
+np.random.seed(500)
 logger.setLevel(logging.INFO)
 
 
@@ -181,7 +181,7 @@ def __main__():
                                signal_fraction=1 / 6,
                                # signal_gen=PARTICLE_250.get_signal_gen(),
                                signal_gen=Shapes2D.sphere,
-                               noise_std=10,
+                               noise_std=3,
                                noise_mean=0,
                                apply_ctf=True)
 
@@ -191,12 +191,11 @@ def __main__():
         simulator=sim_data,
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(50, 350, 10),
-        # length_options=np.array([100, 200, 300]),
-        signal_num_of_occurrences_boundaries=(0, 150),
+        length_options=np.arange(50, 500, 10),
+        signal_num_of_occurrences_boundaries=(10, 200),
         signal_area_coverage_boundaries=(0.05, 0.20),
         num_of_power_options=10,
-        plot=False,
+        plot=True,
         save=True
     ).run()
 

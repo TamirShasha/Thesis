@@ -30,9 +30,7 @@ class LengthEstimator1D:
         self._n = self._data.shape[0]
         self._separation = separation
 
-        filter_height = signal_filter_gen(1)[0]
         self.log_prob_all_noise = utils.log_prob_all_is_noise(self._data, self._noise_std)
-        self.log_prob_all_signal = utils.log_prob_all_is_noise(self._data - filter_height, self._noise_std)
         self._signal_power = self._estimate_full_signal_power()
 
     def _estimate_full_signal_power(self):
@@ -75,8 +73,8 @@ class LengthEstimator1D:
         # Computing remaining parts of log-likelihood
         log_pd = -utils.log_size_S_1d(n, expected_num_of_occurrences, d)
         log_prob_all_noise = self.log_prob_all_noise
-        likelihood = log_pd + log_prob_all_noise + mapping[0, expected_num_of_occurrences]
-        # likelihood = log_pd + mapping[0, expected_num_of_occurrences]
+        # likelihood = log_pd + log_prob_all_noise + mapping[0, expected_num_of_occurrences]
+        likelihood = log_pd + mapping[0, expected_num_of_occurrences]
         logger.debug(
             f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{mapping[0, expected_num_of_occurrences]}')
         return likelihood
