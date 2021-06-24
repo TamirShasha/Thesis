@@ -176,14 +176,14 @@ class Experiment2D:
 def __main__():
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
-                               signal_length=250,
-                               signal_power=1,
+                               signal_length=300,
+                               signal_power=10,
                                signal_fraction=1 / 6,
                                # signal_gen=PARTICLE_250.get_signal_gen(),
                                signal_gen=Shapes2D.sphere,
-                               noise_std=1,
+                               noise_std=10,
                                noise_mean=0,
-                               apply_ctf=False)
+                               apply_ctf=True)
 
     Experiment2D(
         # mrc=MICROGRAPHS['whitened002_x10'],
@@ -192,10 +192,11 @@ def __main__():
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         length_options=np.arange(50, 350, 10),
-        signal_num_of_occurrences_boundaries=(20, 150),
+        # length_options=np.array([100, 200, 300]),
+        signal_num_of_occurrences_boundaries=(0, 150),
         signal_area_coverage_boundaries=(0.05, 0.20),
         num_of_power_options=10,
-        plot=True,
+        plot=False,
         save=True
     ).run()
 

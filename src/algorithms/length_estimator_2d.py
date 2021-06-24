@@ -135,7 +135,7 @@ class LengthEstimator2D:
 
     def estimate(self):
         if self._estimation_method == EstimationMethod.Curves:
-            logger.info(f'Estimating signal length using curves method')
+            logger.info(f'Estimating signal length using Curves method')
             length_estimator = \
                 LengthEstimator2DCurvesMethod(data=self._data,
                                               length_options=self._length_options,
@@ -149,7 +149,7 @@ class LengthEstimator2D:
                                               exp_attr=self._exp_attr,
                                               logs=self._logs)
         else:
-            logger.info(f'Estimating signal length using well separation method')
+            logger.info(f'Estimating signal length using Well-Separation method')
             length_estimator = \
                 LengthEstimator2DSeparationMethod(data=self._data,
                                                   length_options=self._length_options,

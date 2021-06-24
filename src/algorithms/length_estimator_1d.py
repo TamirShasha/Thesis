@@ -16,6 +16,7 @@ class LengthEstimator1D:
                  noise_mean=0,
                  signal_filter_gen=lambda l: np.full(l, 1),
                  signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
+                 separation=0,
                  exp_attr=None,
                  logs=True):
         self._data = data
@@ -27,8 +28,11 @@ class LengthEstimator1D:
         self._logs = logs
         self._exp_attr = exp_attr
         self._n = self._data.shape[0]
+        self._separation = separation
 
+        filter_height = signal_filter_gen(1)[0]
         self.log_prob_all_noise = utils.log_prob_all_is_noise(self._data, self._noise_std)
+        self.log_prob_all_signal = utils.log_prob_all_is_noise(self._data - filter_height, self._noise_std)
         self._signal_power = self._estimate_full_signal_power()
 
     def _estimate_full_signal_power(self):
@@ -49,9 +53,18 @@ class LengthEstimator1D:
         return k
 
     def _calc_length_likelihood(self, signal_filter, expected_num_of_occurrences):
+
+        if expected_num_of_occurrences <= 0:
+            return self.log_prob_all_noise
+
         y = self._data
         n = self._data.shape[0]
         d = signal_filter.shape[0]
+
+        if self._separation > 0:
+            sep_size = int(d * self._separation)
+            d += sep_size
+            signal_filter = np.concatenate([signal_filter, np.zeros(sep_size)])
 
         if n < d * expected_num_of_occurrences:
             return -np.inf
@@ -62,8 +75,8 @@ class LengthEstimator1D:
         # Computing remaining parts of log-likelihood
         log_pd = -utils.log_size_S_1d(n, expected_num_of_occurrences, d)
         log_prob_all_noise = self.log_prob_all_noise
-        # likelihood = log_pd + log_prob_all_noise + mapping[0, expected_num_of_occurrences]
-        likelihood = log_pd + mapping[0, expected_num_of_occurrences]
+        likelihood = log_pd + log_prob_all_noise + mapping[0, expected_num_of_occurrences]
+        # likelihood = log_pd + mapping[0, expected_num_of_occurrences]
         logger.debug(
             f'log pd: {log_pd}, noise: {log_prob_all_noise}, mapping:{mapping[0, expected_num_of_occurrences]}')
         return likelihood
