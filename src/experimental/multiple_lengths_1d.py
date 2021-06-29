@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 from src.algorithms.utils import create_random_k_tuple_sum_to_n
 from src.algorithms.length_estimator_1d import LengthEstimator1D
-from src.algorithms.multiple_lengths_estimator_1d import MultipleLengthsEstimator1D, SignalsDistribution
+from src.experimental.multiple_lengths_estimator_1d import MultipleLengthsEstimator1D, SignalsDistribution
 import warnings
 
 # warnings.simplefilter('ignore', category=NumbaDeprecationWarning)

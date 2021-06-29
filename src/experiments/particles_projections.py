@@ -61,4 +61,4 @@ class _ParticleProjectionsDatasets:
         return signal_gen
 
 
-PARTICLE_250 = _ParticleProjectionsDatasets('projections.npy', 200, preprocess=('crop', 'normalize'))
+PARTICLE_200 = _ParticleProjectionsDatasets('projections.npy', 200, preprocess=('crop', 'normalize'))

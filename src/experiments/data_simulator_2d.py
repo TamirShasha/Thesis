@@ -101,9 +101,9 @@ class DataSimulator2D:
         self.signal_shape = (signal_length, signal_length)
         self.mrc_area = self.rows * self.columns
         self.occurrences = int(self.signal_fraction * self.mrc_area / self.signal_area)
-        self.snr = self._calc_snr()
+        self.snr, self.mrc_snr = self._calc_snr()
 
-        logger.info(f'SNR is {self.snr}db')
+        logger.info(f'SNR (MRC) is {self.snr}db ({self.mrc_snr}db)')
 
     def simulate(self):
 
@@ -227,10 +227,11 @@ class DataSimulator2D:
             signal = self._apply_ctf_on_signal(signal)
 
         avg_signal_power = np.nansum(np.square(signal * signal_support)) / np.nansum(signal_support)
-        print(f'single particle snr: {avg_signal_power / np.square(self.noise_std)}')
+        single_signal_snr = (avg_signal_power / np.square(self.noise_std))
 
         fraction = self.occurrences * self.signal_area / self.mrc_area
-        snr = (avg_signal_power / np.square(self.noise_std)) * fraction
+        mrc_snr = single_signal_snr * fraction
 
-        db = int(10 * np.log10(snr))
-        return db
+        db = int(10 * np.log10(single_signal_snr))
+        mrc_db = int(10 * np.log10(mrc_snr))
+        return db, mrc_db
