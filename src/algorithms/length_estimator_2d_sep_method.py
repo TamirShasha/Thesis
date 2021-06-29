@@ -42,6 +42,7 @@ class LengthEstimator2DSeparationMethod:
         y = self._data
         n = y.shape[0]
         d = signal_filter.shape[0]
+        expected_num_of_occurrences = 1
 
         # Axis 1
         sum_yx_minus_x_squared = utils.log_probability_filter_on_each_pixel(y, signal_filter, self._noise_std)

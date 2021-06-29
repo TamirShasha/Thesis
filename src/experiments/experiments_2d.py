@@ -11,10 +11,10 @@ from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
 from src.algorithms.length_estimator_2d import LengthEstimator2D, EstimationMethod
 from src.experiments.micrograph import Micrograph, MICROGRAPHS
-from src.experiments.particles_projections import PARTICLE_250
+from src.experiments.particles_projections import PARTICLE_200
 from src.utils.logger import logger
 
-np.random.seed(500)
+# np.random.seed(500)
 logger.setLevel(logging.INFO)
 
 
@@ -124,7 +124,7 @@ class Experiment2D:
         if self._mrc is None:
             title += f"Signal power={self._data_simulator.signal_power}, " \
                      f"Signal area coverage={int(np.round(self._data_simulator.signal_fraction, 2) * 100)}% \n" \
-                     f"SNR={self._data_simulator.snr}db "
+                     f"SNR={self._data_simulator.snr}db (MRC-SNR={self._data_simulator.mrc_snr}db)"
         else:
             title += f"MRC={self._mrc.name}\n"
 
@@ -174,24 +174,27 @@ class Experiment2D:
 
 
 def __main__():
+    sig_gen = lambda l, p: Shapes2D.double_disk(l, l // 4, -p / 2, p)
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
-                               signal_length=300,
-                               signal_power=10,
+                               # signal_length=PARTICLE_200.particle_length,
+                               signal_length=200,
+                               signal_power=1,
                                signal_fraction=1 / 6,
-                               # signal_gen=PARTICLE_250.get_signal_gen(),
-                               signal_gen=Shapes2D.sphere,
-                               noise_std=3,
+                               # signal_gen=PARTICLE_200.get_signal_gen(),
+                               signal_gen=Shapes2D.disk,
+                               # signal_gen=sig_gen,
+                               noise_std=20,
                                noise_mean=0,
-                               apply_ctf=True)
+                               apply_ctf=False)
 
     Experiment2D(
-        # mrc=MICROGRAPHS['whitened002_x10'],
+        mrc=MICROGRAPHS['002'],
         name=f"expy",
-        simulator=sim_data,
+        # simulator=sim_data,
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(50, 500, 10),
+        length_options=np.arange(50, 500, 20),
         signal_num_of_occurrences_boundaries=(10, 200),
         signal_area_coverage_boundaries=(0.05, 0.20),
         num_of_power_options=10,
