@@ -61,7 +61,7 @@ class Experiment2D:
             self._applied_ctf = simulator.apply_ctf
         else:
             logger.info(f'Loading given micrograph from {mrc.name}')
-            self._data = mrc.load_mrc()
+            self._data = mrc.load_micrograph()
             self._data = self._data[:min(self._data.shape), :min(self._data.shape)]
             self._num_of_occurrences = mrc.occurrences
             self._noise_std = mrc.noise_std
@@ -186,12 +186,13 @@ def __main__():
                                signal_gen=Shapes2D.sphere,
                                # signal_gen=sig_gen,
                                noise_std=10,
-                               noise_mean=0.5,
+                               noise_mean=0,
                                apply_ctf=False)
 
     Experiment2D(
         name=f"expy",
-        mrc=MICROGRAPHS['EMD-2984_0010'],
+        # mrc=MICROGRAPHS['EMD-2984_0010'],
+        mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
         # simulator=sim_data,
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,

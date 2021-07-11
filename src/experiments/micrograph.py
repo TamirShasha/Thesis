@@ -1,19 +1,38 @@
 import os
+import pathlib
 
 from src.constants import ROOT_DIR
-from src.utils.mrc import read_mrc
+from src.utils.mrc import read_mrc, mat_to_npy
+from src.algorithms.utils import cryo_downsample
 
 
 class Micrograph:
-    def __init__(self, name, size, occurrences=0, noise_std=1, noise_mean=0):
+    def __init__(self, name, size,
+                 mrc_mat_path=None, downsample=None,
+                 occurrences=0, noise_std=1, noise_mean=0):
         self.name = name
         self.signal_length = size
+        self.mrc_mat_path = mrc_mat_path
+        self.downsample = downsample
         self.noise_std = noise_std
         self.noise_mean = noise_mean
         self.occurrences = occurrences
 
-    def load_mrc(self):
-        return read_mrc(_get_path(self.name))
+    def load_micrograph(self):
+
+        if self.mrc_mat_path is None:
+            return read_mrc(_get_path(self.name))
+
+        file_extension = pathlib.Path(self.mrc_mat_path).suffix
+        if file_extension == '.mat':
+            mrc = mat_to_npy(self.mrc_mat_path)
+        else:
+            raise Exception('Unsupported File Extension!')
+
+        if self.downsample:
+            mrc = cryo_downsample(mrc, self.downsample)
+
+        return mrc
 
 
 def _get_path(mrc_name):
