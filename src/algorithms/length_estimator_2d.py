@@ -60,11 +60,11 @@ class LengthEstimator2D:
         self._avg_signal_power_options = self._estimate_avg_signal_power_options()
         self._dpk, self._dpk_mask = self._generate_dpk_tuples()
 
-        if self._plot:
-            fig, ax = plt.subplots()
-            self.generate_dpk_plot_table(ax)
-            fig.tight_layout()
-            plt.show()
+        # if self._plot:
+        #     fig, ax = plt.subplots()
+        #     self.generate_dpk_plot_table(ax)
+        #     fig.tight_layout()
+        #     plt.show()
 
         logger.info('Done preprocessing .\n')
 
@@ -79,6 +79,10 @@ class LengthEstimator2D:
                 info_msg += '\n'
             info_msg += f'{power} ({int(area * 100)}%)\t'
         logger.info(info_msg)
+
+        # _min = np.min(self._data)
+        # _max = np.max(self._data)
+        # power_options = np.linspace(.1, .2, self._num_of_power_options)
 
         return power_options
 

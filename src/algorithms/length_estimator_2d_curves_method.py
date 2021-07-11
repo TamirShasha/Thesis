@@ -20,7 +20,7 @@ class LengthEstimator2DCurvesMethod:
                  noise_std,
                  signal_power_estimator_method,
                  exp_attr,
-                 curve_width=51,
+                 curve_width=31,
                  logs=True):
         self._data = data
         self._length_options = length_options
@@ -37,7 +37,7 @@ class LengthEstimator2DCurvesMethod:
         self._n = self._data.shape[0]
 
         # self._num_of_curves = 200 * int(np.log(np.max(self._data.shape)))
-        self._num_of_curves = 100
+        self._num_of_curves = 30
 
         self._curves = self._create_curves(num=self._num_of_curves)
 
@@ -118,7 +118,7 @@ class LengthEstimator2DCurvesMethod:
                                                          length_options=length_options,
                                                          signal_filter_gen=filter_gen,
                                                          noise_mean=self._noise_mean,
-                                                         noise_std=self._noise_std / np.sqrt(11),
+                                                         noise_std=self._noise_std / np.sqrt(self._curve_width),
                                                          signal_power_estimator_method=self._signal_power_estimator_method,
                                                          separation=0.3,
                                                          exp_attr=self._exp_attr,

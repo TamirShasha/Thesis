@@ -125,49 +125,49 @@ def __main__():
     #     save=False
     # ).run()
 
-    # Experiment(
-    #     name="std-10",
-    #     n=3000,
-    #     d=50,
-    #     k=20,
-    #     signal_fn=lambda d: np.full(d, 1),
-    #     signal_filter_gen=lambda d: np.full(d, 1),
-    #     noise_std=2,
-    #     signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-    #     plot=False,
-    #     save=False
-    # ).run()
+    Experiment(
+        name="std-10",
+        n=4000,
+        d=200,
+        k=1,
+        signal_fn=lambda d: np.full(d, 1),
+        signal_filter_gen=lambda d: np.full(d, 1),
+        noise_std=4,
+        signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
+        plot=True,
+        save=False
+    ).run()
 
-    d = 100
-    len_ops = np.arange(d // 4, int(d * 1.5), 10)
-    # len_ops = [50]
-    likelihoods = []
-    names = []
-    # ps = np.arange(1, 3.1, 0.5)
-    ps = [1, 2]
-    for i, p in enumerate(ps):
-        np.random.seed(500)
-
-        names.append(f'p_{p}')
-        likelihoods.append(Experiment(
-            name="std-10",
-            n=3000,
-            d=d,
-            signal_fraction=1 / 5,
-            length_options=len_ops,
-            signal_fn=lambda d: np.full(d, 1),
-            signal_filter_gen=lambda d: np.full(d, p),
-            noise_std=5,
-            signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-            plot=False,
-            save=False
-        ).run())
-
-    plt.plot(len_ops, np.max(np.array(likelihoods), axis=0))
-    names.append('max')
-
-    plt.legend(names)
-    plt.show()
+    # d = 100
+    # len_ops = np.arange(d // 4, int(d * 1.5), 10)
+    # # len_ops = [50]
+    # likelihoods = []
+    # names = []
+    # # ps = np.arange(1, 3.1, 0.5)
+    # ps = [1, 2]
+    # for i, p in enumerate(ps):
+    #     np.random.seed(500)
+    #
+    #     names.append(f'p_{p}')
+    #     likelihoods.append(Experiment(
+    #         name="std-10",
+    #         n=3000,
+    #         d=d,
+    #         signal_fraction=1 / 5,
+    #         length_options=len_ops,
+    #         signal_fn=lambda d: np.full(d, 1),
+    #         signal_filter_gen=lambda d: np.full(d, p),
+    #         noise_std=5,
+    #         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
+    #         plot=False,
+    #         save=False
+    #     ).run())
+    #
+    # plt.plot(len_ops, np.max(np.array(likelihoods), axis=0))
+    # names.append('max')
+    #
+    # plt.legend(names)
+    # plt.show()
 
     # Experiment(
     #     name="std-13",

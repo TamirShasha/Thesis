@@ -14,7 +14,7 @@ from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.experiments.particles_projections import PARTICLE_200
 from src.utils.logger import logger
 
-# np.random.seed(500)
+# np.random.seed(501)
 logger.setLevel(logging.INFO)
 
 
@@ -62,6 +62,7 @@ class Experiment2D:
         else:
             logger.info(f'Loading given micrograph from {mrc.name}')
             self._data = mrc.load_mrc()
+            self._data = self._data[:min(self._data.shape), :min(self._data.shape)]
             self._num_of_occurrences = mrc.occurrences
             self._noise_std = mrc.noise_std
             self._noise_mean = mrc.noise_mean
@@ -92,7 +93,7 @@ class Experiment2D:
                                                    num_of_power_options=num_of_power_options,
                                                    signal_filter_gen_1d=signal_1d_filter_gen,
                                                    signal_filter_gen_2d=signal_2d_filter_gen,
-                                                   noise_mean=self._noise_mean,
+                                                   noise_mean=self._noise_mean * 0,
                                                    noise_std=self._noise_std,
                                                    signal_power_estimator_method=signal_power_estimator_method,
                                                    estimation_method=estimation_method,
@@ -182,20 +183,20 @@ def __main__():
                                signal_power=1,
                                signal_fraction=1 / 6,
                                # signal_gen=PARTICLE_200.get_signal_gen(),
-                               signal_gen=Shapes2D.disk,
+                               signal_gen=Shapes2D.sphere,
                                # signal_gen=sig_gen,
-                               noise_std=20,
-                               noise_mean=0,
+                               noise_std=10,
+                               noise_mean=0.5,
                                apply_ctf=False)
 
     Experiment2D(
-        mrc=MICROGRAPHS['002'],
         name=f"expy",
+        mrc=MICROGRAPHS['EMD-2984_0010'],
         # simulator=sim_data,
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(50, 500, 20),
-        signal_num_of_occurrences_boundaries=(10, 200),
+        length_options=np.arange(10, 500, 20),
+        signal_num_of_occurrences_boundaries=(0, 20000),
         signal_area_coverage_boundaries=(0.05, 0.20),
         num_of_power_options=10,
         plot=True,

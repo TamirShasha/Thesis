@@ -32,20 +32,14 @@ def read_mrc(file_path):
     # mrc /= np.max(mrc)
     return mrc
 
-#
-# import matplotlib.pyplot as plt
-#
-# file_path = '../../../data/projections.npy'
-# m = np.load(file_path)
-# print(m.shape)
-# plt.imshow(m[:, :, 1])
-# plt.show()
 
-# file_path = '../../../data/002white.mat'
-# x = read_mrc(file_path)
+# import matplotlib.pyplot as plt
+# from src.algorithms.utils import cryo_downsample
+#
+# file_path = '../../../data/EMD-2984_0010.mat'
+# # x = read_mrc(file_path)
 # x = mat_to_npy(file_path)
-# x = x + np.random.normal(0, 20, x.shape)
-# write_mrc('../../../data/002white_x10.mrc', - x * 10)
-# y = read_mrc('../../../data/002white_x10.mrc')
-# plt.imshow(x, cmap='gray')
-# plt.show()
+# # x = cryo_downsample(x, (500, 500))
+# write_mrc('../../../data/EMD-2984_0010.mrc', x)
+# # plt.imshow(x, cmap='gray')
+# # plt.show()
