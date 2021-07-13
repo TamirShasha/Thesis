@@ -106,6 +106,20 @@ def crop(x, out_shape):
     return out
 
 
+def gradient_descent(F_F_tag, initial_x, t=0.01, epsilon=1e-10, max_iter=200):
+    x_prev = initial_x
+    F_prev, F_tag_prev = F_F_tag(x_prev)
+    for i in range(max_iter):
+        x_current = x_prev + t * F_tag_prev
+        F_current, F_tag_current = F_F_tag(x_current)
+        if np.abs(F_current - F_prev) < epsilon:
+            break
+        t = np.abs((x_current - x_prev) / (F_tag_prev - F_tag_current))
+        x_prev, F_prev, F_tag_prev = x_current, F_current, F_tag_current
+    return F_current, x_current
+
+
+
 # Utils regarding likelihood computation
 def log_size_S_1d(n, k, d):
         """
@@ -261,33 +275,13 @@ def max_argmax_1d_case(y, filt, k, noise_std, x_0=1, t=0.01, epsilon=1e-5, max_i
     return gradient_descent(F_F_tag, x_0, t, epsilon, max_iter)
 
 
-def gradient_descent(F_F_tag, initial_x, t=0.01, epsilon=1e-10, max_iter=200):
-    x_prev = initial_x
-    F_prev, F_tag_prev = F_F_tag(x_prev)
-    for i in range(max_iter):
-        x_current = x_prev + t * F_tag_prev
-        F_current, F_tag_current = F_F_tag(x_current)
-        if np.abs(F_current - F_prev) < epsilon:
-            break
-        t = np.abs((x_current - x_prev) / (F_tag_prev - F_tag_current))
-        x_prev, F_prev, F_tag_prev = x_current, F_current, F_tag_current
-    return F_current, x_current
-
-
 def precompute_f_f_tag(power, mgraph, filt, noise_std):
-    """
-    For each pixel i in the mgraph compute -1/2std^2 * \sum_{j is filter pixel} x_j^2 - 2x_jy_{i+j}
-    We ignore pixels that cannot start a filter.
-    :param mgraph:
-    :param filt:
-    :param noise_std:
-    :return:
-    """
     x_tag = np.flip(filt)  # Flipping to cross-correlate
     conv = convolve(mgraph, x_tag, mode='valid') / (noise_std ** 2)
     return conv, conv * power
 
 
+@nb.jit
 def f_f_tag(curr_power, y, x, k, sigma):
     n = y.shape[0]
     d = x.shape[0]
