@@ -285,8 +285,8 @@ def dynamic_programming_1d_derivative(n, k, d, consts1, consts2, g=None):
     return np.exp(mapping[0, k] - g[0, k]) - k * r
 
 
-@nb.jit
-def dynamic_programming_1d_many_derivative(n, k, d, consts1, consts2, g=None):
+# @nb.jit
+def dynamic_programming_1d_many_derivative_for_2d_derivative(n, k, d, consts1, consts2, g=None):
     """
     Do the 1d dynamic programming for many constant vectors.
     Output is mapping such that mapping[:, :, i] = dynamic_programming_1d(n, k, d, constants[i])
@@ -297,49 +297,17 @@ def dynamic_programming_1d_many_derivative(n, k, d, consts1, consts2, g=None):
     :return:
     """
 
-    g = dynamic_programming_1d_many(n, max(k), d, consts2) if g is None else g
+    g = dynamic_programming_1d_many(n, k, d, consts2) if g is None else g
     g = g.transpose((1, 2, 0)).copy()
 
     # Changing constants shape so the first axis is continuous
     consts1 = consts1.T.copy()
     consts2 = consts2.T.copy()
 
-    r = - np.min(consts1) + 1
-    consts1 = np.log(consts1 + r)
-
     # Allocating memory
     # Default is -inf everywhere as there are many places where the probability is 0 (when i > n - k * d)
     # when k=0 the probability is 1
-    mapping = np.full((n + 1, max(k) + 1, consts1.shape[-1]), -np.inf)
-    mapping[:, 0] = 0
-
-    for curr_k in range(1, max(k) + 1):
-        for i in range(n - curr_k * d, -1, -1):
-            mapping[i, curr_k] = np.logaddexp(consts2[i] + mapping[i + d, curr_k - 1], mapping[i + 1, curr_k])
-            mapping[i, curr_k] = np.logaddexp(consts1[i] + consts2[i] + g[i + d, curr_k - 1], mapping[i, curr_k])
-
-    mapping = mapping.transpose((2, 0, 1))
-    g = g.transpose((2, 0, 1))
-    return np.array([np.exp(mapping[i, 0, k[i]] - g[i, 0, k[i]]) - k[i] * r for i in range(len(k))])
-
-
-def dynamic_programming_2d_derivative(n, k, d, consts1, consts2, g=None):
-    """
-    Compute log(\sum_{s in S_(n,k,d)}\prod_{i in s}c_i)
-    :param n:
-    :param k:
-    :param d:
-    :param consts1:
-    :param consts2:
-    :param g:
-    :return:
-    """
-    g = dynamic_programming_1d(n, k, d, consts2) if g is None else g
-
-    r = - np.min(consts1) + 1
-    consts1 = np.log(consts1 + r)
-
-    mapping = np.full((n + 1, k + 1), -np.inf)
+    mapping = np.full((n + 1, k + 1, consts1.shape[-1]), -np.inf)
     mapping[:, 0] = 0
 
     for curr_k in range(1, k + 1):
@@ -347,24 +315,67 @@ def dynamic_programming_2d_derivative(n, k, d, consts1, consts2, g=None):
             mapping[i, curr_k] = np.logaddexp(consts2[i] + mapping[i + d, curr_k - 1], mapping[i + 1, curr_k])
             mapping[i, curr_k] = np.logaddexp(consts1[i] + consts2[i] + g[i + d, curr_k - 1], mapping[i, curr_k])
 
-    return np.exp(mapping[0, k] - g[0, k]) - k * r
+    mapping = mapping.transpose((2, 0, 1))
+    return mapping[:, 0, :].copy()
 
 
-def gradient_descent(F_F_tag, initial_x, t=0.01, epsilon=1e-10, max_iter=200, concave=False):
+def dynamic_programming_2d_function_and_derivative(n, k, d, consts1, consts2):
+    max_k_in_row = min(n // d, k)
+
+    # Fix consts1
+    r = - np.min(consts1) + 1
+    consts1 = np.log(consts1 + r)
+
+    # Start precomputation
+    C = dynamic_programming_1d_many(n, k, d, consts2)
+    A = dynamic_programming_1d_many_derivative_for_2d_derivative(n, k, d, consts1, consts2, C)
+    # C = C[:, 0, 1:].copy()  # No need for k = 0
+    # B = dynamic_programming_2d_after_pre_compute(n, k, d, C)
+    B = dynamic_programming_2d_after_pre_compute(n, k, d, C[:, 0, 1:].copy())
+
+    # A = A[:, :0:-1].copy()  # No need for k = 0 and need to reverse columns
+    C = C[:, 0, :].copy()
+
+    # start DP
+    mapping = np.full((n + 1, k + 1), -np.inf)
+    mapping[:, 0] = 0
+
+    # Filling values one by one, skipping irrelevant values
+    for curr_k in range(1, k + 1):
+        max_k = min(curr_k, max_k_in_row)
+        tmp = np.zeros(max_k + 1)
+        for i in range(n - d, -1, -1):
+            tmp[0] = mapping[i + 1, curr_k]
+            for k_ in range(1, max_k + 1):
+                tmp[k_] = np.logaddexp(A[i, k_] + B[i + d, curr_k - k_], C[i, k_] + mapping[i + d, curr_k - k_])
+            mapping[i, curr_k] = logsumexp_simple(tmp)
+            # mapping[i, curr_k] = logsumexp_simple(
+            #     np.logaddexp(A[i, curr_k - max_k:curr_k] + B[i + d, -max_k:],
+            #                  mapping[i + d, curr_k - max_k:curr_k] + C[i, -max_k:])
+            # )
+            # mapping[i, curr_k] = np.logaddexp(mapping[i, curr_k], mapping[i + 1, curr_k])
+            # print(logsumexp_simple(tmp) - mapping[i, curr_k])
+
+    return B[0, k], np.exp(mapping[0, k] - B[0, k]) - k * r
+
+
+def gradient_descent(F_F_tag, initial_x, t=0.1, epsilon=1e-10, max_iter=200, concave=False):
     x_prev = initial_x
     F_prev, F_tag_prev = F_F_tag(x_prev)
     for i in range(max_iter):
+        print(x_prev, F_prev, F_tag_prev, t)
         x_current = x_prev + t * F_tag_prev if concave else x_prev - t * F_tag_prev
         F_current, F_tag_current = F_F_tag(x_current)
         if np.abs(F_current - F_prev) < epsilon:
             break
         t = np.abs((x_current - x_prev) / (F_tag_prev - F_tag_current))
         x_prev, F_prev, F_tag_prev = x_current, F_current, F_tag_current
+    print(x_current, F_current, F_tag_current, t)
     return F_current, x_current
 
 
 # Code for 1d optimization
-def max_argmax_1d_case(y, filt, k, noise_std, x_0=1, t=0.01, epsilon=1e-5, max_iter=100):
+def max_argmax_1d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_iter=100):
     # If got only one y
     if not hasattr(y[0], '__iter__'):
         y = [y]
@@ -373,22 +384,21 @@ def max_argmax_1d_case(y, filt, k, noise_std, x_0=1, t=0.01, epsilon=1e-5, max_i
     if not hasattr(k, '__iter__'):
         k = [k] * len(y)
 
-    def F_F_tag(x):
-        f = 0
-        f_tag = 0
-        for y_, k_ in zip(y, k):
-            f_, f_tag_ = f_f_tag(x, y_, filt, k_, noise_std)
-            f += f_
-            f_tag += f_tag_
-        return f, f_tag
+    # Computing log(|S|)
+    d = filt.shape[0]
+    num_curves = len(y)
+    log_sizes = np.zeros(num_curves)
+    for i in range(num_curves):
+        n = len(y[i])
+        log_sizes[i] = log_size_S_1d(n, k[i], d)
 
-    # Works a little bit slower
-    # def F_F_tag(x):
-    #     return f_f_tag_many(x, y, filt, k, noise_std)
+    def F_F_tag(x):
+        return f_f_tag_1d(x, y[i], filt, k[i], noise_std, log_sizes)
+
     return gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
 
 
-def f_f_tag(curr_power, y, x, k, sigma):
+def f_f_tag_1d_one_sample(curr_power, y, x, k, sigma, log_size=0):
     n = y.shape[0]
     d = x.shape[0]
 
@@ -399,50 +409,63 @@ def f_f_tag(curr_power, y, x, k, sigma):
     g = dynamic_programming_1d(n, k, d, const2)
     dp_derivative = dynamic_programming_1d_derivative(n, k, d, const1, const2, g)
 
-    log_f = log_c - k * np.sum(np.square(x)) * curr_power ** 2 / (2 * sigma ** 2) + g[0, k]
+    log_f = - log_size + log_c - k * np.sum(np.square(x)) * curr_power ** 2 / (2 * sigma ** 2) + g[0, k]
     f_tag = - k * np.sum(np.square(x)) * curr_power / sigma ** 2 + dp_derivative
 
     return log_f, f_tag
 
 
-def f_f_tag_many(curr_power, y, x, k, sigma):
-    n = y.shape[1]
-    d = x.shape[0]
+def f_f_tag_1d(curr_power, y, x, k, sigma, log_sizes=None):
+    num_curves = len(y)
+    if log_sizes is None:
+        d = x.shape[0]
+        log_sizes = np.zeros(num_curves)
+        for i in range(num_curves):
+            n = len(y[i])
+            log_sizes[i] = log_size_S_1d(n, k[i], d)
 
-    const1, const2 = precompute_f_f_tag(curr_power, y, x, sigma)
-    g = dynamic_programming_1d_many(n, max(k), d, const2)
-
-    dp_derivative = dynamic_programming_1d_many_derivative(n, k, d, const1, const2, g)
-
-    # Computing constant part
-    log_c = np.array([-np.sum(np.square(y[i])) / (2 * sigma ** 2) - np.log(np.sqrt(2 * np.pi * sigma ** 2)) for i in range(len(y))])
-    tmp = np.array([-k[i] * np.sum(np.square(x)) * curr_power ** 2 / (2 * sigma ** 2) for i in range(len(y))])
-    g = np.array([g[i, 0, k[i]] for i in range(len(y))])
-    log_f = log_c + tmp + g
-
-    tmp = np.array([-k[i] * np.sum(np.square(x)) * curr_power / sigma ** 2 for i in range(len(y))])
-
-    f_tag = tmp + dp_derivative
-    return np.sum(log_f), np.sum(f_tag)
+    f = np.array(num_curves)
+    f_tag = np.array(num_curves)
+    for i in range(num_curves):
+        f_, f_tag_ = f_f_tag_1d(curr_power, y[i], x, k[i], sigma, log_sizes[i])
+        f[i] += f_ / num_curves
+        f_tag[i] += f_tag_ / num_curves
+    return f.sum(), f_tag.sum()
 
 
 # Code for 2d optimization
-def max_argmax_2d_case(y, filt, k, noise_std, x_0=1, t=0.01, epsilon=1e-5, max_iter=100):
-    # If got only one y
-    if not hasattr(y[0], '__iter__'):
-        y = [y]
-
-    # If got only one k
-    if not hasattr(k, '__iter__'):
-        k = [k] * len(y)
+def max_argmax_2d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_iter=100):
+    n = y.shape[0]
+    d = filt.shape[0]
+    log_size_1_axis = log_size_S_2d_1axis(n, k, d)
 
     def F_F_tag(x):
-        f = 0
-        f_tag = 0
-        for y_, k_ in zip(y, k):
-            f_, f_tag_ = f_f_tag(x, y_, filt, k_, noise_std)
-            f += f_
-            f_tag += f_tag_
-        return f, f_tag
+        return f_f_tag_2d(x, y, filt, k, noise_std, log_size_1_axis)
 
-    return gradient_descent(F_F_tag, x_0, t, epsilon, max_iter)
+    return gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
+
+
+def f_f_tag_2d(curr_power, y, x, k, sigma, log_size_1_axis=None):
+    n = y.shape[0]
+    d = x.shape[0]
+    if log_size_1_axis is None:
+        log_size_1_axis = log_size_S_2d_1axis(n, k, d)
+
+    # Computing constant part
+    log_c = - np.sum(np.square(y)) / (2 * sigma ** 2) - np.log(np.sqrt(2 * np.pi * sigma ** 2))
+
+    # Axis 1
+    const1, const2 = precompute_f_f_tag(curr_power, y, x, sigma)
+    log_f1, f_tag1 = dynamic_programming_2d_function_and_derivative(n, k, d, const1, const2)
+    log_f1 += - log_size_1_axis + log_c - k * np.sum(np.square(x)) * curr_power ** 2 / (2 * sigma ** 2)
+    f_tag1 += - k * np.sum(np.square(x)) * curr_power / sigma ** 2
+
+    # Axis 2
+    const1, const2 = const1.T.copy(), const2.T.copy()
+    log_f2, f_tag2 = dynamic_programming_2d_function_and_derivative(n, k, d, const1, const2)
+    log_f2 += - log_size_1_axis + log_c - k * np.sum(np.square(x)) * curr_power ** 2 / (2 * sigma ** 2)
+    f_tag2 += - k * np.sum(np.square(x)) * curr_power / sigma ** 2
+
+    log_f = log_f1 + log_f2
+    f_tag = f_tag1 + f_tag2
+    return log_f, f_tag
