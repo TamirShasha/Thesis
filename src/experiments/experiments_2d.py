@@ -73,9 +73,9 @@ class Experiment2D:
         self._columns = self._data.shape[1]
 
         plt.rcParams["figure.figsize"] = (16, 9)
-        if self._plot:
-            plt.imshow(self._data, cmap='gray')
-            plt.show()
+        # if self._plot:
+        #     plt.imshow(self._data, cmap='gray')
+        #     plt.show()
 
         if length_options is None:
             length_options = np.arange(self._signal_length // 4, int(self._signal_length), 10)
@@ -183,7 +183,7 @@ def __main__():
                                signal_power=1,
                                signal_fraction=1 / 6,
                                # signal_gen=PARTICLE_200.get_signal_gen(),
-                               signal_gen=Shapes2D.sphere,
+                               signal_gen=Shapes2D.disk,
                                # signal_gen=sig_gen,
                                noise_std=10,
                                noise_mean=0,
@@ -192,8 +192,8 @@ def __main__():
     Experiment2D(
         name=f"expy",
         # mrc=MICROGRAPHS['EMD-2984_0010'],
-        mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
-        # simulator=sim_data,
+        # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
+        simulator=sim_data,
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         length_options=np.arange(10, 500, 20),

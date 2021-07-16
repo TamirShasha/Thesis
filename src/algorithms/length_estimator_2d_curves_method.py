@@ -4,6 +4,7 @@ from skimage.draw import line, line_nd
 from src.algorithms.length_estimator_1d import LengthEstimator1D
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 from src.utils.logger import logger
+from src.algorithms.utils import max_argmax_1d_case
 from src.utils.logsumexp import logsumexp
 
 
@@ -141,6 +142,15 @@ class LengthEstimator2DCurvesMethod:
         return full_likelihoods, fixed_best_lengths
 
     def estimate(self):
+        likelihoods = np.zeros(len(self._length_options))
+        for i, length in enumerate(self._length_options):
+            signal_filter = self._signal_filter_gen(length, 1)
+            likelihood, power = max_argmax_1d_case(self._curves, signal_filter, 3, self._noise_std)
+            likelihoods[i] = likelihood
+            print(likelihood, power)
+        return {'max': likelihoods}, 0
+
+    def estimate2(self):
         likelihoods = dict()
 
         likelihoods_arr = np.zeros(shape=(len(self._power_options), len(self._length_options)))
@@ -153,5 +163,6 @@ class LengthEstimator2DCurvesMethod:
         max_row = np.argmax(np.max(likelihoods_arr, axis=1))
         logger.info(f'Power = {self._power_options[max_row]} yielded the maximum likelihood')
         likelihoods['max'] = likelihoods_arr[max_row]
+        print(likelihoods['max'])
         most_likely_length = self._length_options[np.argmax(likelihoods['max'])]
         return likelihoods, most_likely_length

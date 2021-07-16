@@ -82,7 +82,7 @@ class LengthEstimator2D:
 
         # _min = np.min(self._data)
         # _max = np.max(self._data)
-        # power_options = np.linspace(.1, .2, self._num_of_power_options)
+        power_options = np.linspace(0.2, 1.2, self._num_of_power_options)
 
         return power_options
 
