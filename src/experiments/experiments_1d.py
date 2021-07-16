@@ -6,7 +6,7 @@ from src.constants import ROOT_DIR
 import logging
 from datetime import datetime
 
-from src.algorithms.utils import create_random_k_tuple_sum_to_n
+from src.algorithms.utils import generate_random_signal_positions
 from src.experiments.data_simulator_1d import add_pulses, add_gaus_noise
 from src.algorithms.length_estimator_1d import LengthEstimator1D, SignalPowerEstimator
 from src.utils.logger import logger
@@ -58,7 +58,7 @@ class Experiment:
             self._signal_filter_gen = self._signal_fn
 
         logger.info('Arranging data...')
-        signal_mask = create_random_k_tuple_sum_to_n(self._n - self._d * self._k, self._k + 1)
+        signal_mask = generate_random_signal_positions(self._n - self._d * self._k, self._k + 1)
         self._clean_y = np.zeros(self._n)
         self._y_with_signals = add_pulses(self._clean_y, signal_mask, self._signal)
         self._y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
