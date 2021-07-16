@@ -63,6 +63,10 @@ class Experiment:
         self._y_with_signals = add_pulses(self._clean_y, self._signal, signal_mask)
         self._y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
 
+        if self._plot:
+            plt.plot(self._y)
+            plt.show()
+
         if length_options is None:
             length_options = np.arange(self._d // 4, int(self._d * 3), 10)
         self._signal_length_options = length_options

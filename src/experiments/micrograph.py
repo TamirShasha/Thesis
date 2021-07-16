@@ -44,7 +44,7 @@ MICROGRAPHS = {
     'simple_3': Micrograph(name='clean_one_std_3.mrc', size=301, occurrences=80, noise_std=3, noise_mean=0),
     'simple_5': Micrograph(name='clean_one_std_5.mrc', size=301, occurrences=80, noise_std=5, noise_mean=0),
     '002': Micrograph(name='002.mrc', size=350, occurrences=80, noise_std=1, noise_mean=0),
-    'whitened002': Micrograph(name='002white.mrc', size=350, occurrences=80, noise_std=1, noise_mean=0),
+    'whitened002': Micrograph(name='002white.mrc', size=200, occurrences=80, noise_std=1, noise_mean=0),
     'whitened002_x10': Micrograph(name='002white_x10.mrc', size=350, occurrences=80, noise_std=10, noise_mean=0),
     '002_whitened': Micrograph(name='002_whitened_normalized.mrc', size=350, occurrences=80, noise_std=1,
                                noise_mean=0),

@@ -16,6 +16,7 @@ class LengthEstimator1D:
                  noise_mean=0,
                  signal_filter_gen=lambda l: np.full(l, 1),
                  signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
+                 fixed_occurrences=None,
                  separation=0,
                  exp_attr=None,
                  logs=True):
@@ -28,6 +29,7 @@ class LengthEstimator1D:
         self._logs = logs
         self._exp_attr = exp_attr
         self._n = self._data.shape[0]
+        self._fixed_occurrences = fixed_occurrences
         self._separation = separation
 
         self.log_prob_all_noise = utils.log_prob_all_is_noise(self._data, self._noise_std)
@@ -48,8 +50,7 @@ class LengthEstimator1D:
     def _estimate_num_of_signal_occurrences(self, signal_length):
         single_signal_power = self._estimate_single_instance_of_signal_power(signal_length)
         k = int(np.round(self._signal_power / single_signal_power))
-        # return k
-        return 3
+        return k
 
     def _calc_length_likelihood(self, signal_filter, expected_num_of_occurrences):
 
@@ -82,7 +83,10 @@ class LengthEstimator1D:
 
     def _calc_signal_length_likelihood(self, d):
         tic = time.time()
-        expected_num_of_signal_occurrences = self._estimate_num_of_signal_occurrences(d)
+        if self._fixed_occurrences is None:
+            expected_num_of_signal_occurrences = self._estimate_num_of_signal_occurrences(d)
+        else:
+            expected_num_of_signal_occurrences = self._fixed_occurrences
 
         signal_filter = self._signal_filter_gen(d)
         likelihood = self._calc_length_likelihood(signal_filter, expected_num_of_signal_occurrences)

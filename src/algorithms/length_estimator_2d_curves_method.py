@@ -121,6 +121,7 @@ class LengthEstimator2DCurvesMethod:
                                                          noise_std=self._noise_std / np.sqrt(self._curve_width),
                                                          signal_power_estimator_method=self._signal_power_estimator_method,
                                                          separation=0.3,
+                                                         fixed_occurrences=3,
                                                          exp_attr=self._exp_attr,
                                                          logs=self._logs).estimate()
 
