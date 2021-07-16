@@ -60,7 +60,7 @@ class Experiment:
         logger.info('Arranging data...')
         signal_mask = create_random_k_tuple_sum_to_n(self._n - self._d * self._k, self._k + 1)
         self._clean_y = np.zeros(self._n)
-        self._y_with_signals = add_pulses(self._clean_y, signal_mask, self._signal)
+        self._y_with_signals = add_pulses(self._clean_y, self._signal, signal_mask)
         self._y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
 
         if length_options is None:
