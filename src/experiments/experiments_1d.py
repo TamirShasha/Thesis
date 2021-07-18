@@ -64,7 +64,9 @@ class Experiment:
         self._y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
 
         if self._plot:
-            plt.plot(self._y)
+            plt.plot(self._y_with_signals[:3000])
+            plt.show()
+            plt.plot(self._y[:3000])
             plt.show()
 
         if length_options is None:
@@ -100,10 +102,13 @@ class Experiment:
         return likelihoods
 
     def save_and_plot(self):
-        plt.title(
-            f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
+        print(f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
             f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"
             f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
+        # plt.title(
+        #     f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
+        #     f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"
+        #     f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
         plt.plot(self._signal_length_options, self._results['likelihoods'])
         plt.tight_layout()
 
