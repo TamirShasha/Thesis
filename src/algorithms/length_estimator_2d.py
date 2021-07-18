@@ -82,7 +82,7 @@ class LengthEstimator2D:
 
         # _min = np.min(self._data)
         # _max = np.max(self._data)
-        # power_options = np.linspace(.1, .2, self._num_of_power_options)
+        power_options = np.linspace(0.2, 1.2, self._num_of_power_options)
 
         return power_options
 
@@ -143,14 +143,9 @@ class LengthEstimator2D:
             length_estimator = \
                 LengthEstimator2DCurvesMethod(data=self._data,
                                               length_options=self._length_options,
-                                              power_options=self._avg_signal_power_options,
-                                              num_of_occ_estimation=self._dpk,
-                                              num_of_occ_estimation_mask=self._dpk_mask,
                                               signal_filter_gen_1d=self._signal_filter_gen_1d,
                                               noise_mean=self._noise_mean,
                                               noise_std=self._noise_std,
-                                              signal_power_estimator_method=self._signal_power_estimator_method,
-                                              exp_attr=self._exp_attr,
                                               logs=self._logs)
         else:
             logger.info(f'Estimating signal length using Well-Separation method')

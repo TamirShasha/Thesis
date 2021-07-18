@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.algorithms.utils import create_random_k_tuple_sum_to_n
+from src.algorithms.utils import generate_random_signal_positions
 from src.algorithms.length_estimator_1d import LengthEstimator1D
 from src.experimental.multiple_lengths_estimator_1d import MultipleLengthsEstimator1D, SignalsDistribution
 import warnings
@@ -54,7 +54,7 @@ def simulate_data(n, ds, ds_dist, p, k, noise_std):
     pulses_types = np.concatenate([np.full(occurrences_dist[i], fill_value=i) for i in range(len(ds))])
     np.random.shuffle(pulses_types)
     pulses = [deterministic_signal_gen(ds[i], p) for i in pulses_types]
-    signal_mask = create_random_k_tuple_sum_to_n(n - total_length, k + 1)
+    signal_mask = generate_random_signal_positions(n - total_length, k + 1)
     pulses = add_pulses(y, signal_mask, pulses)
 
     y = add_gaus_noise(pulses, 0, noise_std)

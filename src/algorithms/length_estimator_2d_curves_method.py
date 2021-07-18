@@ -1,10 +1,10 @@
 import numpy as np
-from skimage.draw import line, line_nd
+from skimage.draw import line
 
 from src.algorithms.length_estimator_1d import LengthEstimator1D
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 from src.utils.logger import logger
-from src.utils.logsumexp import logsumexp
+from src.algorithms.utils import max_argmax_1d_case
 
 
 class LengthEstimator2DCurvesMethod:
@@ -12,36 +12,26 @@ class LengthEstimator2DCurvesMethod:
     def __init__(self,
                  data,
                  length_options,
-                 power_options,
-                 num_of_occ_estimation,
-                 num_of_occ_estimation_mask,
                  signal_filter_gen_1d,
-                 noise_mean,
                  noise_std,
-                 signal_power_estimator_method,
-                 exp_attr,
+                 noise_mean=0,
                  curve_width=31,
                  logs=True):
         self._data = data
         self._length_options = length_options
         self._signal_filter_gen = signal_filter_gen_1d
-        self._power_options = power_options
-        self._num_of_occ_estimation = num_of_occ_estimation
-        self._tuples_mask = num_of_occ_estimation_mask
         self._noise_mean = noise_mean
         self._noise_std = noise_std
-        self._signal_power_estimator_method = signal_power_estimator_method
         self._curve_width = curve_width
         self._logs = logs
-        self._exp_attr = exp_attr
-        self._n = self._data.shape[0]
 
-        # self._num_of_curves = 200 * int(np.log(np.max(self._data.shape)))
+        self._n = self._data.shape[0]
         self._num_of_curves = 30
+        self._cut_fix_factor = 0.7
+        self._fixed_num_of_occurrences = 3
+        self._curves_noise = self._noise_std / np.sqrt(self._num_of_curves)
 
         self._curves = self._create_curves(num=self._num_of_curves)
-
-        self._cut_fix_factor = 0.7
 
         logger.info(f'Data length: {self._curves.shape[0]} x {self._curves.shape[1]}')
 
@@ -96,62 +86,16 @@ class LengthEstimator2DCurvesMethod:
             top_concatenated_curves = np.array([np.concatenate(x) for x in np.split(top_curves, num)])
             return top_concatenated_curves
 
-    def _estimate_likelihood_for_1d(self, signal_avg_power, lengths_mask):
-        logger.debug(f'Will average over {self._num_of_curves} runs (curves)')
-
-        def filter_gen(length):
-            return self._signal_filter_gen(length, signal_avg_power)
-
-        length_options = (np.int32(self._length_options * self._cut_fix_factor))[lengths_mask]
-
-        if length_options.size == 0:
-            return np.full_like(self._length_options, fill_value=-np.inf, dtype=float), []
-
-        non_inf_threshold = 0.8
-        best_lengths = []
-        non_inf_count = np.zeros_like(length_options)
-        sum_likelihoods = np.zeros_like(length_options, dtype=float)
-        likelihoods = np.zeros(shape=(self._num_of_curves, len(length_options)))
-        for t in range(self._num_of_curves):
-            logger.debug(f'At iteration {t}')
-            likelihoods[t], best_len = LengthEstimator1D(data=self._curves[t],
-                                                         length_options=length_options,
-                                                         signal_filter_gen=filter_gen,
-                                                         noise_mean=self._noise_mean,
-                                                         noise_std=self._noise_std / np.sqrt(self._curve_width),
-                                                         signal_power_estimator_method=self._signal_power_estimator_method,
-                                                         separation=0.3,
-                                                         exp_attr=self._exp_attr,
-                                                         logs=self._logs).estimate()
-
-            non_inf_count += np.where(likelihoods[t] == -np.inf, 0, 1)
-            sum_likelihoods += np.where(likelihoods[t] == -np.inf, 0, likelihoods[t])
-            curr_best_length = length_options[np.argmax(sum_likelihoods / (t + 1))]
-            best_lengths.append(curr_best_length)
-
-        # likelihoods = logsumexp(likelihoods, axis=0)
-        likelihoods = sum_likelihoods / non_inf_count
-        likelihoods[non_inf_count / self._num_of_curves < non_inf_threshold] = -np.inf
-
-        full_likelihoods = np.full_like(self._length_options, fill_value=-np.inf, dtype=float)
-        full_likelihoods[lengths_mask] = likelihoods
-
-        fixed_best_lengths = np.array(best_lengths) // self._cut_fix_factor
-
-        return full_likelihoods, fixed_best_lengths
-
     def estimate(self):
-        likelihoods = dict()
+        fixed_length_options = (np.int32(self._length_options * self._cut_fix_factor))
+        likelihoods = np.zeros(len(fixed_length_options))
 
-        likelihoods_arr = np.zeros(shape=(len(self._power_options), len(self._length_options)))
-        for i, power in enumerate(self._power_options):
-            logger.info(f'Running for power={power} ({i + 1}/{len(self._power_options)})')
-            power_likelihoods, one_d_best_lengths = self._estimate_likelihood_for_1d(power, self._tuples_mask[i])
-            likelihoods_arr[i] = power_likelihoods
-            likelihoods[f'p_{power}'] = power_likelihoods
+        for i, length in enumerate(fixed_length_options):
+            likelihoods[i], power = max_argmax_1d_case(self._curves,
+                                                       self._signal_filter_gen(length, 1),
+                                                       self._fixed_num_of_occurrences,
+                                                       self._curves_noise)
+            logger.info(f'For length {self._length_options[i]} matched power is {power}, Likelihood={likelihoods[i]}')
 
-        max_row = np.argmax(np.max(likelihoods_arr, axis=1))
-        logger.info(f'Power = {self._power_options[max_row]} yielded the maximum likelihood')
-        likelihoods['max'] = likelihoods_arr[max_row]
-        most_likely_length = self._length_options[np.argmax(likelihoods['max'])]
+        most_likely_length = self._length_options[np.nanargmax(likelihoods)]
         return likelihoods, most_likely_length

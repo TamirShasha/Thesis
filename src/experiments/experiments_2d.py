@@ -9,6 +9,7 @@ import pathlib
 
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
+from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.algorithms.length_estimator_2d import LengthEstimator2D, EstimationMethod
 from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.experiments.particles_projections import PARTICLE_200
@@ -73,9 +74,9 @@ class Experiment2D:
         self._columns = self._data.shape[1]
 
         plt.rcParams["figure.figsize"] = (16, 9)
-        if self._plot:
-            plt.imshow(self._data, cmap='gray')
-            plt.show()
+        # if self._plot:
+        #     plt.imshow(self._data, cmap='gray')
+        #     plt.show()
 
         if length_options is None:
             length_options = np.arange(self._signal_length // 4, int(self._signal_length), 10)
@@ -86,20 +87,29 @@ class Experiment2D:
             "k": self._num_of_occurrences,
         }
 
-        self._length_estimator = LengthEstimator2D(data=self._data,
-                                                   length_options=self._signal_length_options,
-                                                   signal_area_fraction_boundaries=signal_area_coverage_boundaries,
-                                                   signal_num_of_occurrences_boundaries=signal_num_of_occurrences_boundaries,
-                                                   num_of_power_options=num_of_power_options,
-                                                   signal_filter_gen_1d=signal_1d_filter_gen,
-                                                   signal_filter_gen_2d=signal_2d_filter_gen,
-                                                   noise_mean=self._noise_mean * 0,
-                                                   noise_std=self._noise_std,
-                                                   signal_power_estimator_method=signal_power_estimator_method,
-                                                   estimation_method=estimation_method,
-                                                   exp_attr=self._exp_attr,
-                                                   logs=self._logs,
-                                                   plot=self._plot)
+        if self._estimation_method == EstimationMethod.Curves:
+            logger.info(f'Estimating signal length using Curves method')
+            self._length_estimator = LengthEstimator2DCurvesMethod(data=self._data,
+                                                                   length_options=self._signal_length_options,
+                                                                   signal_filter_gen_1d=signal_1d_filter_gen,
+                                                                   noise_mean=self._noise_mean,
+                                                                   noise_std=self._noise_std,
+                                                                   logs=self._logs)
+        else:
+            self._length_estimator = LengthEstimator2D(data=self._data,
+                                                       length_options=self._signal_length_options,
+                                                       signal_area_fraction_boundaries=signal_area_coverage_boundaries,
+                                                       signal_num_of_occurrences_boundaries=signal_num_of_occurrences_boundaries,
+                                                       num_of_power_options=num_of_power_options,
+                                                       signal_filter_gen_1d=signal_1d_filter_gen,
+                                                       signal_filter_gen_2d=signal_2d_filter_gen,
+                                                       noise_mean=self._noise_mean * 0,
+                                                       noise_std=self._noise_std,
+                                                       signal_power_estimator_method=signal_power_estimator_method,
+                                                       estimation_method=estimation_method,
+                                                       exp_attr=self._exp_attr,
+                                                       logs=self._logs,
+                                                       plot=self._plot)
 
     def run(self):
         start_time = time.time()
@@ -117,7 +127,14 @@ class Experiment2D:
         return likelihoods
 
     def save_and_plot(self):
-        fig, ((mrc, results), (particle, dpk_table)) = plt.subplots(2, 2)
+
+        fig = plt.figure()
+
+        mrc = plt.subplot2grid((2, 2), (1, 1))
+        results = plt.subplot2grid((2, 2), (0, 0), colspan=2)
+        particle = plt.subplot2grid((2, 2), (1, 0))
+
+        # plt.tight_layout()
 
         title = f"MRC size=({self._rows}, {self._columns}), " \
                 f"Signal length={self._signal_length}\n"
@@ -140,25 +157,12 @@ class Experiment2D:
         mrc.imshow(self._data, cmap='gray')
 
         likelihoods = self._results['likelihoods']
-        for i, key in enumerate(likelihoods):
-            if key == 'max':
-                pass
-            results.plot(self._signal_length_options, likelihoods[key], label=key, alpha=0.3)
-
+        results.plot(self._signal_length_options, likelihoods)
         results.set_xlabel('Lengths')
         results.set_ylabel('Likelihood')
 
-        results_max = results.twinx()
-        results_max.plot(self._signal_length_options, likelihoods['max'], label='max')
-
-        results.legend(loc="lower right")
-
         if self._data_simulator:
             particle.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
-
-        self._length_estimator.generate_dpk_plot_table(dpk_table)
-
-        fig.tight_layout()
 
         if self._save:
             curr_date = str(datetime.now().strftime("%d-%m-%Y"))
@@ -175,7 +179,6 @@ class Experiment2D:
 
 
 def __main__():
-    sig_gen = lambda l, p: Shapes2D.double_disk(l, l // 4, -p / 2, p)
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
                                # signal_length=PARTICLE_200.particle_length,
@@ -192,11 +195,11 @@ def __main__():
     Experiment2D(
         name=f"expy",
         # mrc=MICROGRAPHS['EMD-2984_0010'],
-        mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
-        # simulator=sim_data,
+        # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
+        simulator=sim_data,
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(10, 500, 20),
+        length_options=np.arange(50, 500, 20),
         signal_num_of_occurrences_boundaries=(0, 20000),
         signal_area_coverage_boundaries=(0.05, 0.20),
         num_of_power_options=10,
