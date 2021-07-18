@@ -11,7 +11,7 @@ class SignalPowerEstimator(SPE, Enum):
     Exact = "Exact Power"
 
 
-class LengthEstimator2DSeparationMethod:
+class LengthEstimator2DVeryWellSeparated:
 
     def __init__(self,
                  data,
@@ -29,6 +29,7 @@ class LengthEstimator2DSeparationMethod:
         self._power_options = power_options
         self._num_of_occ_estimation = num_of_occ_estimation
         self._num_of_occ_estimation_mask = num_of_occ_estimation_mask
+        self._num_of_occ = 10  # Should get as input
         self._signal_filter_gen = signal_filter_gen
         self._noise_mean = noise_mean
         self._noise_std = noise_std
@@ -65,31 +66,19 @@ class LengthEstimator2DSeparationMethod:
 
     def _calc_signal_length_likelihood(self, length_idx):
         signal_length = self._length_options[length_idx]
-        likelihoods = np.zeros_like(self._power_options)
-        possible_powers_mask = self._num_of_occ_estimation_mask[:, length_idx]
-        expected_num_of_occurrences = self._num_of_occ_estimation[:, length_idx]
 
         logger.info(f'Calculating likelihood for length={signal_length}')
 
         tic = time.time()
-        for i, signal_power in enumerate(self._power_options):
-
-            if not possible_powers_mask[i]:
-                likelihood = -np.inf
-            else:
-                signal_filter = self._signal_filter_gen(signal_length, signal_power)
-                likelihood = self._calc_length_likelihood(signal_filter, expected_num_of_occurrences[i])
-            logger.debug(f'Likelihood = {likelihood}\n')
-
-            likelihoods[i] = likelihood
-
+        likelihood, power = utils.max_argmax_2d_case(self._data, self._signal_filter_gen(signal_length, 1),
+                                                     self._num_of_occ, self._noise_std)
         toc = time.time()
 
         if self._logs:
             logger.debug(
                 f"For Length={signal_length} took total time of {toc - tic} seconds")
 
-        return likelihoods
+        return likelihood
 
     def estimate(self):
         likelihoods = np.array([self._calc_signal_length_likelihood(i) for i in range(len(self._length_options))])

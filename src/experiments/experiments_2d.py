@@ -74,9 +74,9 @@ class Experiment2D:
         self._columns = self._data.shape[1]
 
         plt.rcParams["figure.figsize"] = (16, 9)
-        # if self._plot:
-        #     plt.imshow(self._data, cmap='gray')
-        #     plt.show()
+        if self._plot:
+            plt.imshow(self._data, cmap='gray')
+            plt.show()
 
         if length_options is None:
             length_options = np.arange(self._signal_length // 4, int(self._signal_length), 10)

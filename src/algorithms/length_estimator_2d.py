@@ -4,14 +4,14 @@ from enum import Enum
 from multiprocessing import Pool
 
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
-from src.algorithms.length_estimator_2d_sep_method import LengthEstimator2DSeparationMethod
+from src.algorithms.length_estimator_2d_very_well_separated import LengthEstimator2DVeryWellSeparated
 from src.algorithms.signal_power_estimator import estimate_signal_power
 from src.utils.logger import logger
 
 
 class EstimationMethod(Enum):
     Curves = 0,
-    WellSeparation = 1
+    VeryWellSeparated = 1
 
 
 class LengthEstimator2D:
@@ -150,16 +150,16 @@ class LengthEstimator2D:
         else:
             logger.info(f'Estimating signal length using Well-Separation method')
             length_estimator = \
-                LengthEstimator2DSeparationMethod(data=self._data,
-                                                  length_options=self._length_options,
-                                                  power_options=self._avg_signal_power_options,
-                                                  num_of_occ_estimation=self._dpk,
-                                                  num_of_occ_estimation_mask=self._dpk_mask,
-                                                  signal_filter_gen=self._signal_filter_gen_2d,
-                                                  noise_mean=self._noise_mean,
-                                                  noise_std=self._noise_std,
-                                                  exp_attr=self._exp_attr,
-                                                  logs=self._logs)
+                LengthEstimator2DVeryWellSeparated(data=self._data,
+                                                   length_options=self._length_options,
+                                                   power_options=self._avg_signal_power_options,
+                                                   num_of_occ_estimation=self._dpk,
+                                                   num_of_occ_estimation_mask=self._dpk_mask,
+                                                   signal_filter_gen=self._signal_filter_gen_2d,
+                                                   noise_mean=self._noise_mean,
+                                                   noise_std=self._noise_std,
+                                                   exp_attr=self._exp_attr,
+                                                   logs=self._logs)
 
         likelihoods, most_likely_length = length_estimator.estimate()
         return likelihoods, most_likely_length

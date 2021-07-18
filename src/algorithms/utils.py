@@ -390,7 +390,7 @@ def max_argmax_1d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_it
         return _f_f_tag_1d(x, y, filt, k, noise_std)
     f, p = _gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
 
-    # Computing log(|S|)
+    # Computing constant part
     d = filt.shape[0]
     num_curves = len(y)
     log_sizes = np.zeros(num_curves)
@@ -431,17 +431,16 @@ def _f_f_tag_1d(curr_power, y, x, k, sigma):
 
 
 # Code for 2d optimization
-def _max_argmax_2d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_iter=100):
-    n = y.shape[0]
-    d = filt.shape[0]
-
+def max_argmax_2d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_iter=100):
     def F_F_tag(x):
         return _f_f_tag_2d(x, y, filt, k, noise_std)
 
-    log_size_1_axis = log_size_S_2d_1axis(n, k, d)
+    f, p = _gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
+
+    # Compute constant part
+    log_size_1_axis = log_size_S_2d_1axis(y.shape[0], k, filt.shape[0])
     constant_part = log_prob_all_is_noise(y, noise_std) - (log_size_1_axis + np.log(2))
 
-    f, p = _gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
     f += constant_part
     return f, p
 
