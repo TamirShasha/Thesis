@@ -11,20 +11,20 @@ from src.experiments.particles_projections import PARTICLE_200
 
 np.random.seed(500)  # for the same figures
 
-Experiment1D(
-    name="first_one_dim_exp",
-    n=40000,
-    d=200,
-    length_options=None,  # as None, it will auto choose np.arange(self._d // 4, int(self._d * 3), 10)
-    signal_fraction=1 / 5,  # means that all of signal instances together covers 1/5 of the area, i.e. n
-    signal_fn=lambda d: np.full(d, 1),  # the signal that is generated (only for the data generation)
-    signal_filter_gen=lambda d: np.full(d, 1),  # the signal filter for the algorithm
-    signal_power_estimator_method=SignalPowerEstimator.FirstMoment,  # the method for estimating total signal power
-    noise_std=10,
-    noise_mean=0,
-    plot=True,
-    save=True  # will save the results at src/experiments/plots/
-).run()
+# Experiment1D(
+#     name="first_one_dim_exp",
+#     n=40000,
+#     d=200,
+#     length_options=None,  # as None, it will auto choose np.arange(self._d // 4, int(self._d * 3), 10)
+#     signal_fraction=1 / 5,  # means that all of signal instances together covers 1/5 of the area, i.e. n
+#     signal_fn=lambda d: np.full(d, 1),  # the signal that is generated (only for the data generation)
+#     signal_filter_gen=lambda d: np.full(d, 1),  # the signal filter for the algorithm
+#     signal_power_estimator_method=SignalPowerEstimator.FirstMoment,  # the method for estimating total signal power
+#     noise_std=10,
+#     noise_mean=0,
+#     plot=True,
+#     save=True  # will save the results at src/experiments/plots/
+# ).run()
 #
 #
 # def signal_fn_second_exp(d):
@@ -54,10 +54,9 @@ sim_data = DataSimulator2D(rows=4000,
                            signal_power=1,
                            signal_fraction=1 / 6,
                            signal_gen=Shapes2D.sphere,
-                           noise_std=10,
+                           noise_std=20,
                            noise_mean=0,
                            apply_ctf=False)
-
 Experiment2D(
     name=f"simulated_exp_two_dim",
     simulator=sim_data,

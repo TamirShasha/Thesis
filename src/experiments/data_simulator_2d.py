@@ -125,7 +125,7 @@ class DataSimulator2D:
         plt.axis('off')
         date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
         fig_path = os.path.join(save_dir, f'{date_time}_2d_experiment_clean.png')
-        plt.savefig(fname=fig_path)
+        plt.savefig(fname=fig_path, bbox_inches='tight', pad_inches=0)
         plt.close()
 
         # add noise
@@ -137,7 +137,7 @@ class DataSimulator2D:
         plt.axis('off')
         date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
         fig_path = os.path.join(save_dir, f'{date_time}_2d_experiment_noisy.png')
-        plt.savefig(fname=fig_path)
+        plt.savefig(fname=fig_path, bbox_inches='tight', pad_inches=0)
         plt.close()
 
         return simulated_data
