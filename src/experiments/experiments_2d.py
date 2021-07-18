@@ -167,7 +167,7 @@ class Experiment2D:
         if self._save:
             save_dir = os.path.join(ROOT_DIR, f'src/experiments/plots/')
             date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
-            fig_path = os.path.join(save_dir, f'{date_time}_2d_experiment_noisy.png')
+            fig_path = os.path.join(save_dir, f'{date_time}_2d_experiment_likelihoods.png')
             plt.savefig(fname=fig_path)
             plt.close()
             # curr_date = str(datetime.now().strftime("%d-%m-%Y"))
