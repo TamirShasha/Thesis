@@ -95,5 +95,7 @@ class LengthEstimator2DCurvesMethod:
                                                        self._signal_filter_gen(length, 1),
                                                        self._fixed_num_of_occurrences,
                                                        self._curves_noise)
-            logger.info(f'For length {length} matched power is {power}, Likelihood={likelihoods[i]}')
-        return {'max': likelihoods}, 0
+            logger.info(f'For length {self._length_options[i]} matched power is {power}, Likelihood={likelihoods[i]}')
+
+        most_likely_length = self._length_options[np.nanargmax(likelihoods)]
+        return likelihoods, most_likely_length
