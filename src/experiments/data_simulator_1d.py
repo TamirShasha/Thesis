@@ -9,8 +9,12 @@ def add_pulses(y, signal, positions):
     """
     new_y = np.copy(y)
     d = signal.shape[0]
-    for pos in positions:
-        new_y[pos:pos + d] = signal
+    start_idx, end_idx = 0, 0
+    for pos in positions[:-1]:
+        start_idx += pos
+        end_idx = start_idx + d
+        new_y[start_idx:end_idx] = signal
+        start_idx = end_idx
     return new_y
 
 
