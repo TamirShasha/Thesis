@@ -113,12 +113,13 @@ class Experiment2D:
 
     def run(self):
         start_time = time.time()
-        likelihoods, most_likely_length = self._length_estimator.estimate()
+        likelihoods, most_likely_length, most_likely_power = self._length_estimator.estimate()
         end_time = time.time()
 
         self._results = {
             "likelihoods": likelihoods,
             "most_likely_length": most_likely_length,
+            "most_likely_power": most_likely_power,
             "total_time": end_time - start_time
         }
 
@@ -130,39 +131,37 @@ class Experiment2D:
 
         fig = plt.figure()
 
-        mrc = plt.subplot2grid((2, 2), (1, 1))
-        results = plt.subplot2grid((2, 2), (0, 0), colspan=2)
-        particle = plt.subplot2grid((2, 2), (1, 0))
-
-        # plt.tight_layout()
+        mrc_fig = plt.subplot2grid((2, 2), (1, 1))
+        likelihoods_fig = plt.subplot2grid((2, 2), (0, 0), colspan=2)
+        particle_fig = plt.subplot2grid((2, 2), (1, 0))
 
         title = f"MRC size=({self._rows}, {self._columns}), " \
-                f"Signal length={self._signal_length}\n"
+                f"Signal length={self._signal_length}, " \
+                f"Noise\u007E\u2115({self._noise_mean}, {self._noise_std})\n"
 
         if self._mrc is None:
             title += f"Signal power={self._data_simulator.signal_power}, " \
                      f"Signal area coverage={int(np.round(self._data_simulator.signal_fraction, 2) * 100)}% \n" \
-                     f"SNR={self._data_simulator.snr}db (MRC-SNR={self._data_simulator.mrc_snr}db)"
+                     f"SNR={self._data_simulator.snr}db (MRC-SNR={self._data_simulator.mrc_snr}db), "
         else:
             title += f"MRC={self._mrc.name}\n"
 
-        title += f"Noise\u007E\u2115({self._noise_mean}, {self._noise_std}), " \
-                 f"CTF={self._applied_ctf}\n" \
-                 f"SPE={self._signal_power_estimator_method}, " \
+        title += f"CTF={self._applied_ctf}, " \
                  f"Estimation method={self._estimation_method.name}\n" \
                  f"Most likely length={self._results['most_likely_length']}, " \
+                 f"Most likely power={np.round(self._results['most_likely_power'], 2)}\n" \
                  f"Took {int(self._results['total_time'])} seconds"
         fig.suptitle(title)
 
-        mrc.imshow(self._data, cmap='gray')
+        mrc_fig.imshow(self._data, cmap='gray')
 
         likelihoods = self._results['likelihoods']
-        results.plot(self._signal_length_options, likelihoods)
-        results.set_xlabel('Lengths')
-        results.set_ylabel('Likelihood')
+        likelihoods_fig.plot(self._signal_length_options, likelihoods)
+        likelihoods_fig.set_xlabel('Lengths')
+        likelihoods_fig.set_ylabel('Likelihood')
 
         if self._data_simulator:
-            particle.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
+            particle_fig.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
 
         if self._save:
             curr_date = str(datetime.now().strftime("%d-%m-%Y"))
