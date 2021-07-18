@@ -29,6 +29,7 @@ class LengthEstimator2DSeparationMethod:
         self._power_options = power_options
         self._num_of_occ_estimation = num_of_occ_estimation
         self._num_of_occ_estimation_mask = num_of_occ_estimation_mask
+        self._num_of_occ = 10  # Should get as input
         self._signal_filter_gen = signal_filter_gen
         self._noise_mean = noise_mean
         self._noise_std = noise_std
@@ -38,58 +39,21 @@ class LengthEstimator2DSeparationMethod:
         self._n = self._data.shape[0]
         self.log_prob_all_noise = utils.log_prob_all_is_noise(self._data, self._noise_std)
 
-    def _calc_length_likelihood(self, signal_filter, expected_num_of_occurrences):
-        y = self._data
-        n = y.shape[0]
-        d = signal_filter.shape[0]
-        expected_num_of_occurrences = 1
-
-        # Axis 1
-        sum_yx_minus_x_squared = utils.log_probability_filter_on_each_pixel(y, signal_filter, self._noise_std)
-        mapping = utils.dynamic_programming_2d(n, expected_num_of_occurrences, d, sum_yx_minus_x_squared)
-        very_well_separated_axis_1 = mapping[0, expected_num_of_occurrences]
-
-        # Axis 2
-        sum_yx_minus_x_squared = sum_yx_minus_x_squared.T
-        mapping = utils.dynamic_programming_2d(n, expected_num_of_occurrences, d, sum_yx_minus_x_squared)
-        very_well_separated_axis_2 = mapping[0, expected_num_of_occurrences]
-
-        very_well_separated_both_axis = np.logaddexp(very_well_separated_axis_1, very_well_separated_axis_2)
-
-        # Computing remaining parts of log-likelihood
-        log_pd = - (np.log(2) + utils.log_size_S_2d_1axis(n, expected_num_of_occurrences, d))
-        log_prob_all_noise = self.log_prob_all_noise
-
-        likelihood = log_pd + log_prob_all_noise + very_well_separated_both_axis
-        return likelihood
-
     def _calc_signal_length_likelihood(self, length_idx):
         signal_length = self._length_options[length_idx]
-        likelihoods = np.zeros_like(self._power_options)
-        possible_powers_mask = self._num_of_occ_estimation_mask[:, length_idx]
-        expected_num_of_occurrences = self._num_of_occ_estimation[:, length_idx]
-
         logger.info(f'Calculating likelihood for length={signal_length}')
 
         tic = time.time()
-        for i, signal_power in enumerate(self._power_options):
-
-            if not possible_powers_mask[i]:
-                likelihood = -np.inf
-            else:
-                signal_filter = self._signal_filter_gen(signal_length, signal_power)
-                likelihood = self._calc_length_likelihood(signal_filter, expected_num_of_occurrences[i])
-            logger.debug(f'Likelihood = {likelihood}\n')
-
-            likelihoods[i] = likelihood
-
+        likelihood, power = utils.max_argmax_2d_case(self._data, self._signal_filter_gen(signal_length, 1),
+                                                     self._num_of_occ, self._noise_std)
+        logger.debug(f'Likelihood = {likelihood}\n')
         toc = time.time()
 
         if self._logs:
             logger.debug(
                 f"For Length={signal_length} took total time of {toc - tic} seconds")
 
-        return likelihoods
+        return likelihood
 
     def estimate(self):
         likelihoods = np.array([self._calc_signal_length_likelihood(i) for i in range(len(self._length_options))])

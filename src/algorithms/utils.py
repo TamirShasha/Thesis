@@ -361,7 +361,7 @@ def _dynamic_programming_2d_function_and_derivative(n, k, d, consts1, consts2):
     return B[0, k], np.exp(mapping[0, k] - B[0, k]) - k * r
 
 
-def _gradient_descent(F_F_tag, initial_x, t=0.1, epsilon=1e-10, max_iter=200, concave=False):
+def _gradient_descent(F_F_tag, initial_x, t=0.005, epsilon=1e-10, max_iter=200, concave=False):
     x_prev = initial_x
     F_prev, F_tag_prev = F_F_tag(x_prev)
     for i in range(max_iter):
@@ -377,7 +377,7 @@ def _gradient_descent(F_F_tag, initial_x, t=0.1, epsilon=1e-10, max_iter=200, co
 
 
 # Code for 1d optimization
-def max_argmax_1d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_iter=100):
+def max_argmax_1d_case(y, filt, k, noise_std, x_0=0, t=0.005, epsilon=1e-5, max_iter=100):
     # If got only one y
     if not hasattr(y[0], '__iter__'):
         y = [y]
@@ -390,7 +390,7 @@ def max_argmax_1d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_it
         return _f_f_tag_1d(x, y, filt, k, noise_std)
     f, p = _gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
 
-    # Computing log(|S|)
+    # Computing constants
     d = filt.shape[0]
     num_curves = len(y)
     log_sizes = np.zeros(num_curves)
@@ -431,17 +431,19 @@ def _f_f_tag_1d(curr_power, y, x, k, sigma):
 
 
 # Code for 2d optimization
-def _max_argmax_2d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_iter=100):
+def max_argmax_2d_case(y, filt, k, noise_std, x_0=0, t=0.005, epsilon=1e-5, max_iter=100):
     n = y.shape[0]
     d = filt.shape[0]
 
     def F_F_tag(x):
         return _f_f_tag_2d(x, y, filt, k, noise_std)
 
+    f, p = _gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
+
+    # Computing constants
     log_size_1_axis = log_size_S_2d_1axis(n, k, d)
     constant_part = log_prob_all_is_noise(y, noise_std) - (log_size_1_axis + np.log(2))
 
-    f, p = _gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
     f += constant_part
     return f, p
 
