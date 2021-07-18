@@ -175,7 +175,6 @@ class Experiment2D:
 
 
 def __main__():
-    sig_gen = lambda l, p: Shapes2D.double_disk(l, l // 4, -p / 2, p)
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
                                # signal_length=PARTICLE_200.particle_length,
@@ -183,7 +182,7 @@ def __main__():
                                signal_power=1,
                                signal_fraction=1 / 6,
                                # signal_gen=PARTICLE_200.get_signal_gen(),
-                               signal_gen=Shapes2D.disk,
+                               signal_gen=Shapes2D.sphere,
                                # signal_gen=sig_gen,
                                noise_std=10,
                                noise_mean=0,
@@ -196,7 +195,7 @@ def __main__():
         simulator=sim_data,
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(10, 500, 20),
+        length_options=np.arange(50, 500, 20),
         signal_num_of_occurrences_boundaries=(0, 20000),
         signal_area_coverage_boundaries=(0.05, 0.20),
         num_of_power_options=10,
