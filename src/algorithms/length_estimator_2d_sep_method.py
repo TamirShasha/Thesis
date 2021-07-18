@@ -100,4 +100,4 @@ class LengthEstimator2DSeparationMethod:
 
         likelihoods_dict['max'] = np.max(likelihoods, axis=1)
         max_likely_length = self._length_options[np.argmax(likelihoods_dict['max'])]
-        return likelihoods_dict, max_likely_length
+        return likelihoods_dict['max'], max_likely_length
