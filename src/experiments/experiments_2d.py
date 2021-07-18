@@ -10,6 +10,7 @@ import pathlib
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_1d import SignalPowerEstimator
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
+from src.algorithms.length_estimator_2d_very_well_separated import LengthEstimator2DVeryWellSeparated
 from src.algorithms.length_estimator_2d import LengthEstimator2D, EstimationMethod
 from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.experiments.particles_projections import PARTICLE_200
@@ -32,7 +33,7 @@ class Experiment2D:
                  signal_area_coverage_boundaries=(0.05, 0.4),
                  signal_num_of_occurrences_boundaries=(10, 150),
                  num_of_power_options=10,
-                 estimation_method: EstimationMethod = EstimationMethod.WellSeparation,
+                 estimation_method: EstimationMethod = EstimationMethod.VeryWellSeparated,
                  plot=True,
                  save=True,
                  save_dir=os.path.join(ROOT_DIR, f'src/experiments/plots/'),
@@ -96,20 +97,13 @@ class Experiment2D:
                                                                    noise_std=self._noise_std,
                                                                    logs=self._logs)
         else:
-            self._length_estimator = LengthEstimator2D(data=self._data,
-                                                       length_options=self._signal_length_options,
-                                                       signal_area_fraction_boundaries=signal_area_coverage_boundaries,
-                                                       signal_num_of_occurrences_boundaries=signal_num_of_occurrences_boundaries,
-                                                       num_of_power_options=num_of_power_options,
-                                                       signal_filter_gen_1d=signal_1d_filter_gen,
-                                                       signal_filter_gen_2d=signal_2d_filter_gen,
-                                                       noise_mean=self._noise_mean * 0,
-                                                       noise_std=self._noise_std,
-                                                       signal_power_estimator_method=signal_power_estimator_method,
-                                                       estimation_method=estimation_method,
-                                                       exp_attr=self._exp_attr,
-                                                       logs=self._logs,
-                                                       plot=self._plot)
+            self._length_estimator = LengthEstimator2DVeryWellSeparated(self._data,
+                                                                        self._signal_length_options,
+                                                                        10,  # Need to get as input
+                                                                        signal_1d_filter_gen,
+                                                                        self._noise_mean,
+                                                                        self._noise_std,
+                                                                        self._logs)
 
     def run(self):
         start_time = time.time()
