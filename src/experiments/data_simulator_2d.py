@@ -1,6 +1,10 @@
 import numpy as np
 from skimage.draw import ellipse, disk
+import matplotlib.pyplot as plt
+import os
+from datetime import datetime
 
+from src.constants import ROOT_DIR
 from src.utils.logger import logger
 from src.algorithms.utils import dynamic_programming_2d, log_size_S_1d, random_1d_ws_positions
 from src.utils.CTF_Relion import apply_CTF, cryo_CTF_Relion
@@ -115,10 +119,26 @@ class DataSimulator2D:
             raise ValueError('method = {} is not supported, try bf or vws'.format(self.method))
         logger.info(f'Total signal area fraction is {np.count_nonzero(data) / np.prod(data.shape)}\n')
 
+        save_dir = os.path.join(ROOT_DIR, f'src/experiments/plots/')
+
+        plt.imshow(data, cmap='gray')
+        plt.axis('off')
+        date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+        fig_path = os.path.join(save_dir, f'{date_time}_2d_experiment_clean.png')
+        plt.savefig(fname=fig_path)
+        plt.close()
+
         # add noise
         noise = self._random_gaussian_noise()
 
         simulated_data = data + noise
+
+        plt.imshow(simulated_data, cmap='gray')
+        plt.axis('off')
+        date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+        fig_path = os.path.join(save_dir, f'{date_time}_2d_experiment_noisy.png')
+        plt.savefig(fname=fig_path)
+        plt.close()
 
         return simulated_data
 

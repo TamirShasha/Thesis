@@ -63,11 +63,16 @@ class Experiment:
         self._y_with_signals = add_pulses(self._clean_y, self._signal, signal_mask)
         self._y = add_gaus_noise(self._y_with_signals, self._noise_mean, self._noise_std)
 
-        if self._plot:
+        if self._plot:  # PLOT AND SAVE
+            date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
             plt.plot(self._y_with_signals[:3000])
-            plt.show()
+            fig_path = os.path.join(self._save_dir, f'{date_time}_{self._name}_clean.png')
+            plt.savefig(fname=fig_path)
+            plt.close()
+            fig_path = os.path.join(self._save_dir, f'{date_time}_{self._name}_noisy.png')
             plt.plot(self._y[:3000])
-            plt.show()
+            plt.savefig(fname=fig_path)
+            plt.close()
 
         if length_options is None:
             length_options = np.arange(self._d // 4, int(self._d * 3), 10)
@@ -103,8 +108,8 @@ class Experiment:
 
     def save_and_plot(self):
         print(f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
-            f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"
-            f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
+              f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"
+              f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
         # plt.title(
         #     f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
         #     f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"

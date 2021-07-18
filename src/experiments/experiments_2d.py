@@ -73,9 +73,9 @@ class Experiment2D:
         self._columns = self._data.shape[1]
 
         plt.rcParams["figure.figsize"] = (16, 9)
-        if self._plot:
-            plt.imshow(self._data, cmap='gray')
-            plt.show()
+        # if self._plot:
+        #     plt.imshow(self._data, cmap='gray')
+        #     plt.show()
 
         if length_options is None:
             length_options = np.arange(self._signal_length // 4, int(self._signal_length), 10)
@@ -117,7 +117,7 @@ class Experiment2D:
         return likelihoods
 
     def save_and_plot(self):
-        fig, ((mrc, results), (particle, dpk_table)) = plt.subplots(2, 2)
+        # fig, ((mrc, results), (particle, dpk_table)) = plt.subplots(2, 2)
 
         title = f"MRC size=({self._rows}, {self._columns}), " \
                 f"Signal length={self._signal_length}\n"
@@ -135,39 +135,48 @@ class Experiment2D:
                  f"Estimation method={self._estimation_method.name}\n" \
                  f"Most likely length={self._results['most_likely_length']}, " \
                  f"Took {int(self._results['total_time'])} seconds"
-        fig.suptitle(title)
+        # fig.suptitle(title)
+        print(title)
 
-        mrc.imshow(self._data, cmap='gray')
-
+        # mrc.imshow(self._data, cmap='gray')
         likelihoods = self._results['likelihoods']
-        for i, key in enumerate(likelihoods):
-            if key == 'max':
-                pass
-            results.plot(self._signal_length_options, likelihoods[key], label=key, alpha=0.3)
-
-        results.set_xlabel('Lengths')
-        results.set_ylabel('Likelihood')
-
-        results_max = results.twinx()
-        results_max.plot(self._signal_length_options, likelihoods['max'], label='max')
-
-        results.legend(loc="lower right")
-
-        if self._data_simulator:
-            particle.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
-
-        self._length_estimator.generate_dpk_plot_table(dpk_table)
+        fig, ax = plt.subplots()
+        ax.plot(self._signal_length_options, likelihoods['max'])
+        ax.set_xlabel('Lengths')
+        ax.set_ylabel('Likelihood')
+        # for i, key in enumerate(likelihoods):
+        #     if key == 'max':
+        #         pass
+        #     results.plot(self._signal_length_options, likelihoods[key], label=key, alpha=0.3)
+        #
+        # results.set_xlabel('Lengths')
+        # results.set_ylabel('Likelihood')
+        #
+        # results_max = results.twinx()
+        # results_max.plot(self._signal_length_options, likelihoods['max'], label='max')
+        #
+        # results.legend(loc="lower right")
+        #
+        # if self._data_simulator:
+        #     particle.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
+        #
+        # self._length_estimator.generate_dpk_plot_table(dpk_table)
 
         fig.tight_layout()
 
         if self._save:
-            curr_date = str(datetime.now().strftime("%d-%m-%Y"))
-            dir_path = os.path.join(self._save_dir, curr_date)
-            pathlib.Path(dir_path).mkdir(parents=True, exist_ok=True)
-
-            curr_time = str(datetime.now().strftime("%H-%M-%S"))
-            fig_path = os.path.join(dir_path, f'{curr_time}_{self._name}.png')
+            save_dir = os.path.join(ROOT_DIR, f'src/experiments/plots/')
+            date_time = str(datetime.now().strftime("%m-%d-%Y_%H-%M-%S"))
+            fig_path = os.path.join(save_dir, f'{date_time}_2d_experiment_noisy.png')
             plt.savefig(fname=fig_path)
+            plt.close()
+            # curr_date = str(datetime.now().strftime("%d-%m-%Y"))
+            # dir_path = os.path.join(self._save_dir, curr_date)
+            # pathlib.Path(dir_path).mkdir(parents=True, exist_ok=True)
+            #
+            # curr_time = str(datetime.now().strftime("%H-%M-%S"))
+            # fig_path = os.path.join(dir_path, f'{curr_time}_{self._name}.png')
+            # plt.savefig(fname=fig_path)
         if self._plot:
             plt.show()
 
