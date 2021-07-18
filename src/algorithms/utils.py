@@ -246,6 +246,7 @@ def _dynamic_programming_2d_after_pre_compute(n, k, d, constants):
     return mapping
 
 
+# Utils for optimization
 def _precompute_f_f_tag(power, mgraph, filt, noise_std):
     x_tag = np.flip(filt)  # Flipping to cross-correlate
     if len(x_tag.shape) == 1 and len(mgraph.shape) == 2:
@@ -385,6 +386,10 @@ def max_argmax_1d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_it
     if not hasattr(k, '__iter__'):
         k = [k] * len(y)
 
+    def F_F_tag(x):
+        return _f_f_tag_1d(x, y, filt, k, noise_std)
+    f, p = _gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
+
     # Computing log(|S|)
     d = filt.shape[0]
     num_curves = len(y)
@@ -393,13 +398,8 @@ def max_argmax_1d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_it
         n = len(y[i])
         log_sizes[i] = log_size_S_1d(n, k[i], d)
 
-    def F_F_tag(x):
-        return _f_f_tag_1d(x, y, filt, k, noise_std)
-
-    constant_part = log_prob_all_is_noise(y, noise_std) - np.sum(log_sizes)
-
-    f, p = _gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
-    f += constant_part / num_curves
+    constant_part = (log_prob_all_is_noise(y, noise_std) - np.sum(log_sizes)) / num_curves
+    f += constant_part
     return f, p
 
 

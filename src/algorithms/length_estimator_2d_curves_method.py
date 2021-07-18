@@ -121,7 +121,7 @@ class LengthEstimator2DCurvesMethod:
                                                          noise_mean=self._noise_mean,
                                                          noise_std=self._noise_std / np.sqrt(self._curve_width),
                                                          signal_power_estimator_method=self._signal_power_estimator_method,
-                                                         separation=0.3,
+                                                         separation=0.0,
                                                          exp_attr=self._exp_attr,
                                                          logs=self._logs).estimate()
 
@@ -145,7 +145,7 @@ class LengthEstimator2DCurvesMethod:
         likelihoods = np.zeros(len(self._length_options))
         for i, length in enumerate(self._length_options):
             signal_filter = self._signal_filter_gen(length, 1)
-            likelihood, power = max_argmax_1d_case(self._curves, signal_filter, 3, self._noise_std)
+            likelihood, power = max_argmax_1d_case(self._curves, signal_filter, 3, self._noise_std / np.sqrt(self._curve_width))
             likelihoods[i] = likelihood
             print(likelihood, power)
         return {'max': likelihoods}, 0
