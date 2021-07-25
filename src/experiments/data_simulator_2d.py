@@ -82,8 +82,10 @@ class Shapes2D:
 
 
 class DataSimulator2D:
-    def __init__(self, rows=2000, columns=2000, signal_length=100, signal_power=1, signal_fraction=1 / 6,
-                 signal_gen=lambda d, p: Shapes2D.disk(d, p), noise_std=3, noise_mean=0, method='BF',
+    def __init__(self, rows=2000, columns=2000,
+                 signal_length=100, signal_power=1, signal_fraction=1 / 6, signal_gen=lambda d, p: Shapes2D.disk(d, p),
+                 contamination=False,
+                 noise_std=3, noise_mean=0, method='BF',
                  collision_threshold=100, apply_ctf=False):
         self.rows = rows
         self.columns = columns
@@ -91,6 +93,7 @@ class DataSimulator2D:
         self.signal_gen = signal_gen
         self.signal_length = signal_length
         self.signal_power = signal_power
+        self.contamination = contamination
         self.noise_std = noise_std
         self.noise_mean = noise_mean
         self.method = method
@@ -114,6 +117,9 @@ class DataSimulator2D:
         else:
             raise ValueError('method = {} is not supported, try bf or vws'.format(self.method))
         logger.info(f'Total signal area fraction is {np.count_nonzero(data) / np.prod(data.shape)}\n')
+
+        if self.contamination:
+            data[:int(0.15 * data.shape[0])] = self.signal_power
 
         # add noise
         noise = self._random_gaussian_noise()
