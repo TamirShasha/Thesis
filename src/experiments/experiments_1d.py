@@ -127,12 +127,12 @@ def __main__():
 
     Experiment(
         name="std-10",
-        n=4000,
-        d=200,
-        k=1,
+        n=40000,
+        d=600,
+        signal_fraction=1/5,
         signal_fn=lambda d: np.full(d, 1),
         signal_filter_gen=lambda d: np.full(d, 1),
-        noise_std=4,
+        noise_std=8,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
         save=False

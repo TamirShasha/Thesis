@@ -72,9 +72,9 @@ class Experiment2D:
         self._columns = self._data.shape[1]
 
         plt.rcParams["figure.figsize"] = (16, 9)
-        if self._plot:
-            plt.imshow(self._data, cmap='gray')
-            plt.show()
+        # if self._plot:
+        #     plt.imshow(self._data, cmap='gray')
+        #     plt.show()
 
         if length_options is None:
             length_options = np.arange(self._signal_length // 4, int(self._signal_length), 10)
@@ -96,7 +96,7 @@ class Experiment2D:
         else:
             self._length_estimator = LengthEstimator2DVeryWellSeparated(self._data,
                                                                         self._signal_length_options,
-                                                                        10,  # Need to get as input
+                                                                        5,  # Need to get as input
                                                                         signal_2d_filter_gen,
                                                                         self._noise_mean,
                                                                         self._noise_std,
@@ -172,14 +172,14 @@ def __main__():
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
                                # signal_length=PARTICLE_200.particle_length,
-                               signal_length=600,
+                               signal_length=800,
                                signal_power=1,
-                               signal_fraction=1 / 6,
+                               signal_fraction=1 / 5,
                                # signal_gen=PARTICLE_200.get_signal_gen(),
                                signal_gen=Shapes2D.disk,
                                contamination=False,
                                # signal_gen=sig_gen,
-                               noise_std=10,
+                               noise_std=5,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -190,7 +190,8 @@ def __main__():
         simulator=sim_data,
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(100, 701, 50),
+        length_options=np.arange(100, 1001, 100),
+        # length_options=np.array([250, 300]),
         plot=True,
         save=True
     ).run()

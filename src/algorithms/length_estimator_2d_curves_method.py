@@ -26,12 +26,13 @@ class LengthEstimator2DCurvesMethod:
         self._logs = logs
 
         self._n = self._data.shape[0]
-        self._num_of_curves = 50
+        self._num_of_curves = 10
         self._cut_fix_factor = 0.7
-        self._fixed_num_of_occurrences = 3
+        self._fixed_num_of_occurrences = 50
+        self._separation_factor = 0.3
         # = self._noise_std / np.sqrt(self._num_of_curves)
 
-        self._curves, self._curves_noise = self._create_curves(num=self._num_of_curves, split=1)
+        self._curves, self._curves_noise = self._create_curves(num=self._num_of_curves)
 
         logger.info(f'Data length: {self._curves.shape[0]} x {self._curves.shape[1]}')
 
@@ -69,7 +70,7 @@ class LengthEstimator2DCurvesMethod:
             curve = np.nanmean(width_curve, axis=0)
             curves.append(curve)
 
-        return curves
+        return np.array(curves)
 
     def _split_image_into_blocks(self, grid_size=1):
         rows = self._data.shape[0] - self._data.shape[0] % grid_size
@@ -116,23 +117,22 @@ class LengthEstimator2DCurvesMethod:
 
         return np.array(curves), curves_noise
 
-    def _create_curves(self, num, split=1, concat=1, high_power_selection_factor=1, strategy='random lines'):
+    def _create_curves(self, num, split=1, concat=1, strategy='random lines'):
+
+        num_of_curves_to_create = num * concat
 
         if strategy == 'rows':
             jump = self._data.shape[0] // num
             curves = self._rows_curves(jump)
 
         if strategy == 'random lines':
-            curves = self._random_lines_curves(high_power_selection_factor * num)
+            curves = self._random_lines_curves(num_of_curves_to_create)
             curves_noise = self._noise_std / np.sqrt(self._num_of_curves)
 
         if strategy == 'bezier':
-            curves, curves_noise = self._bezier_curves(high_power_selection_factor * num)
+            curves, curves_noise = self._bezier_curves(num_of_curves_to_create)
 
-        curves_powers = [
-            estimate_signal_power(curve, self._noise_std, self._noise_mean, SignalPowerEstimator.FirstMoment)
-            for curve in curves]
-        curves = np.array(curves)[np.argsort(curves_powers)[-num * concat:]]
+        # curves = np.array(curves)[np.argsort(curves_powers)[-num * concat:]]
         curves = np.array([np.concatenate(x) for x in np.split(curves, num)])
 
         if split > 1:
@@ -143,15 +143,49 @@ class LengthEstimator2DCurvesMethod:
         return curves, curves_noise
 
     def estimate(self):
+        # m = 30
+        # length = 600
+        # lh = np.zeros(m)
+        # for k in range(m):
+        #     signal_filter = np.concatenate([self._signal_filter_gen(length, 1),
+        #                                     np.zeros(int(length * 0.3))])
+        #     lh[k], p = max_argmax_1d_case(self._curves,
+        #                                   signal_filter,
+        #                                   k,
+        #                                   self._curves_noise)
+        # import matplotlib.pyplot as plt
+        # plt.plot(self._curves[0])
+        # plt.show()
+        # plt.plot(lh)
+        # plt.show()
+        # return
+
         fixed_length_options = (np.int32(self._length_options * self._cut_fix_factor))
 
         likelihoods = np.zeros(len(fixed_length_options))
         powers = np.zeros(len(fixed_length_options))
+
+        curves_total_power = np.array(
+            [estimate_signal_power(curve, self._curves_noise, self._noise_mean, method=SignalPowerEstimator.FirstMoment)
+             for curve in self._curves], dtype=int)
+
         for i, length in enumerate(fixed_length_options):
-            likelihoods[i], powers[i] = max_argmax_1d_case(self._curves,
-                                                           self._signal_filter_gen(length, 1),
-                                                           self._fixed_num_of_occurrences,
-                                                           self._curves_noise)
+            # ks = np.ceil(curves_total_power / length)
+            # ks[ks == 0] = 1
+            signal_filter = np.concatenate([self._signal_filter_gen(length, 1),
+                                            np.zeros(int(length * self._separation_factor))])
+            likelihood_per_k = np.array([max_argmax_1d_case(self._curves, signal_filter, k, self._curves_noise)
+                                         for k in range(1, 21, 2)])
+            likelihoods[i], powers[i] = likelihood_per_k[np.nanargmax(likelihood_per_k[:, 0])]
+            # likelihoods[i], powers[i] = max_argmax_1d_case(self._curves,
+            #                                                signal_filter,
+            #                                                ks,
+            #                                                self._curves_noise)
+            # if self._length_options[i] == 300:
+            #     import matplotlib.pyplot as plt
+            #     plt.plot(likelihood_per_k[:,0])
+            #     plt.show()
+            print(np.nanargmax(likelihood_per_k[:, 0]))
             logger.info(
                 f'For length {self._length_options[i]} matched power is {powers[i]}, Likelihood={likelihoods[i]}')
 

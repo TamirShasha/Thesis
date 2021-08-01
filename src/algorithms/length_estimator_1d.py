@@ -16,7 +16,7 @@ class LengthEstimator1D:
                  noise_mean=0,
                  signal_filter_gen=lambda l: np.full(l, 1),
                  signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-                 separation=0,
+                 separation=0.5,
                  exp_attr=None,
                  logs=True):
         self._data = data
@@ -48,8 +48,7 @@ class LengthEstimator1D:
     def _estimate_num_of_signal_occurrences(self, signal_length):
         single_signal_power = self._estimate_single_instance_of_signal_power(signal_length)
         k = int(np.round(self._signal_power / single_signal_power))
-        # return k
-        return 3
+        return k
 
     def _calc_length_likelihood(self, signal_filter, expected_num_of_occurrences):
 
