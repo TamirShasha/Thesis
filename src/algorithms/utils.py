@@ -4,7 +4,8 @@ import numba as nb
 from src.utils.logsumexp import logsumexp_simple
 
 
-def generate_random_signal_positions(n, k):
+# utils, private, change names
+def generate_random_bars(n, k):
     """
     Output a random k tuple of non-negative integers that sums to n, with uniform probability over all options.
     """
@@ -35,8 +36,9 @@ def generate_random_signal_positions(n, k):
     return np.array(output)
 
 
+# utils, change names
 def random_1d_ws_positions(n, k, d):
-    signal_mask = generate_random_signal_positions(n - d * k, k + 1)
+    signal_mask = generate_random_bars(n - d * k, k + 1)
     s_cum = np.cumsum(signal_mask)
     positions = np.zeros(k)
     for i in np.arange(s_cum.shape[0] - 1):
@@ -45,6 +47,7 @@ def random_1d_ws_positions(n, k, d):
     return positions
 
 
+# only first function uses, private, utils
 def log_num_k_sums_to_n(n, k):
     """
     Compute the log number of #{k tuples that sum to n}.
@@ -54,6 +57,7 @@ def log_num_k_sums_to_n(n, k):
     return log_binomial(n_tag, k_tag)
 
 
+# private, utils
 def log_binomial(n, k):
     """
     Compute the log of the binomial coefficient.
@@ -63,6 +67,7 @@ def log_binomial(n, k):
     return nominator - denominator
 
 
+# utils
 def downample_signal(signal, d):
     """
     Take arbitrary signal of any length and change it to length d. For now only support downsampling it and not
@@ -71,6 +76,7 @@ def downample_signal(signal, d):
     return cryo_downsample(signal, (d,))
 
 
+# utils
 def cryo_downsample(x, out_shape):
     """
     :param x: ndarray of size (N_1,...N_k)
@@ -90,6 +96,7 @@ def cryo_downsample(x, out_shape):
     return out.astype(dtype_in)
 
 
+# utils
 def crop(x, out_shape):
     """
     :param x: ndarray of size (N_1,...N_k)
@@ -106,20 +113,26 @@ def crop(x, out_shape):
     return out
 
 
+# math
 # Utils regarding likelihood computation
 def log_size_S_1d(n, k, d):
-        """
-        Compute log(|S|), where |S| is the number of ways to insert k signals of length d in n spaces in such they are
-        not overlapping.
-        """
-        if k * d > n:
-            return -np.inf
-        n_tag = n - (d - 1) * k
-        k_tag = k
-        return log_binomial(n_tag, k_tag)
+    """
+    Compute log(|S|), where |S| is the number of ways to insert k signals of length d in n spaces in such they are
+    not overlapping.
+    """
+    if k * d > n:
+        return -np.inf
+    n_tag = n - (d - 1) * k
+    k_tag = k
+    return log_binomial(n_tag, k_tag)
 
 
+# utils for 2d vws, private, names
 def log_size_S_2d_1axis(n, k, d):
+    """
+    Compute log(|S|), where |S| is the number of ways to insert k signals of size (d x d) in (n x n) spaces in such they are
+    very well separated on rows.
+    """
     if k * d ** 2 > n ** 2:
         return -np.inf
     max_k_in_row = min(n // d, k)
@@ -127,7 +140,7 @@ def log_size_S_2d_1axis(n, k, d):
     for k_in_row in range(1, max_k_in_row + 1):
         log_size_S_per_row_per_k[:, k_in_row - 1] = log_size_S_1d(n, k_in_row, d)
 
-    mapping = _dynamic_programming_2d_after_pre_compute(n, k, d, log_size_S_per_row_per_k)
+    mapping = _calc_mapping_2d_after_precompute(n, k, d, log_size_S_per_row_per_k)
     return mapping[0, k]
 
 
@@ -147,6 +160,7 @@ def log_probability_filter_on_each_pixel(mgraph, filt, noise_std):
     return sum_yx_minus_x_squared
 
 
+# private, names
 def log_prob_all_is_noise(y, noise_std):
     """
     Compute log(\prod_{i} prob[y_i~Gaussian(0, noise_std)])
@@ -164,8 +178,9 @@ def log_prob_all_is_noise(y, noise_std):
     return - n * np.log(noise_std * (2 * np.pi) ** 0.5) + minus_1_over_twice_variance * np.sum(np.square(y))
 
 
+# names,
 @nb.jit
-def dynamic_programming_1d(n, k, d, constants):
+def calc_mapping_1d(n, k, d, constants):
     """
     Compute log(\sum_{s in S_(n,k,d)}\prod_{i in s}c_i)
     :param n:
@@ -190,7 +205,7 @@ def dynamic_programming_1d(n, k, d, constants):
 
 
 @nb.jit
-def _dynamic_programming_1d_many(n, k, d, constants):
+def _calc_mapping_1d_many(n, k, d, constants):
     """
     Do the 1d dynamic programming for many constant vectors.
     Output is mapping such that mapping[:, :, i] = dynamic_programming_1d(n, k, d, constants[i])
@@ -218,16 +233,22 @@ def _dynamic_programming_1d_many(n, k, d, constants):
     return mapping
 
 
-def dynamic_programming_2d(n, k, d, constants):
+def calc_mapping_2d(n, k, d, row_constants):
+    """
+    creates the mapping of size (n+1 x k+1)
+    first coordinate refers to the row, second refers to amount of signals left to insert
+    """
     max_k_in_row = min(n // d, k)
-    pre_compute_per_row_per_k = _dynamic_programming_1d_many(n, max_k_in_row, d, constants)
-    pre_compute_per_row_per_k = pre_compute_per_row_per_k[:, 0, 1:]
+    mapping_per_row = _calc_mapping_1d_many(n, max_k_in_row, d, row_constants)[:, 0, 1:]
 
-    return _dynamic_programming_2d_after_pre_compute(n, k, d, pre_compute_per_row_per_k)
+    return _calc_mapping_2d_after_precompute(n, k, d, mapping_per_row)
 
 
 # @nb.jit
-def _dynamic_programming_2d_after_pre_compute(n, k, d, constants):
+def _calc_mapping_2d_after_precompute(n, k, d, constants):
+    """
+    computes 2d mapping with precomputed constants
+    """
     max_k_in_row = min(n // d, k)
     constants = constants[:, ::-1].copy()
     # Allocating memory
@@ -247,48 +268,53 @@ def _dynamic_programming_2d_after_pre_compute(n, k, d, constants):
 
 
 # Utils for optimization
-def _precompute_f_f_tag(power, mgraph, filt, noise_std):
-    x_tag = np.flip(filt)  # Flipping to cross-correlate
-    if len(x_tag.shape) == 1 and len(mgraph.shape) == 2:
-        conv = np.array([convolve(mgraph[i], x_tag, mode='valid') for i in range(mgraph.shape[0])])
+def _calc_constants(data, signal_filter, filter_coeff, noise_std):
+    flipped_signal_filter = np.flip(signal_filter)  # Flipping to cross-correlate
+    if len(flipped_signal_filter.shape) == 1 and len(data.shape) == 2:
+        conv = np.array([convolve(data[i], flipped_signal_filter, mode='valid') for i in range(data.shape[0])])
     else:
-        conv = convolve(mgraph, x_tag, mode='valid')
+        conv = convolve(data, flipped_signal_filter, mode='valid')
 
-    const1 = (-2 * conv * power + np.sum(np.square(x_tag)) * power ** 2) / (-2 * noise_std ** 2)
-    const2 = (-2 * conv + 2 * np.sum(np.square(x_tag)) * power) / (-2 * noise_std ** 2)
-    return const2, const1
+    prod_consts = (-2 * conv * filter_coeff + np.sum(np.square(flipped_signal_filter)) * filter_coeff ** 2) / (
+            -2 * noise_std ** 2)
+    sum_consts = (-2 * conv + 2 * np.sum(np.square(flipped_signal_filter)) * filter_coeff) / (-2 * noise_std ** 2)
+    return sum_consts, prod_consts
 
 
 @nb.jit
-def _dynamic_programming_1d_derivative(n, k, d, consts1, consts2, g=None):
+def _calc_term_two_derivative_1d(n, k, d, prod_consts, sum_consts, mapping=None):
     """
     Compute log(\sum_{s in S_(n,k,d)}\prod_{i in s}c_i)
     :param n:
     :param k:
     :param d:
-    :param consts1:
-    :param consts2:
-    :param g:
+    :param prod_consts:
+    :param sum_consts:
+    :param mapping:
     :return:
     """
-    g = dynamic_programming_1d(n, k, d, consts2) if g is None else g
+    mapping = calc_mapping_1d(n, k, d, sum_consts) if mapping is None else mapping
 
-    r = - np.min(consts1) + 1
-    consts1 = np.log(consts1 + r)
+    r = - np.min(prod_consts) + 1
+    prod_consts = np.log(prod_consts + r)
 
-    mapping = np.full((n + 1, k + 1), -np.inf)
-    mapping[:, 0] = 0
+    derivative_mapping = np.full((n + 1, k + 1), -np.inf)
+    derivative_mapping[:, 0] = 0
 
     for curr_k in range(1, k + 1):
         for i in range(n - curr_k * d, -1, -1):
-            mapping[i, curr_k] = np.logaddexp(consts2[i] + mapping[i + d, curr_k - 1], mapping[i + 1, curr_k])
-            mapping[i, curr_k] = np.logaddexp(consts1[i] + consts2[i] + g[i + d, curr_k - 1], mapping[i, curr_k])
+            derivative_mapping[i, curr_k] = np.logaddexp(sum_consts[i] + derivative_mapping[i + d, curr_k - 1],
+                                                         derivative_mapping[i + 1, curr_k])
+            derivative_mapping[i, curr_k] = np.logaddexp(prod_consts[i] + sum_consts[i] + mapping[i + d, curr_k - 1],
+                                                         derivative_mapping[i, curr_k])
 
-    return np.exp(mapping[0, k] - g[0, k]) - k * r
+    term2 = np.exp(derivative_mapping[0, k] - mapping[0, k]) - k * r
+    return term2
 
 
 # @nb.jit
-def _dynamic_programming_1d_many_derivative_for_2d_derivative(n, k, d, consts1, consts2, g=None):
+def _calc_likelihood_and_likelihood_derivative_without_constants_2d_pre_compute(n, k, d, prod_consts, sum_consts,
+                                                                                g=None):
     """
     Do the 1d dynamic programming for many constant vectors.
     Output is mapping such that mapping[:, :, i] = dynamic_programming_1d(n, k, d, constants[i])
@@ -299,41 +325,41 @@ def _dynamic_programming_1d_many_derivative_for_2d_derivative(n, k, d, consts1, 
     :return:
     """
 
-    g = _dynamic_programming_1d_many(n, k, d, consts2) if g is None else g
+    g = _calc_mapping_1d_many(n, k, d, sum_consts) if g is None else g
     g = g.transpose((1, 2, 0)).copy()
 
     # Changing constants shape so the first axis is continuous
-    consts1 = consts1.T.copy()
-    consts2 = consts2.T.copy()
+    prod_consts = prod_consts.T.copy()
+    sum_consts = sum_consts.T.copy()
 
     # Allocating memory
     # Default is -inf everywhere as there are many places where the probability is 0 (when i > n - k * d)
     # when k=0 the probability is 1
-    mapping = np.full((n + 1, k + 1, consts1.shape[-1]), -np.inf)
+    mapping = np.full((n + 1, k + 1, prod_consts.shape[-1]), -np.inf)
     mapping[:, 0] = 0
 
     for curr_k in range(1, k + 1):
         for i in range(n - curr_k * d, -1, -1):
-            mapping[i, curr_k] = np.logaddexp(consts2[i] + mapping[i + d, curr_k - 1], mapping[i + 1, curr_k])
-            mapping[i, curr_k] = np.logaddexp(consts1[i] + consts2[i] + g[i + d, curr_k - 1], mapping[i, curr_k])
+            mapping[i, curr_k] = np.logaddexp(sum_consts[i] + mapping[i + d, curr_k - 1], mapping[i + 1, curr_k])
+            mapping[i, curr_k] = np.logaddexp(prod_consts[i] + sum_consts[i] + g[i + d, curr_k - 1], mapping[i, curr_k])
 
     mapping = mapping.transpose((2, 0, 1))
     return mapping[:, 0, :].copy()
 
 
-def _dynamic_programming_2d_function_and_derivative(n, k, d, consts1, consts2):
+def _calc_likelihood_and_likelihood_derivative_without_constants_2d(n, k, d, prod_consts, sum_consts):
     max_k_in_row = min(n // d, k)
 
-    # Fix consts1
-    r = - np.min(consts1) + 1
-    consts1 = np.log(consts1 + r)
+    # Fix prod_consts
+    r = - np.min(prod_consts) + 1
+    prod_consts = np.log(prod_consts + r)
 
     # Start precomputation
-    C = _dynamic_programming_1d_many(n, k, d, consts2)
-    A = _dynamic_programming_1d_many_derivative_for_2d_derivative(n, k, d, consts1, consts2, C)
+    C = _calc_mapping_1d_many(n, k, d, sum_consts)
+    A = _calc_likelihood_and_likelihood_derivative_without_constants_2d_pre_compute(n, k, d, prod_consts, sum_consts, C)
     # C = C[:, 0, 1:].copy()  # No need for k = 0
     # B = dynamic_programming_2d_after_pre_compute(n, k, d, C)
-    B = _dynamic_programming_2d_after_pre_compute(n, k, d, C[:, 0, 1:].copy())
+    B = _calc_mapping_2d_after_precompute(n, k, d, C[:, 0, 1:].copy())
 
     # A = A[:, :0:-1].copy()  # No need for k = 0 and need to reverse columns
     C = C[:, 0, :].copy()
@@ -361,13 +387,22 @@ def _dynamic_programming_2d_function_and_derivative(n, k, d, consts1, consts2):
     return B[0, k], np.exp(mapping[0, k] - B[0, k]) - k * r
 
 
-def _gradient_descent(F_F_tag, initial_x, t=0.1, epsilon=1e-10, max_iter=200, concave=False):
+def _gradient_descent(F_F_derivative, initial_x, t=0.1, epsilon=1e-10, max_iter=200, concave=False):
+    """
+    :param F_F_derivative: returns function value and its derivative at a point
+    :param initial_x: initial guess
+    :param t: step size
+    :param epsilon: tolerance
+    :param max_iter: maximum iterations to run
+    :param concave: TODO:
+    :return:
+    """
     x_prev = initial_x
-    F_prev, F_tag_prev = F_F_tag(x_prev)
+    F_prev, F_tag_prev = F_F_derivative(x_prev)
     for i in range(max_iter):
         # print(x_prev, F_prev, F_tag_prev, t)
         x_current = x_prev + t * F_tag_prev if concave else x_prev - t * F_tag_prev
-        F_current, F_tag_current = F_F_tag(x_current)
+        F_current, F_tag_current = F_F_derivative(x_current)
         if np.abs(F_current - F_prev) < epsilon:
             break
         t = np.abs((x_current - x_prev) / (F_tag_prev - F_tag_current))
@@ -377,91 +412,115 @@ def _gradient_descent(F_F_tag, initial_x, t=0.1, epsilon=1e-10, max_iter=200, co
 
 
 # Code for 1d optimization
-def max_argmax_1d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_iter=100):
+def calc_most_likelihood_and_optimized_power_1d(data, signal_filter, k, noise_std, p_0=0, t=0.1, epsilon=1e-5,
+                                                max_iter=100):
+    """
+    :param data: Given micrograph
+    :param signal_filter: base signal filter
+    :param k: num of occurrences, can be fixed int or array of integers
+    :param noise_std:
+    :param p_0: initial power guess
+    :param t: first step size
+    :param epsilon: tolerance
+    :param max_iter: max iterations to run
+    :return:
+    """
     # If got only one y
-    if not hasattr(y[0], '__iter__'):
-        y = [y]
+    if not hasattr(data[0], '__iter__'):
+        data = [data]
 
     # If got only one k
     if not hasattr(k, '__iter__'):
-        k = [k] * len(y)
+        k = [k] * len(data)
 
-    def F_F_tag(x):
-        return _f_f_tag_1d(x, y, filt, k, noise_std)
-    f, p = _gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
+    def F_F_derivative(x):
+        return _calc_f_f_derivative_1d(x, data, signal_filter, k, noise_std)
+
+    f_opt, p_opt = _gradient_descent(F_F_derivative, p_0, t, epsilon, max_iter, concave=True)
 
     # Computing constant part
-    d = filt.shape[0]
-    num_curves = len(y)
+    d = signal_filter.shape[0]
+    num_curves = len(data)
     log_sizes = np.zeros(num_curves)
     for i in range(num_curves):
-        n = len(y[i])
+        n = len(data[i])
         log_sizes[i] = log_size_S_1d(n, k[i], d)
 
-    constant_part = (log_prob_all_is_noise(y, noise_std) - np.sum(log_sizes)) / num_curves
-    f += constant_part
-    return f, p
+    constant_part = (log_prob_all_is_noise(data, noise_std) - np.sum(log_sizes)) / num_curves
+    f_opt += constant_part
+    return f_opt, p_opt
 
 
-def _f_f_tag_1d_one_sample(curr_power, y, x, k, sigma):
-    n = y.shape[0]
-    d = x.shape[0]
+def _calc_f_f_derivative_1d_one_sample(curr_power, data, signal_filter, k, noise_std):
+    n = data.shape[0]
+    d = signal_filter.shape[0]
 
-    # curr_power = 3
-    const1, const2 = _precompute_f_f_tag(curr_power, y, x, sigma)
-    g = dynamic_programming_1d(n, k, d, const2)
-    dp_derivative = _dynamic_programming_1d_derivative(n, k, d, const1, const2, g)
-
-    log_f = g[0, k]
-    f_tag = dp_derivative
+    sum_consts, prod_consts = _calc_constants(data, signal_filter, curr_power, noise_std)
+    mapping = calc_mapping_1d(n, k, d, prod_consts)
+    f_tag = _calc_term_two_derivative_1d(n, k, d, sum_consts, prod_consts, mapping)
+    log_f = mapping[0, k]
 
     return log_f, f_tag
 
 
-def _f_f_tag_1d(curr_power, y, x, k, sigma):
-    num_curves = len(y)
+def _calc_f_f_derivative_1d(curr_power, data, signal_filter, k, noise_std):
+    num_curves = len(data)
 
     f = np.zeros(num_curves)
     f_tag = np.zeros(num_curves)
     for i in range(num_curves):
-        f_, f_tag_ = _f_f_tag_1d_one_sample(curr_power, y[i], x, k[i], sigma)
-        f[i] = f_
-        f_tag[i] = f_tag_
+        f[i], f_tag[i] = _calc_f_f_derivative_1d_one_sample(curr_power, data[i], signal_filter, k[i], noise_std)
+
     return f.mean(), f_tag.mean()
 
 
 # Code for 2d optimization
-def max_argmax_2d_case(y, filt, k, noise_std, x_0=0, t=0.1, epsilon=1e-5, max_iter=100):
-    def F_F_tag(x):
-        return _f_f_tag_2d(x, y, filt, k, noise_std)
+def calc_most_likelihood_and_optimized_power_2d(data, signal_filter, k, noise_std, p_0=0, t=0.1, epsilon=1e-5,
+                                                max_iter=100):
+    """
+    :param data: Given micrograph
+    :param signal_filter: base signal filter
+    :param k: num of occurrences, can be fixed int or array of integers
+    :param noise_std:
+    :param p_0: initial power guess
+    :param t: first step size
+    :param epsilon: tolerance
+    :param max_iter: max iterations to run
+    """
 
-    f, p = _gradient_descent(F_F_tag, x_0, t, epsilon, max_iter, concave=True)
+    def F_F_derivative(x):
+        return _calc_f_f_derivative_2d(x, data, signal_filter, k, noise_std)
+
+    f_opt, p_opt = _gradient_descent(F_F_derivative, p_0, t, epsilon, max_iter, concave=True)
 
     # Compute constant part
-    log_size_1_axis = log_size_S_2d_1axis(y.shape[0], k, filt.shape[0])
-    constant_part = log_prob_all_is_noise(y, noise_std) - (log_size_1_axis + np.log(2))
+    log_size_1_axis = log_size_S_2d_1axis(data.shape[0], k, signal_filter.shape[0])
+    constant_part = log_prob_all_is_noise(data, noise_std) - (log_size_1_axis + np.log(2))
 
-    f += constant_part
-    return f, p
+    f_opt += constant_part
+    return f_opt, p_opt
 
 
-def _f_f_tag_2d(curr_power, y, x, k, sigma):
-    n = y.shape[0]
-    d = x.shape[0]
+def _calc_f_f_derivative_2d(curr_power, data, signal_filter, k, noise_std):
+    n = data.shape[0]
+    d = signal_filter.shape[0]
 
     # Axis 1
-    const1, const2 = _precompute_f_f_tag(curr_power, y, x, sigma)
-    log_f1, f_tag1 = _dynamic_programming_2d_function_and_derivative(n, k, d, const1, const2)
+    sum_consts, prod_consts = _calc_constants(data, signal_filter, curr_power, noise_std)
+    log_f_rows, f_derivative_rows = _calc_likelihood_and_likelihood_derivative_without_constants_2d(n, k, d, sum_consts,
+                                                                                                    prod_consts)
 
     # Axis 2
-    const1, const2 = const1.T.copy(), const2.T.copy()
-    log_f2, f_tag2 = _dynamic_programming_2d_function_and_derivative(n, k, d, const1, const2)
+    sum_consts, prod_consts = sum_consts.T.copy(), prod_consts.T.copy()
+    log_f_columns, f_derivative_columns = _calc_likelihood_and_likelihood_derivative_without_constants_2d(n, k, d,
+                                                                                                          sum_consts,
+                                                                                                          prod_consts)
 
     # Combining the axes
-    r = - np.min(const1) + 1
-    tmp1 = np.log(f_tag1 + k * r) + log_f1
-    tmp2 = np.log(f_tag2 + k * r) + log_f2
+    r = - np.min(sum_consts) + 1
+    tmp1 = np.log(f_derivative_rows + k * r) + log_f_rows
+    tmp2 = np.log(f_derivative_columns + k * r) + log_f_columns
 
-    log_f = np.logaddexp(log_f1, log_f2)
-    f_tag = np.exp(np.logaddexp(tmp1, tmp2) - log_f) - k * r
-    return log_f, f_tag
+    log_f = np.logaddexp(log_f_rows, log_f_columns)
+    f_derivative = np.exp(np.logaddexp(tmp1, tmp2) - log_f) - k * r
+    return log_f, f_derivative

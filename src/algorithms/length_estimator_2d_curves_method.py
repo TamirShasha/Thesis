@@ -4,7 +4,7 @@ from skimage.draw import line
 from src.algorithms.length_estimator_1d import LengthEstimator1D
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 from src.utils.logger import logger
-from src.algorithms.utils import max_argmax_1d_case
+from src.algorithms.utils import calc_most_likelihood_and_optimized_power_1d
 
 
 class LengthEstimator2DCurvesMethod:
@@ -92,10 +92,12 @@ class LengthEstimator2DCurvesMethod:
         likelihoods = np.zeros(len(fixed_length_options))
         powers = np.zeros(len(fixed_length_options))
         for i, length in enumerate(fixed_length_options):
-            likelihoods[i], powers[i] = max_argmax_1d_case(self._curves,
-                                                           self._signal_filter_gen(length, 1),
-                                                           self._fixed_num_of_occurrences,
-                                                           self._curves_noise)
+            signal_filter = np.concatenate([self._signal_filter_gen(length, 1),
+                                            np.zeros(int(length * 0.8))])
+            likelihoods[i], powers[i] = calc_most_likelihood_and_optimized_power_1d(self._curves,
+                                                                                    signal_filter,
+                                                                                    self._fixed_num_of_occurrences,
+                                                                                    self._curves_noise)
             logger.info(
                 f'For length {self._length_options[i]} matched power is {powers[i]}, Likelihood={likelihoods[i]}')
 

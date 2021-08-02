@@ -2,7 +2,7 @@ import numpy as np
 import time
 from enum import Enum
 import src.algorithms.utils as utils
-from src.algorithms.utils import max_argmax_2d_case
+from src.algorithms.utils import calc_most_likelihood_and_optimized_power_2d
 
 from src.algorithms.signal_power_estimator import SignalPowerEstimator as SPE
 from src.utils.logger import logger
@@ -37,9 +37,9 @@ class LengthEstimator2DVeryWellSeparated:
         likelihoods = np.zeros(len(self._length_options))
         powers = np.zeros(len(self._length_options))
         for i, length in enumerate(self._length_options):
-            likelihoods[i], powers[i] = max_argmax_2d_case(self._data,
-                                                           self._signal_filter_gen(length, 1),
-                                                           self._fixed_num_of_occurrences, self._noise_std)
+            likelihoods[i], powers[i] = calc_most_likelihood_and_optimized_power_2d(self._data,
+                                                                                    self._signal_filter_gen(length, 1),
+                                                                                    self._fixed_num_of_occurrences, self._noise_std)
             logger.info(
                 f'For length {self._length_options[i]} matched power is {powers[i]}, Likelihood={likelihoods[i]}')
 
