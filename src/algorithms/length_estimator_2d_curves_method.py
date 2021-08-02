@@ -92,8 +92,10 @@ class LengthEstimator2DCurvesMethod:
         likelihoods = np.zeros(len(fixed_length_options))
         powers = np.zeros(len(fixed_length_options))
         for i, length in enumerate(fixed_length_options):
+            signal_filter = np.concatenate([self._signal_filter_gen(length, 1),
+                                            np.zeros(int(length * 0.8))])
             likelihoods[i], powers[i] = calc_most_likelihood_and_optimized_power_1d(self._curves,
-                                                                                    self._signal_filter_gen(length, 1),
+                                                                                    signal_filter,
                                                                                     self._fixed_num_of_occurrences,
                                                                                     self._curves_noise)
             logger.info(
