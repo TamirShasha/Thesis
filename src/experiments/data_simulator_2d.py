@@ -2,7 +2,7 @@ import numpy as np
 from skimage.draw import ellipse, disk
 
 from src.utils.logger import logger
-from src.algorithms.utils import dynamic_programming_2d, log_size_S_1d, random_1d_ws_positions
+from src.algorithms.utils import calc_mapping_2d, log_size_S_1d, random_1d_ws_positions
 from src.utils.CTF_Relion import apply_CTF, cryo_CTF_Relion
 
 
@@ -163,7 +163,7 @@ class DataSimulator2D:
             log_size_S_per_k[k_in_row - 1] = log_size_S_1d(n, k_in_row, d)
         log_size_S_per_k = log_size_S_per_k[::-1].copy()
         constants = np.zeros((n - d + 1, n - d + 1))
-        q = dynamic_programming_2d(n, k, d, constants)
+        q = calc_mapping_2d(n, k, d, constants)
 
         occurrences_left = k
         curr_row = 0

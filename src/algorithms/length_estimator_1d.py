@@ -69,7 +69,7 @@ class LengthEstimator1D:
             return -np.inf
 
         sum_yx_minus_x_squared = utils.log_probability_filter_on_each_pixel(y, signal_filter, self._noise_std)
-        mapping = utils.dynamic_programming_1d(n, expected_num_of_occurrences, d, sum_yx_minus_x_squared)
+        mapping = utils.calc_mapping_1d(n, expected_num_of_occurrences, d, sum_yx_minus_x_squared)
 
         # Computing remaining parts of log-likelihood
         log_pd = -utils.log_size_S_1d(n, expected_num_of_occurrences, d)
