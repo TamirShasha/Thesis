@@ -87,6 +87,10 @@ class LengthEstimator2DCurvesMethod:
             return top_concatenated_curves
 
     def estimate(self):
+        """
+        calculate likelihood per length, returns the most likely one and the optimal filter power for it
+        :return: (likelihoods, most likely length, most likely power)
+        """
         fixed_length_options = (np.int32(self._length_options * self._cut_fix_factor))
 
         likelihoods = np.zeros(len(fixed_length_options))
