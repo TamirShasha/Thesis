@@ -8,11 +8,11 @@ from src.constants import ROOT_DIR
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 
-TIMES = 20
-EXP_LENGTH_OPTIONS = np.concatenate([[50], np.arange(100, 601, 100)])
-LENGTH_OPTIONS = np.concatenate([[50], np.arange(100, 1001, 100)])
+TIMES = 30
+EXP_LENGTH_OPTIONS = np.concatenate([[20, 50, 70], np.arange(100, 701, 100)])
+LENGTH_OPTIONS = np.concatenate([[20, 50, 70], np.arange(100, 1001, 100)])
 
-NOISE_STD = 15
+NOISE_STD = 20
 
 errors = np.zeros_like(EXP_LENGTH_OPTIONS)
 for i, length in enumerate(EXP_LENGTH_OPTIONS):

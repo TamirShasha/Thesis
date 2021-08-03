@@ -175,7 +175,7 @@ def __main__():
     sim_data = DataSimulator2D(rows=4000,
                                columns=4000,
                                # signal_length=PARTICLE_200.particle_length,
-                               signal_length=600,
+                               signal_length=700,
                                signal_power=1,
                                signal_fraction=1 / 6,
                                # signal_gen=PARTICLE_200.get_signal_gen(),

@@ -26,7 +26,7 @@ class LengthEstimator2DCurvesMethod:
         self._logs = logs
 
         self._n = self._data.shape[0]
-        self._num_of_curves = 30
+        self._num_of_curves = 50
         self._cut_fix_factor = 0.7
         self._fixed_num_of_occurrences = 3
         self._curves_noise = self._noise_std / np.sqrt(self._num_of_curves)

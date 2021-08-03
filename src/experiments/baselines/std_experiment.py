@@ -10,7 +10,7 @@ from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 
 TIMES = 20
 LENGTH_OPTIONS = np.concatenate([[50], np.arange(100, 1001, 100)])
-STDS = np.arange(1, 6, 2)
+STDS = np.arange(5, 40, 5)
 SIGNAL_LENGTH = 400
 
 avg_results = np.zeros_like(STDS)
