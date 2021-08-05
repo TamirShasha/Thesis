@@ -9,12 +9,8 @@ def add_pulses(y, signal, positions):
     """
     new_y = np.copy(y)
     d = signal.shape[0]
-    start_idx, end_idx = 0, 0
-    for pos in positions[:-1]:
-        start_idx += pos
-        end_idx = start_idx + d
-        new_y[start_idx:end_idx] = signal
-        start_idx = end_idx
+    for pos in positions:
+        new_y[pos:pos + d] = signal
     return new_y
 
 
@@ -23,10 +19,11 @@ def add_gaus_noise(y, mean, std):
     return y + noise
 
 
-def simulate_data(n, d, p, k, noise_std):
-    signal = np.full(d, p)
+def simulate_data(n, d, p, k, noise_std, signal=None):
+    if signal is None:
+        signal = np.full(d, p)
     y = np.zeros(n)
-    positions = random_1d_ws_positions(n, k, d)
+    positions = np.array(random_1d_ws_positions(n, k, d), dtype=int)
     pulses = add_pulses(y, signal, positions)
     y = add_gaus_noise(pulses, 0, noise_std)
     return y, pulses

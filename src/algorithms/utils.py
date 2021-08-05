@@ -282,30 +282,30 @@ def _calc_constants(data, signal_filter, filter_coeff, noise_std):
 
 
 @nb.jit
-def _calc_term_two_derivative_1d(n, k, d, prod_consts, sum_consts, mapping=None):
+def _calc_term_two_derivative_1d(n, k, d, sum_consts, prod_consts, mapping=None):
     """
     Compute log(\sum_{s in S_(n,k,d)}\prod_{i in s}c_i)
     :param n:
     :param k:
     :param d:
-    :param prod_consts:
     :param sum_consts:
+    :param prod_consts:
     :param mapping:
     :return:
     """
-    mapping = calc_mapping_1d(n, k, d, sum_consts) if mapping is None else mapping
+    mapping = calc_mapping_1d(n, k, d, prod_consts) if mapping is None else mapping
 
-    r = - np.min(prod_consts) + 1
-    prod_consts = np.log(prod_consts + r)
+    r = - np.min(sum_consts) + 1
+    sum_consts = np.log(sum_consts + r)
 
     derivative_mapping = np.full((n + 1, k + 1), -np.inf)
     derivative_mapping[:, 0] = 0
 
     for curr_k in range(1, k + 1):
         for i in range(n - curr_k * d, -1, -1):
-            derivative_mapping[i, curr_k] = np.logaddexp(sum_consts[i] + derivative_mapping[i + d, curr_k - 1],
+            derivative_mapping[i, curr_k] = np.logaddexp(prod_consts[i] + derivative_mapping[i + d, curr_k - 1],
                                                          derivative_mapping[i + 1, curr_k])
-            derivative_mapping[i, curr_k] = np.logaddexp(prod_consts[i] + sum_consts[i] + mapping[i + d, curr_k - 1],
+            derivative_mapping[i, curr_k] = np.logaddexp(sum_consts[i] + prod_consts[i] + mapping[i + d, curr_k - 1],
                                                          derivative_mapping[i, curr_k])
 
     term2 = np.exp(derivative_mapping[0, k] - mapping[0, k]) - k * r
@@ -403,9 +403,10 @@ def _gradient_descent(F_F_derivative, initial_x, t=0.1, epsilon=1e-10, max_iter=
         # print(x_prev, F_prev, F_tag_prev, t)
         x_current = x_prev + t * F_tag_prev if concave else x_prev - t * F_tag_prev
         F_current, F_tag_current = F_F_derivative(x_current)
+        print(f'at iteration # {i + 1}, {np.abs(F_current - F_prev)}')
         if np.abs(F_current - F_prev) < epsilon:
             break
-        t = np.abs((x_current - x_prev) / (F_tag_prev - F_tag_current))
+        t = np.abs(np.linalg.norm(x_current - x_prev) / np.linalg.norm(F_tag_prev - F_tag_current))
         x_prev, F_prev, F_tag_prev = x_current, F_current, F_tag_current
     # print(x_current, F_current, F_tag_current, t)
     return F_current, x_current
