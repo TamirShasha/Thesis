@@ -134,50 +134,76 @@ class FilterEstimator1D:
         return likelihood, optimal_coeffs
 
 
+def create_symmetric_basis(length, size):
+    """
+    creates basis for symmetric signals of given size
+    the higher the size, the finer the basis
+    :param length: each element length
+    :param size: num of elements in returned basis
+    """
+    step_width = length // (size * 2)
+    basis = np.zeros(shape=(size, length))
+
+    for i in range(size):
+        pos = i * step_width
+        basis[i, pos: pos + step_width] = 1
+
+    basis += np.flip(basis, axis=1)
+    basis[size - 1, size * step_width:size * step_width + length % (size * 2)] = 1
+
+    return basis
+
+
 from src.experiments.data_simulator_1d import simulate_data
 import matplotlib.pyplot as plt
 from src.algorithms.utils import calc_most_likelihood_and_optimized_power_1d
 
-n, d, p, k, sig = 5000, 40, 1, 50, .5
 
-# signal = np.concatenate([np.full(5, 1 / 3),
-#                          np.full(5, -2 / 3),
-#                          np.full(5, -1),
-#                          np.full(5, 2 / 3),
-#                          np.full(5, 2 / 3),
-#                          np.full(5, -1),
-#                          np.full(5, -2 / 3),
-#                          np.full(5, 1 / 3)])
-signal = np.array([1 - np.square(i) for i in np.linspace(-1, 1, 40)])
+def exp():
+    n, d, p, k, sig = 10000, 40, 1, 100, 1
 
-print(np.linalg.norm(signal))
+    # signal = np.concatenate([np.full(5, 1 / 3),
+    #                          np.full(5, -2 / 3),
+    #                          np.full(5, -1),
+    #                          np.full(5, 2 / 3),
+    #                          np.full(5, 2 / 3),
+    #                          np.full(5, -1),
+    #                          np.full(5, -2 / 3),
+    #                          np.full(5, 1 / 3)])
+    signal = np.array([1 - np.square(i) for i in np.linspace(-1, 1, 40)])
 
-data, pulses = simulate_data(n, d, p, k, sig, signal)
-data2, pulses = simulate_data(n, d, p, k, sig, signal)
-# plt.plot(data)
-# plt.show()
+    print(np.linalg.norm(signal))
 
-# filter_basis = np.array([
-#     np.concatenate([np.ones(15), np.zeros(15)]),
-#     np.concatenate([np.zeros(15), np.ones(15)])
-# ])
+    data, pulses = simulate_data(n, d, p, k, sig, signal)
+    data2, pulses = simulate_data(n, d, p, k, sig, signal)
+    # plt.plot(data)
+    # plt.show()
 
-# plt.plot(signal)
-# plt.show()
-filter_basis = np.array([
-    np.concatenate([np.ones(5), np.zeros(30), np.ones(5)]),
-    np.concatenate([np.zeros(5), np.ones(5), np.zeros(20), np.ones(5), np.zeros(5)]),
-    np.concatenate([np.zeros(10), np.ones(5), np.zeros(10), np.ones(5), np.zeros(10)]),
-    np.concatenate([np.zeros(15), np.ones(10), np.zeros(15)]),
-])
+    # filter_basis = np.array([
+    #     np.concatenate([np.ones(15), np.zeros(15)]),
+    #     np.concatenate([np.zeros(15), np.ones(15)])
+    # ])
 
-# [plt.plot(fil) for fil in filter_basis]
-# plt.show()
+    # plt.plot(signal)
+    # plt.show()
+    # filter_basis = np.array([
+    #     np.concatenate([np.ones(5), np.zeros(30), np.ones(5)]),
+    #     np.concatenate([np.zeros(5), np.ones(5), np.zeros(20), np.ones(5), np.zeros(5)]),
+    #     np.concatenate([np.zeros(10), np.ones(5), np.zeros(10), np.ones(5), np.zeros(10)]),
+    #     np.concatenate([np.zeros(15), np.ones(10), np.zeros(15)]),
+    # ])
 
-fil_est = FilterEstimator1D(np.array([data, data2]), filter_basis, k, sig)
-f, p = fil_est.estimate()
-print(p)
+    # [plt.plot(fil) for fil in filter_basis]
+    # plt.show()
 
-plt.plot(filter_basis.T.dot(p))
-plt.plot(signal)
-plt.show()
+    filter_basis = create_symmetric_basis(2 * d, 10)
+    fil_est = FilterEstimator1D(np.array([data, data2]), filter_basis, k, sig)
+    f, p = fil_est.estimate()
+    print(p)
+
+    plt.plot(filter_basis.T.dot(p))
+    plt.plot(signal)
+    plt.show()
+
+
+# exp()
