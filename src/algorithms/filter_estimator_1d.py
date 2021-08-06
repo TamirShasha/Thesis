@@ -44,6 +44,9 @@ class FilterEstimator1D:
         self.term_three_const = self.calc_term_three_const()
 
     def normalize_basis(self):
+        """
+        :return: normalized basis and respected norms
+        """
         normalized_basis = np.zeros_like(self.unnormalized_filter_basis)
         basis_norms = np.zeros(self.filter_basis_size)
         for i, fil in enumerate(self.unnormalized_filter_basis):
@@ -57,12 +60,17 @@ class FilterEstimator1D:
         return log_size_S_1d(self.sample_length, self.num_of_instances, self.filter_length)
 
     def calc_term_three_const(self):
+        """
+        The 3rd term of the likelihood function
+        """
         term = -self.num_of_instances / 2
         return term
 
     def convolve_basis_element(self, filter_element):
         """
+        convolve one basis element with each of the data samples
         :param filter_element: one element from filter basis
+        :return: (T, n-d) while T is basis size, n is data length and d is filter length
         """
         flipped_signal_filter = np.flip(filter_element)  # Flipping to cross-correlate
         conv = np.array([convolve(self.data[i], flipped_signal_filter, mode='valid')
@@ -82,16 +90,32 @@ class FilterEstimator1D:
         return constants
 
     def calc_convolved_filter(self, sample_index, filter_coeffs):
+        """
+        :param sample_index: index of the sample among m data samples
+        :param filter_coeffs: coefficients for the filter basis
+        :return: the dot product between relevant data sample and filter
+        """
         convolved_filter = np.inner(self.convolved_basis[sample_index].T, filter_coeffs)
         return convolved_filter
 
     def calc_mapping(self, convolved_filter):
+        """
+        :param convolved_filter: dot product between data sample and a filter
+        :return: likelihood mapping
+        """
         return calc_mapping_1d(self.sample_length,
                                self.num_of_instances,
                                self.filter_length,
                                convolved_filter)
 
     def calc_gradient(self, sample_index, filter_coeffs, mapping=None):
+        """
+        calculate sample gradient with respect to each filter coefficient
+        :param sample_index: index of the data sample
+        :param filter_coeffs: filter coefficients
+        :param mapping: likelihood mapping
+        :return: gradient of the filter coefficients
+        """
         convolved_filter = self.calc_convolved_filter(sample_index, filter_coeffs)
 
         if mapping is None:
@@ -108,6 +132,9 @@ class FilterEstimator1D:
         return gradient + 2 * self.term_three_const * filter_coeffs
 
     def calc_likelihood_and_gradient(self, filter_coeffs):
+        """
+        Calculates the likelihood function for given filter coefficients and its gradient
+        """
         likelihoods = np.zeros(self.num_of_data_samples)
         gradients = np.zeros(shape=(self.num_of_data_samples, self.filter_basis_size))
 
@@ -123,6 +150,10 @@ class FilterEstimator1D:
         return likelihoods.mean(axis=0), gradients.mean(axis=0)
 
     def estimate(self):
+        """
+        Estimate optimal the match filter using given data samples and with respect to given filter basis
+        :return: likelihood value and optimal unnormalized filter coefficient (can be used on user basis)
+        """
         def _calc_likelihood_and_gradient(filter_coeffs):
             return self.calc_likelihood_and_gradient(filter_coeffs)
 
