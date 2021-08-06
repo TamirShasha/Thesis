@@ -5,6 +5,7 @@ from src.algorithms.length_estimator_1d import LengthEstimator1D
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 from src.utils.logger import logger
 from src.algorithms.utils import calc_most_likelihood_and_optimized_power_1d
+from src.algorithms.filter_estimator_1d import FilterEstimator1D, create_symmetric_basis
 
 
 class LengthEstimator2DCurvesMethod:
@@ -15,7 +16,7 @@ class LengthEstimator2DCurvesMethod:
                  signal_filter_gen_1d,
                  noise_std,
                  noise_mean=0,
-                 curve_width=31,
+                 curve_width=51,
                  logs=True):
         self._data = data
         self._length_options = length_options
@@ -26,7 +27,7 @@ class LengthEstimator2DCurvesMethod:
         self._logs = logs
 
         self._n = self._data.shape[0]
-        self._num_of_curves = 50
+        self._num_of_curves = 100
         self._cut_fix_factor = 0.7
         self._fixed_num_of_occurrences = 3
         self._curves_noise = self._noise_std / np.sqrt(self._num_of_curves)
@@ -96,12 +97,20 @@ class LengthEstimator2DCurvesMethod:
         likelihoods = np.zeros(len(fixed_length_options))
         powers = np.zeros(len(fixed_length_options))
         for i, length in enumerate(fixed_length_options):
-            signal_filter = np.concatenate([self._signal_filter_gen(length, 1),
-                                            np.zeros(int(length * 0.8))])
-            likelihoods[i], powers[i] = calc_most_likelihood_and_optimized_power_1d(self._curves,
-                                                                                    signal_filter,
-                                                                                    self._fixed_num_of_occurrences,
-                                                                                    self._curves_noise)
+            # signal_filter = np.concatenate([self._signal_filter_gen(length, 1),
+            #                                 np.zeros(int(length * 0.8))])
+            # likelihoods[i], powers[i] = calc_most_likelihood_and_optimized_power_1d(self._curves,
+            #                                                                         signal_filter,
+            #                                                                         self._fixed_num_of_occurrences,
+            #                                                                         self._curves_noise)
+            filter_basis = create_symmetric_basis(length, 10)
+            likelihoods[i], p = FilterEstimator1D(self._curves,
+                                                          filter_basis,
+                                                          self._fixed_num_of_occurrences,
+                                                          self._curves_noise).estimate()
+            import matplotlib.pyplot as plt
+            plt.plot(filter_basis.T.dot(p))
+            plt.show()
             logger.info(
                 f'For length {self._length_options[i]} matched power is {powers[i]}, Likelihood={likelihoods[i]}')
 
