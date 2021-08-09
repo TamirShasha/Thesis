@@ -3,6 +3,7 @@ from scipy.signal import convolve
 
 from src.algorithms.utils import log_size_S_1d, calc_mapping_1d, _calc_term_two_derivative_1d, log_prob_all_is_noise, \
     _gradient_descent
+from src.experimental.dev3 import heuristic_dp
 
 
 class FilterEstimator1D:
@@ -147,22 +148,70 @@ class FilterEstimator1D:
                              self.term_three_const * np.inner(filter_coeffs, filter_coeffs) + \
                              mapping[0, self.num_of_instances]
 
-        return likelihoods.mean(axis=0), gradients.mean(axis=0)
+        # return likelihoods.mean(axis=0), gradients.mean(axis=0)
+        return likelihoods.sum(axis=0), gradients.sum(axis=0)
 
     def estimate(self):
         """
         Estimate optimal the match filter using given data samples and with respect to given filter basis
         :return: likelihood value and optimal unnormalized filter coefficient (can be used on user basis)
         """
+
         def _calc_likelihood_and_gradient(filter_coeffs):
             return self.calc_likelihood_and_gradient(filter_coeffs)
 
-        initial_coeffs, t, epsilon, max_iter = self.basis_norms, 0.1, 1e-4, 100
+        initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-2, 100
+        # l, initial_coeffs = self.estimate_max()
+        initial_coeffs = np.array([1 - np.square(i) for i in np.linspace(-1, 1, self.filter_basis_size)])
         likelihood, normalized_optimal_coeffs = _gradient_descent(_calc_likelihood_and_gradient, initial_coeffs, t,
                                                                   epsilon, max_iter, concave=True)
 
         optimal_coeffs = normalized_optimal_coeffs * self.noise_std / self.basis_norms
         return likelihood, optimal_coeffs
+
+    def estimate_max(self):
+
+        _p = np.zeros(self.filter_basis_size)
+        likelihoods_pos = []
+        likelihoods_neg = []
+        p_pos = []
+        p_neg = []
+        for i in range(self.num_of_data_samples):
+            print(i)
+            c = self.convolved_basis[i].T
+            likelihood_pos, locations_pos = heuristic_dp(self.sample_length, self.filter_length, self.num_of_instances,
+                                                         c)
+            likelihood_neg, locations_neg = heuristic_dp(self.sample_length, self.filter_length, self.num_of_instances,
+                                                         -c)
+
+            # if likelihood_pos > likelihood_neg:
+            #     likelihood = likelihood_pos
+            #     locations = locations_pos
+            #
+            # else:
+            #     c = -c
+            #     likelihood = likelihood_neg
+            #     locations = locations_neg
+
+            p_pos.append(np.sum(c[locations_pos], 0) / (2 * self.term_three_const))
+            p_neg.append(np.sum(-c[locations_neg], 0) / (2 * self.term_three_const))
+            likelihoods_pos.append(likelihood_pos)
+            likelihoods_neg.append(likelihood_neg)
+
+            # p = np.sum(c[locations], 0) / (2 * self.term_three_const)
+            # _p += p
+
+        likelihood_pos = sum(likelihoods_pos)
+        likelihood_neg = sum(likelihoods_neg)
+
+        if likelihood_pos > likelihood_neg:
+            p = np.nanmean(p_pos, 0)
+        else:
+            p = np.nanmean(p_neg, 0)
+
+        # _p /= self.num_of_data_samples
+        optimal_coeffs = p * self.noise_std / self.basis_norms
+        return 0, p
 
 
 def create_symmetric_basis(length, size):
@@ -185,13 +234,47 @@ def create_symmetric_basis(length, size):
     return basis
 
 
+def create_span_basis(length, size):
+    """
+    creates basis for discrete signals of given size
+    the higher the size, the finer the basis
+    :param length: each element length
+    :param size: num of elements in returned basis
+    """
+    step_width = length // size
+    basis = np.zeros(shape=(size, length))
+
+    end = 0
+    for i in range(size):
+        start = end
+        end = start + step_width
+        if i < length % size:
+            end += 1
+        basis[i, start: end] = 1
+
+    return basis
+
+
 from src.experiments.data_simulator_1d import simulate_data
 import matplotlib.pyplot as plt
-from src.algorithms.utils import calc_most_likelihood_and_optimized_power_1d
+
+
+# b = create_span_basis(19, 10)
+# print(b)
+# for a in b:
+#     plt.plot(a)
+# plt.show()
 
 
 def exp():
-    n, d, p, k, sig = 10000, 40, 1, 100, 1
+    n, d, p, k, sig = 6000, 100, 1, 10, .2
+    M = 10
+
+    # filter_basis = create_symmetric_basis(100, 7)
+    # print(np.matmul(filter_basis, filter_basis.T))
+    # print(filter_basis)
+    # plt.plot(filter_basis)
+    # plt.show()
 
     # signal = np.concatenate([np.full(5, 1 / 3),
     #                          np.full(5, -2 / 3),
@@ -201,12 +284,17 @@ def exp():
     #                          np.full(5, -1),
     #                          np.full(5, -2 / 3),
     #                          np.full(5, 1 / 3)])
-    signal = np.array([1 - np.square(i) for i in np.linspace(-1, 1, 40)])
+    signal = np.array([1 - np.square(i) for i in np.linspace(-1, 1, d)])
+    # signal = np.concatenate([np.full(d//2, 1),
+    #                          np.full(d//2, 1/2)])
 
-    print(np.linalg.norm(signal))
+    # print(np.linalg.norm(signal))
 
-    data, pulses = simulate_data(n, d, p, k, sig, signal)
-    data2, pulses = simulate_data(n, d, p, k, sig, signal)
+    data = []
+    for i in range(M):
+        _data, pulses = simulate_data(n, d, p, k, sig, signal)
+        data.append(_data)
+    data = np.array(data)
     # plt.plot(data)
     # plt.show()
 
@@ -215,8 +303,8 @@ def exp():
     #     np.concatenate([np.zeros(15), np.ones(15)])
     # ])
 
-    # plt.plot(signal)
-    # plt.show()
+    plt.plot(signal)
+    plt.show()
     # filter_basis = np.array([
     #     np.concatenate([np.ones(5), np.zeros(30), np.ones(5)]),
     #     np.concatenate([np.zeros(5), np.ones(5), np.zeros(20), np.ones(5), np.zeros(5)]),
@@ -227,13 +315,23 @@ def exp():
     # [plt.plot(fil) for fil in filter_basis]
     # plt.show()
 
-    filter_basis = create_symmetric_basis(2 * d, 10)
-    fil_est = FilterEstimator1D(np.array([data, data2]), filter_basis, k, sig)
-    f, p = fil_est.estimate()
-    print(p)
+    likelihoods = []
+    for _d in np.arange(100, 1001, 100):
+        # filter_basis = create_symmetric_basis(_d, 7)
+        filter_basis = create_span_basis(_d, 10)
+        # plt.plot(filter_basis)
+        # plt.show()
+        # filter_basis = create_span_basis(_d, 10)
+        fil_est = FilterEstimator1D(data, filter_basis, k//2, sig)
+        # f, p = fil_est.estimate_max()
+        f, p = fil_est.estimate()
+        likelihoods.append(f)
 
-    plt.plot(filter_basis.T.dot(p))
-    plt.plot(signal)
+        plt.plot(filter_basis.T.dot(p))
+        plt.plot(signal)
+        plt.show()
+
+    plt.plot(likelihoods)
     plt.show()
 
 

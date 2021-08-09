@@ -5,7 +5,7 @@ from src.algorithms.length_estimator_1d import LengthEstimator1D
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 from src.utils.logger import logger
 from src.algorithms.utils import calc_most_likelihood_and_optimized_power_1d
-from src.algorithms.filter_estimator_1d import FilterEstimator1D, create_symmetric_basis
+from src.algorithms.filter_estimator_1d import FilterEstimator1D, create_symmetric_basis, create_span_basis
 
 
 class LengthEstimator2DCurvesMethod:
@@ -17,7 +17,8 @@ class LengthEstimator2DCurvesMethod:
                  noise_std,
                  noise_mean=0,
                  curve_width=51,
-                 logs=True):
+                 logs=True,
+                 experiment_dir=None):
         self._data = data
         self._length_options = length_options
         self._signal_filter_gen = signal_filter_gen_1d
@@ -25,10 +26,11 @@ class LengthEstimator2DCurvesMethod:
         self._noise_std = noise_std
         self._curve_width = curve_width
         self._logs = logs
+        self._experiment_dir = experiment_dir
 
         self._n = self._data.shape[0]
         self._num_of_curves = 100
-        self._cut_fix_factor = 0.7
+        self._cut_fix_factor = 1
         self._fixed_num_of_occurrences = 3
         self._curves_noise = self._noise_std / np.sqrt(self._num_of_curves)
 
@@ -104,13 +106,19 @@ class LengthEstimator2DCurvesMethod:
             #                                                                         self._fixed_num_of_occurrences,
             #                                                                         self._curves_noise)
             filter_basis = create_symmetric_basis(length, 10)
+            filter_basis = create_span_basis(length, 10)
             likelihoods[i], p = FilterEstimator1D(self._curves,
-                                                          filter_basis,
-                                                          self._fixed_num_of_occurrences,
-                                                          self._curves_noise).estimate()
+                                                  filter_basis,
+                                                  self._fixed_num_of_occurrences,
+                                                  self._curves_noise).estimate()
             import matplotlib.pyplot as plt
+            import os
             plt.plot(filter_basis.T.dot(p))
-            plt.show()
+            fig_path = os.path.join(self._experiment_dir, f'_{length}.png')
+            plt.savefig(fname=fig_path)
+            plt.close()
+
+            # plt.show()
             logger.info(
                 f'For length {self._length_options[i]} matched power is {powers[i]}, Likelihood={likelihoods[i]}')
 
