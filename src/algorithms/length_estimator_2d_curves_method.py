@@ -16,7 +16,7 @@ class LengthEstimator2DCurvesMethod:
                  signal_filter_gen_1d,
                  noise_std,
                  noise_mean=0,
-                 curve_width=51,
+                 curve_width=31,
                  logs=True,
                  experiment_dir=None):
         self._data = data
@@ -31,7 +31,7 @@ class LengthEstimator2DCurvesMethod:
         self._n = self._data.shape[0]
         self._num_of_curves = 100
         self._cut_fix_factor = 1
-        self._fixed_num_of_occurrences = 3
+        self._fixed_num_of_occurrences = 1
         self._curves_noise = self._noise_std / np.sqrt(self._num_of_curves)
 
         self._curves = self._create_curves(num=self._num_of_curves)
@@ -105,7 +105,7 @@ class LengthEstimator2DCurvesMethod:
             #                                                                         signal_filter,
             #                                                                         self._fixed_num_of_occurrences,
             #                                                                         self._curves_noise)
-            filter_basis = create_symmetric_basis(length, 10)
+            # filter_basis = create_symmetric_basis(length, 10)
             filter_basis = create_span_basis(length, 10)
             likelihoods[i], p = FilterEstimator1D(self._curves,
                                                   filter_basis,
