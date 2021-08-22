@@ -71,6 +71,7 @@ class Experiment2D:
             logger.info(f'Loading given micrograph from {mrc.name}')
             self._data = mrc.load_micrograph()
             self._data = self._data[:min(self._data.shape), :min(self._data.shape)]
+            self._data = self._data[:2000, :2000]
             self._num_of_occurrences = mrc.occurrences
             self._noise_std = mrc.noise_std
             self._noise_mean = mrc.noise_mean
@@ -175,13 +176,13 @@ class Experiment2D:
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=1000,
-                               columns=1000,
-                               signal_length=100,
+    sim_data = DataSimulator2D(rows=2000,
+                               columns=2000,
+                               signal_length=300,
                                signal_power=1,
-                               signal_fraction=1 / 12,
-                               signal_gen=Shapes2D.disk,
-                               noise_std=1,
+                               signal_fraction=1 / 6,
+                               signal_gen=Shapes2D.sphere,
+                               noise_std=5,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -192,8 +193,8 @@ def __main__():
         simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        # length_options=np.array([100, 200, 300]),
-        length_options=np.arange(200, 201, 100),
+        length_options=np.array([100, 200,300, 400, 500]),
+        # length_options=np.arange(20, 501, 50),
         signal_num_of_occurrences_boundaries=(0, 20000),
         signal_area_coverage_boundaries=(0.05, 0.20),
         num_of_power_options=10,

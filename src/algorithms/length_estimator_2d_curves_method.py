@@ -30,8 +30,8 @@ class LengthEstimator2DCurvesMethod:
 
         self._n = self._data.shape[0]
         self._num_of_curves = 100
-        self._cut_fix_factor = 1
-        self._fixed_num_of_occurrences = 1
+        self._cut_fix_factor = 0.7
+        self._fixed_num_of_occurrences = 3
         self._curves_noise = self._noise_std / np.sqrt(self._num_of_curves)
 
         self._curves = self._create_curves(num=self._num_of_curves)
@@ -89,7 +89,7 @@ class LengthEstimator2DCurvesMethod:
             top_concatenated_curves = np.array([np.concatenate(x) for x in np.split(top_curves, num)])
             return top_concatenated_curves
 
-    def estimate(self):
+    def estimate2(self):
         """
         calculate likelihood per length, returns the most likely one and the optimal filter power for it
         :return: (likelihoods, most likely length, most likely power)
@@ -126,7 +126,7 @@ class LengthEstimator2DCurvesMethod:
         most_likely_power = powers[np.nanargmax(likelihoods)]
         return likelihoods, most_likely_length, most_likely_power
 
-    def estimate2(self):
+    def estimate(self):
         """
         calculate likelihood per length, returns the most likely one and the optimal filter power for it
         :return: (likelihoods, most likely length, most likely power)

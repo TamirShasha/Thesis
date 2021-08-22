@@ -266,7 +266,7 @@ def exp():
     plt.show()
 
     filter_basis = create_basis(100, 5)
-    filter_estimator = FilterEstimator2D(data, filter_basis, 20)
+    filter_estimator = FilterEstimator2D(data, filter_basis, 20, noise_std)
     likelihood, optimal_coeffs = filter_estimator.estimate()
     est_signal = filter_basis.T.dot(optimal_coeffs)
 
@@ -331,4 +331,4 @@ def exp2():
 
 
 if __name__ == '__main__':
-    exp2()
+    exp()
