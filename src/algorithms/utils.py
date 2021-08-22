@@ -4,6 +4,18 @@ import numba as nb
 from src.utils.logsumexp import logsumexp_simple
 
 
+def relative_error(estimated_signal, true_signal):
+    """
+    Calculate the relative error between estimated signal and true signal up to circular shift
+    :return: relative error
+    """
+    n = len(true_signal)
+    corr = [np.linalg.norm(true_signal - np.roll(estimated_signal, i)) for i in range(n)]
+    shift = np.argmin(corr)
+    error = np.min(corr) / np.linalg.norm(true_signal)
+    return error, shift
+
+
 # utils, private, change names
 def generate_random_bars(n, k):
     """
@@ -330,8 +342,9 @@ def _calc_term_two_derivative_1d(n, k, d, sum_consts, prod_consts, mapping=None)
         for i in range(n - curr_k * d, -1, -1):
             derivative_mapping[i, curr_k] = np.logaddexp(prod_consts[i] + derivative_mapping[i + d, curr_k - 1],
                                                          derivative_mapping[i + 1, curr_k])
-            derivative_mapping[i, curr_k] = np.logaddexp(log_sum_consts[i] + prod_consts[i] + mapping[i + d, curr_k - 1],
-                                                         derivative_mapping[i, curr_k])
+            derivative_mapping[i, curr_k] = np.logaddexp(
+                log_sum_consts[i] + prod_consts[i] + mapping[i + d, curr_k - 1],
+                derivative_mapping[i, curr_k])
 
     term2 = np.exp(derivative_mapping[0, k] - mapping[0, k]) - k * r
     return term2

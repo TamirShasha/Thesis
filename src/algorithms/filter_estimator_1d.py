@@ -1,9 +1,12 @@
 import numpy as np
 from scipy.signal import convolve
+from time import time
 
 from src.algorithms.utils import log_size_S_1d, calc_mapping_1d, _calc_term_two_derivative_1d, log_prob_all_is_noise, \
-    _gradient_descent, calc_most_likelihood_and_optimized_power_1d
+    _gradient_descent, calc_most_likelihood_and_optimized_power_1d, relative_error, _calc_mapping_1d_many
 from src.experimental.dev3 import heuristic_dp
+
+np.random.seed(500)
 
 
 class FilterEstimator1D:
@@ -96,8 +99,7 @@ class FilterEstimator1D:
         :param filter_coeffs: coefficients for the filter basis
         :return: the dot product between relevant data sample and filter
         """
-        convolved_filter = np.inner(self.convolved_basis[sample_index].T, filter_coeffs)
-        return convolved_filter
+        return np.inner(self.convolved_basis[sample_index].T, filter_coeffs)
 
     def calc_mapping(self, convolved_filter):
         """
@@ -108,6 +110,16 @@ class FilterEstimator1D:
                                self.num_of_instances,
                                self.filter_length,
                                convolved_filter)
+
+    def calc_mappings(self, convolved_filters):
+        """
+        :param convolved_filters: array of dot product between data sample and a filter
+        :return: likelihood mapping
+        """
+        return _calc_mapping_1d_many(self.sample_length,
+                                     self.num_of_instances,
+                                     self.filter_length,
+                                     convolved_filters)
 
     def calc_gradient(self, sample_index, filter_coeffs, convolved_filter, mapping=None):
         """
@@ -179,6 +191,43 @@ class FilterEstimator1D:
         # return likelihoods.mean(axis=0), gradients.mean(axis=0)
         return likelihoods.sum(axis=0), gradients.sum(axis=0)
 
+    def calc_likelihood_and_gradient2(self, filter_coeffs, eps=1e-4):
+        """
+        Calculates the likelihood function for given filter coefficients and its gradient
+        """
+        t_start = time()
+        likelihoods = np.zeros(self.num_of_data_samples)
+        gradients = np.zeros(shape=(self.num_of_data_samples, self.filter_basis_size))
+
+        convolved_filters = np.zeros(shape=(self.num_of_data_samples,
+                                            self.filter_basis_size + 1,
+                                            self.sample_length - self.filter_length + 1))
+        # TODO: do all with 1 command
+        filter_coeffs_with_perturbations = np.array([filter_coeffs] +
+                                                    [filter_coeffs + np.eye(1, self.filter_basis_size, i)[0] * eps
+                                                     for i in range(self.filter_basis_size)])
+        for i, sample in enumerate(self.data):
+            for t in range(self.filter_basis_size + 1):
+                convolved_filters[i, t] = self.calc_convolved_filter(i, filter_coeffs_with_perturbations[t])
+
+        t0 = time()
+        mappings = self.calc_mappings(convolved_filters.reshape(-1, self.sample_length - self.filter_length + 1))
+        print(f'took {time() - t0} seconds')
+        mappings = mappings[:, 0, self.num_of_instances].reshape(self.num_of_data_samples, self.filter_basis_size + 1)
+
+        for i in range(self.num_of_data_samples):
+            term_three = self.term_three_const * np.array([np.inner(fc, fc) for fc in filter_coeffs_with_perturbations])
+            sample_likelihoods = self.term_one + \
+                                 self.term_two + \
+                                 term_three + \
+                                 mappings[i, :]
+            gradients[i] = (sample_likelihoods[1:] - sample_likelihoods[0]) / eps
+            likelihoods[i] = sample_likelihoods[0]
+
+        # return likelihoods.mean(axis=0), gradients.mean(axis=0)
+        print(f'all took {time() - t_start} seconds')
+        return likelihoods.sum(axis=0), gradients.sum(axis=0)
+
     def estimate(self):
         """
         Estimate optimal the match filter using given data samples and with respect to given filter basis
@@ -190,7 +239,9 @@ class FilterEstimator1D:
 
         initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-4, 100
         # l, initial_coeffs = self.estimate_max()
-        # initial_coeffs = np.array([1 - np.square(i) for i in np.linspace(-1, 1, self.filter_basis_size)])
+        # initial_coeffs = np.array(np.arange(self.filter_basis_size) / sum(np.arange(self.filter_basis_size)))
+        # plt.plot(self.filter_basis.T.dot(initial_coeffs))
+        # plt.show()
         likelihood, normalized_optimal_coeffs = _gradient_descent(_calc_likelihood_and_gradient, initial_coeffs, t,
                                                                   epsilon, max_iter, concave=True)
 
@@ -227,7 +278,7 @@ class FilterEstimator1D:
         # likelihoods_gradients = np.gradient(likelihoods, xs[1] - xs[0])
         # fac = 1
         # plt.plot(xs, gradients, label='analytic')
-        # plt.plot(xs, likelihoods_gradients * fac, label=f'discrete * {fac}')
+        # plt.plot(xs, likelihoods_gradients * fac, label=f'discrete')
         # plt.title(f'Gradients')
         # plt.axvline(x=1, color='red', linestyle='--')
         # plt.axhline(y=0, color='green', linestyle='--')
@@ -235,10 +286,6 @@ class FilterEstimator1D:
         # plt.legend()
         # plt.show()
         #
-        # # print(np.array(gradients) / likelihoods_gradients)
-        # # plt.plot(np.array(gradients) / likelihoods_gradients)
-        # plt.show()
-
         # exit()
 
         return likelihood, optimal_coeffs
@@ -348,12 +395,12 @@ def exp():
     signal = np.ones(d)
 
     # sigmas = [0.1, 1, 5, 10, 15, 20]
-    sigmas = [20]
+    sigmas = [5]
 
-    T = 20
-    Ms = [1, 5, 10, 50, 100, 300]
-    # Ms = [1, 5, 10]
-    lns = np.arange(300, 301, 100)
+    T = 1
+    # Ms = [1, 5, 10, 50, 100, 300]
+    Ms = [20]
+    lns = np.arange(600, 601, 100)
     powers = np.zeros(shape=(len(Ms), len(sigmas), len(lns), T))
     likelihoods = np.zeros(shape=(len(Ms), len(sigmas), len(lns), T))
     likelihoods_opt = np.zeros(shape=(len(sigmas), len(lns), T))
@@ -372,7 +419,7 @@ def exp():
                         data.append(_data)
                     data = np.array(data)
                     # filter_basis = create_symmetric_basis(_d, 7)
-                    filter_basis = create_span_basis(_d, 1)
+                    filter_basis = create_span_basis(_d, 7)
                     # plt.plot(filter_basis)
                     # plt.show()
                     # filter_basis = create_span_basis(_d, 10)
@@ -435,18 +482,44 @@ def exp():
 
 
 def exp2():
-    n, d, p, k, sig = 4000, 300, 1, 3, 20
+    n, d, p, k, sig = 8000, 300, 1, 3, 20
 
-    signal = np.array([1 - np.square(i) for i in np.linspace(-1, 1, d)])
-    # signal = np.ones(d)
+    # signal = np.array([1 - np.square(i) for i in np.linspace(-1, 1, d)])
+    signal = np.concatenate([np.full(d // 8, 1 / 3),
+                             np.full(d // 8, -2 / 3),
+                             np.full(d // 8, -1),
+                             np.full(d // 8, 2 / 3),
+                             np.full(d // 8, 2 / 3),
+                             np.full(d // 8, -1),
+                             np.full(d // 8, -2 / 3),
+                             np.full(d // 8 + d % 8, 1 / 3)])
+
+    signal2 = np.concatenate([np.full(d // 8, 1 / 3),
+                              np.full(d // 8, 2 / 3),
+                              np.full(d // 8, 1),
+                              np.full(d // 8, 2 / 3),
+                              np.full(d // 8, 2 / 3),
+                              np.full(d // 8, 1),
+                              np.full(d // 8, 2 / 3),
+                              np.full(d // 8 + d % 8, 1 / 3)])
+    #
+    # signal = np.concatenate([np.full(d // 4, 1),
+    #                          np.full(d // 4, -1 / 2),
+    #                          np.full(d // 4, 1 / 4),
+    #                          np.full(d // 4 + d % 4, 1 / 8)])
+    signal = np.ones(d)
+    # signal = np.concatenate([
+    #     np.full(75, -0.5),
+    #     np.array([1 - 1.5 * np.square(i) for i in np.linspace(-1, 1, d - 150)]),
+    #     np.full(75, -0.5)])
 
     # sigmas = [0.1, 1, 5, 10, 15, 20]
-    sigmas = [3]
+    sigmas = [1]
 
     T = 1
     # Ms = [1, 5, 10, 50, 100, 300]
-    Ms = [100]
-    lns = np.arange(300, 601, 100)
+    Ms = [1]
+    lns = np.arange(300, 301, 100)
     powers = np.zeros(shape=(len(Ms), len(sigmas), len(lns), T))
     likelihoods = np.zeros(shape=(len(Ms), len(sigmas), len(lns), T))
 
@@ -457,21 +530,26 @@ def exp2():
                 for t in range(T):
                     data = []
                     for i in range(m):
+                        _k = np.random.choice(np.arange(1, 6))
                         _data, pulses = simulate_data(n, d, p, k, sigma, signal)
                         # plt.plot(_data)
                         # plt.show()
                         data.append(_data)
                     data = np.array(data)
-                    filter_basis = create_symmetric_basis(_d, 5)
-                    # filter_basis = create_span_basis(_d, 1)
+                    filter_basis = create_symmetric_basis(_d, 1)
+                    # filter_basis = create_span_basis(_d, 10)
                     # plt.plot(filter_basis)
                     # plt.show()
                     # filter_basis = create_span_basis(_d, 10)
 
+                    __k = np.random.choice(np.arange(1, 6))
                     fil_est = FilterEstimator1D(data, filter_basis, k, sigma)
 
                     # f, p = fil_est.estimate_max()
+                    t0 = time()
                     f, p = fil_est.estimate()
+                    t1 = time()
+                    print(f'took {t1 - t0} seconds')
                     # print(p)
 
                     # f, p = calc_most_likelihood_and_optimized_power_1d(data,
@@ -481,9 +559,16 @@ def exp2():
                     # powers[mi, l, j, t] = p
                     # likelihoods[mi, l, j, t] = f
 
-                    plt.plot(filter_basis.T.dot(p))
-                    plt.plot(signal)
-                    plt.show()
+                    est_signal = filter_basis.T.dot(p)
+                    if len(signal) <= len(est_signal):
+                        padded_signal = np.concatenate([signal, np.zeros(len(est_signal) - len(signal))])
+                        err, shift = relative_error(est_signal, padded_signal)
+
+                        plt.title(f'Error is {err}')
+                        plt.plot(est_signal, label='filter')
+                        plt.plot(np.roll(padded_signal, -shift), label='signal')
+                        plt.legend()
+                        plt.show()
 
 
 if __name__ == '__main__':

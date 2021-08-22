@@ -182,7 +182,7 @@ def __main__():
                                signal_power=1,
                                signal_fraction=1 / 12,
                                # signal_gen=PARTICLE_200.get_signal_gen(),
-                               signal_gen=Shapes2D.disk,
+                               signal_gen=Shapes2D.sphere_with_negative_edges,
                                # signal_gen=sig_gen,
                                noise_std=10,
                                noise_mean=0,
@@ -190,9 +190,9 @@ def __main__():
 
     Experiment2D(
         name=f"expy",
-        # mrc=MICROGRAPHS['002_whitened'],
+        mrc=MICROGRAPHS['002_whitened'],
         # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
-        simulator=sim_data,
+        # simulator=sim_data,
         estimation_method=EstimationMethod.Curves,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         # length_options=np.array([100, 200, 300]),

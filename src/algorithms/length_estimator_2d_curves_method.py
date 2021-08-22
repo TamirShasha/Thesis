@@ -125,3 +125,26 @@ class LengthEstimator2DCurvesMethod:
         most_likely_length = self._length_options[np.nanargmax(likelihoods)]
         most_likely_power = powers[np.nanargmax(likelihoods)]
         return likelihoods, most_likely_length, most_likely_power
+
+    def estimate2(self):
+        """
+        calculate likelihood per length, returns the most likely one and the optimal filter power for it
+        :return: (likelihoods, most likely length, most likely power)
+        """
+        fixed_length_options = (np.int32(self._length_options * self._cut_fix_factor))
+
+        likelihoods = np.zeros(len(fixed_length_options))
+        powers = np.zeros(len(fixed_length_options))
+        for i, length in enumerate(fixed_length_options):
+            signal_filter = np.concatenate([self._signal_filter_gen(length, 1),
+                                            np.zeros(int(length * 0.8))])
+            likelihoods[i], powers[i] = calc_most_likelihood_and_optimized_power_1d(self._curves,
+                                                                                    signal_filter,
+                                                                                    self._fixed_num_of_occurrences,
+                                                                                    self._curves_noise)
+            logger.info(
+                f'For length {self._length_options[i]} matched power is {powers[i]}, Likelihood={likelihoods[i]}')
+
+        most_likely_length = self._length_options[np.nanargmax(likelihoods)]
+        most_likely_power = powers[np.nanargmax(likelihoods)]
+        return likelihoods, most_likely_length, most_likely_power
