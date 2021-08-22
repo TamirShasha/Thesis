@@ -175,28 +175,25 @@ class Experiment2D:
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=4000,
-                               columns=4000,
-                               # signal_length=PARTICLE_200.particle_length,
-                               signal_length=200,
+    sim_data = DataSimulator2D(rows=1000,
+                               columns=1000,
+                               signal_length=100,
                                signal_power=1,
                                signal_fraction=1 / 12,
-                               # signal_gen=PARTICLE_200.get_signal_gen(),
-                               signal_gen=Shapes2D.sphere_with_negative_edges,
-                               # signal_gen=sig_gen,
-                               noise_std=10,
+                               signal_gen=Shapes2D.disk,
+                               noise_std=1,
                                noise_mean=0,
                                apply_ctf=False)
 
     Experiment2D(
         name=f"expy",
-        mrc=MICROGRAPHS['002_whitened'],
+        # mrc=MICROGRAPHS['002_whitened'],
         # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
-        # simulator=sim_data,
-        estimation_method=EstimationMethod.Curves,
+        simulator=sim_data,
+        estimation_method=EstimationMethod.VeryWellSeparated,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         # length_options=np.array([100, 200, 300]),
-        length_options=np.arange(100, 1001, 100),
+        length_options=np.arange(200, 201, 100),
         signal_num_of_occurrences_boundaries=(0, 20000),
         signal_area_coverage_boundaries=(0.05, 0.20),
         num_of_power_options=10,

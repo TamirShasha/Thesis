@@ -45,4 +45,5 @@ class LengthEstimator2DVeryWellSeparated:
 
         most_likely_length = self._length_options[np.nanargmax(likelihoods)]
         most_likely_power = powers[np.nanargmax(likelihoods)]
+        print(most_likely_power)
         return likelihoods, most_likely_length, most_likely_power
