@@ -3,7 +3,8 @@ from scipy.signal import convolve
 from skimage.draw import disk
 
 from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, \
-    _calc_likelihood_and_likelihood_derivative_without_constants_2d, log_prob_all_is_noise, _gradient_descent
+    _calc_likelihood_and_likelihood_derivative_without_constants_2d, log_prob_all_is_noise, _gradient_descent, \
+    estimate_locations_2d
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 
 
@@ -171,6 +172,8 @@ class FilterEstimator2D:
         """
 
         initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-2, 100
+        convolved_filter = self.calc_convolved_filter(initial_coeffs)
+        estimate_locations_2d(self.data.shape[0], self.num_of_instances, self.filter_shape[0], convolved_filter)
         likelihood, normalized_optimal_coeffs = _gradient_descent(self.calc_likelihood_and_gradient, initial_coeffs, t,
                                                                   epsilon, max_iter, concave=True)
 
@@ -281,9 +284,9 @@ def exp():
 
 
 def exp2():
-    rows = 1500
-    columns = 1500
-    signal_length = 100
+    rows = 500
+    columns = 500
+    signal_length = 30
     signal_power = 1
     signal_fraction = 1 / 8
     # signal_gen = lambda l, p: Shapes2D.double_disk(l, l // 2, -p // 2, p)
@@ -306,16 +309,16 @@ def exp2():
     signal = sim_data.create_signal_instance()
     k = sim_data.occurrences
 
-    plt.imshow(signal)
-    plt.colorbar()
-    plt.show()
-    plt.imshow(data, cmap='gray')
-    plt.show()
+    # plt.imshow(signal)
+    # plt.colorbar()
+    # plt.show()
+    # plt.imshow(data, cmap='gray')
+    # plt.show()
 
-    filter_basis = create_basis(100, 5)
+    filter_basis = create_basis(30, 5)
 
-    ks = [1, 5, 10, 20, 35, 50, 70]
-    # ks = [1, 5]
+    # ks = [1, 5, 10, 20, 35, 50, 70]
+    ks = [10]
     errors = np.zeros_like(ks, dtype=float)
     for i, _k in enumerate(ks):
         filter_estimator = FilterEstimator2D(data, filter_basis, _k)
@@ -331,4 +334,4 @@ def exp2():
 
 
 if __name__ == '__main__':
-    exp()
+    exp2()
