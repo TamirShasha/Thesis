@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.signal import convolve
-from skimage.draw import disk
+from skimage.draw import disk, circle_perimeter
 
 from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, \
     _calc_likelihood_and_likelihood_derivative_without_constants_2d, log_prob_all_is_noise, _gradient_descent, \
@@ -104,36 +104,12 @@ class FilterEstimator2D:
                                self.filter_shape[0],
                                convolved_filter)
 
-    def calc_gradient(self, sample_index, filter_coeffs, mapping=None):
-        """
-        calculate sample gradient with respect to each filter coefficient
-        :param sample_index: index of the data sample
-        :param filter_coeffs: filter coefficients
-        :param mapping: likelihood mapping
-        :return: gradient of the filter coefficients
-        """
-        convolved_filter = self.calc_convolved_filter(filter_coeffs)
-
-        if mapping is None:
-            mapping = self.calc_mapping(convolved_filter)
-
-        gradient = np.zeros(self.filter_basis_size)
-        for i in range(self.filter_basis_size):
-            gradient[i] = _calc_term_two_derivative_1d(self.sample_length,
-                                                       self.num_of_instances,
-                                                       self.filter_shape,
-                                                       self.convolved_basis[sample_index][i],
-                                                       convolved_filter,
-                                                       mapping)
-        return gradient + 2 * self.term_three_const * filter_coeffs
-
     def calc_gradient_discrete(self, filter_coeffs, likelihood):
         """
-        calculate sample gradient with respect to each filter coefficient
-        :param filter_coeffs: filter coefficients
-        :param convolved_filter: convolution of filter with data sample
-        :param mapping: likelihood mapping
-        :return: gradient of the filter coefficients
+        calculate gradient with respect to each filter coefficient
+        :param filter_coeffs: current point filter coefficients
+        :param likelihood: current point likelihood
+        :return: gradient of the filter coefficients (current point)
         """
 
         eps = 1e-4
@@ -172,8 +148,6 @@ class FilterEstimator2D:
         """
 
         initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-2, 100
-        convolved_filter = self.calc_convolved_filter(initial_coeffs)
-        estimate_locations_2d(self.data.shape[0], self.num_of_instances, self.filter_shape[0], convolved_filter)
         likelihood, normalized_optimal_coeffs = _gradient_descent(self.calc_likelihood_and_gradient, initial_coeffs, t,
                                                                   epsilon, max_iter, concave=True)
 
@@ -196,6 +170,32 @@ def create_basis(diamiter, dim):
         basis[i] = temp_map * (temp_map == i + 1) / (i + 1)
 
     return basis
+
+
+def gram_schmidt(vectors, eps=1e-10):
+    basis = []
+    for v in vectors:
+        w = v - np.sum([np.dot(v, b) * b for b in basis], axis=0)
+        if (w > eps).any():
+            basis.append(w / np.linalg.norm(w))
+    return np.array(basis)
+
+
+def create_chebyshev_basis(diamiter, dim):
+    basis = np.zeros(shape=(dim, diamiter, diamiter))
+    center = (int(diamiter / 2), int(diamiter / 2))
+    radius = min(center[0], center[1], diamiter - center[0], diamiter - center[1])
+
+    Y, X = np.ogrid[:diamiter, :diamiter]
+    dist_from_center = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2)
+    mask = dist_from_center > radius
+    for i in range(dim):
+        chebyshev_basis_element = np.polynomial.chebyshev.Chebyshev.basis(2 * i, [-radius, radius])
+        basis_element = chebyshev_basis_element(dist_from_center)
+        basis_element[mask] = 0
+        basis[i] = basis_element
+    gs_basis = gram_schmidt(basis.reshape(dim, -1)).reshape(dim, diamiter, diamiter)
+    return gs_basis
 
 
 import matplotlib.pyplot as plt
@@ -241,10 +241,10 @@ def exp():
     columns = 1500
     signal_length = 100
     signal_power = 1
-    signal_fraction = 1 / 8
+    signal_fraction = 1 / 7
     # signal_gen = lambda l, p: Shapes2D.double_disk(l, l // 2, -p // 2, p)
     signal_gen = Shapes2D.sphere
-    noise_std = 5
+    noise_std = 0.01
     noise_mean = 0
     apply_ctf = False
 
@@ -261,22 +261,50 @@ def exp():
     data = sim_data.simulate()
     signal = sim_data.create_signal_instance()
     k = sim_data.occurrences
+    print(k)
 
-    plt.imshow(signal)
-    plt.colorbar()
-    plt.show()
+    # plt.imshow(signal)
+    # plt.colorbar()
+    # plt.show()
     plt.imshow(data, cmap='gray')
     plt.show()
 
-    filter_basis = create_basis(100, 5)
-    filter_estimator = FilterEstimator2D(data, filter_basis, 20, noise_std)
+    filter_basis = create_basis(signal_length, 5)
+    filter_estimator = FilterEstimator2D(data, filter_basis, k // 2, noise_std)
     likelihood, optimal_coeffs = filter_estimator.estimate()
     est_signal = filter_basis.T.dot(optimal_coeffs)
 
     print(optimal_coeffs)
     err = calc_error(signal, est_signal)
+    print(f'err for normal basis {err}')
+    print(f'likelihood for normal basis {likelihood}')
     plt.title(f'({rows}, {columns}), length={signal_length}, k={k}, std={noise_std}, \nerror={np.round(err, 3)}')
+
+    filter_basis_cheb = create_chebyshev_basis(signal_length, 5)
+    # filter_basis_cheb = create_basis(signal_length, 5)
+    filter_estimator = FilterEstimator2D(data, filter_basis_cheb, k // 2, noise_std)
+    likelihood_cheb, optimal_coeffs_cheb = filter_estimator.estimate()
+    est_signal_cheb = filter_basis_cheb.T.dot(optimal_coeffs_cheb)
+    err = calc_error(signal, est_signal_cheb)
+    print(f'err for cheb basis {err}')
+    print(f'likelihood for cheb basis {likelihood_cheb}')
+
+    filter_basis_signal = np.array([signal])
+    filter_estimator = FilterEstimator2D(data, filter_basis_signal, k // 2, noise_std)
+    likelihood_signal, optimal_coeffs_signal = filter_estimator.estimate()
+    est_signal_signal = filter_basis_signal.T.dot(optimal_coeffs_signal)
+    err = calc_error(signal, est_signal_signal)
+    print(optimal_coeffs_signal)
+    print(f'err for signal basis {err}')
+    print(f'likelihood for signal basis {likelihood_signal}')
+
+    plt.imshow(signal)
+    plt.show()
     plt.imshow(est_signal)
+    plt.colorbar()
+    plt.show()
+
+    plt.imshow(est_signal_cheb)
     plt.colorbar()
     plt.show()
 
@@ -284,14 +312,14 @@ def exp():
 
 
 def exp2():
-    rows = 500
-    columns = 500
-    signal_length = 30
+    rows = 1200
+    columns = 1200
+    signal_length = 80
     signal_power = 1
     signal_fraction = 1 / 8
     # signal_gen = lambda l, p: Shapes2D.double_disk(l, l // 2, -p // 2, p)
     signal_gen = Shapes2D.sphere
-    noise_std = 5
+    noise_std = .1
     noise_mean = 0
     apply_ctf = False
 
@@ -308,25 +336,33 @@ def exp2():
     data = sim_data.simulate()
     signal = sim_data.create_signal_instance()
     k = sim_data.occurrences
+    print(k)
 
     # plt.imshow(signal)
     # plt.colorbar()
     # plt.show()
-    # plt.imshow(data, cmap='gray')
-    # plt.show()
+    plt.imshow(data, cmap='gray')
+    plt.show()
 
-    filter_basis = create_basis(30, 5)
+    filter_basis = create_chebyshev_basis(signal_length, 5)
 
-    # ks = [1, 5, 10, 20, 35, 50, 70]
-    ks = [10]
+    ks = [1, 5, 10, 15, 20, 25, 30, 35, 45, 60, 80]
+    # ks = [k//10, k//8, k//5, k//3, k//2, k, int(k*1.2), int(k*1.5), int(k*2)]
+    print(ks)
+    # ks = [10]
     errors = np.zeros_like(ks, dtype=float)
+    likelihoods = np.zeros_like(ks, dtype=float)
     for i, _k in enumerate(ks):
         filter_estimator = FilterEstimator2D(data, filter_basis, _k)
-        likelihood, optimal_coeffs = filter_estimator.estimate()
+        likelihoods[i], optimal_coeffs = filter_estimator.estimate()
         est_signal = filter_basis.T.dot(optimal_coeffs)
         err = calc_error(signal, est_signal)
         errors[i] = err
         print(f'for k={_k} error is {err}')
+
+    plt.title(f'({rows}, {columns}), length={signal_length}, k={k}, std={noise_std}')
+    plt.plot(ks, likelihoods)
+    plt.show()
 
     plt.title(f'({rows}, {columns}), length={signal_length}, k={k}, std={noise_std}')
     plt.plot(ks, errors)
@@ -334,4 +370,42 @@ def exp2():
 
 
 if __name__ == '__main__':
-    exp2()
+    exp()
+    # basis = create_chebyshev_basis(101, 5)
+    # # plt.imshow(-basis[1])
+    # # plt.show()
+    # # crea+-te_chebyshev_basis2(100, 5)
+    # sim_data = DataSimulator2D(rows=1000,
+    #                            columns=1000,
+    #                            signal_length=100,
+    #                            signal_power=1,
+    #                            signal_fraction=1 / 7,
+    #                            signal_gen=Shapes2D.sphere,
+    #                            noise_std=0.1,
+    #                            noise_mean=0,
+    #                            apply_ctf=False)
+    #
+    # signal = sim_data.create_signal_instance()
+    # # plt.imshow(signal)
+    # # plt.show()
+    #
+    # xs = np.linspace(-1, 1, 100)
+    # ys = np.sqrt(1 - np.square(xs))
+    # plt.plot(ys)
+    # plt.show()
+    #
+    # p = np.polynomial.chebyshev.Chebyshev.fit(xs, ys, 5)
+    # print(p)
+    #
+    # est_signal = 0.64 * basis[0] - 0.417 * basis[1] - 0.071 * basis[2]
+    #
+    # for i in range(5):
+    #     plt.plot(basis[i][:, 50])
+    # plt.show()
+    #
+    # # plt.imshow(est_signal)
+    # # plt.show()
+    # diff = est_signal - signal
+    # print(np.linalg.norm(diff))
+    # plt.imshow(diff)
+    # plt.show()
