@@ -16,6 +16,15 @@ def relative_error(estimated_signal, true_signal):
     return error, shift
 
 
+def gram_schmidt(vectors, eps=1e-10):
+    basis = []
+    for v in vectors:
+        w = v - np.sum([np.dot(v, b) * b for b in basis], axis=0)
+        if (w > eps).any():
+            basis.append(w / np.linalg.norm(w))
+    return np.array(basis)
+
+
 # utils, private, change names
 def generate_random_bars(n, k):
     """

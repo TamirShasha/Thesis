@@ -3,7 +3,7 @@ from scipy.signal import convolve
 from time import time
 
 from src.algorithms.utils import log_size_S_1d, calc_mapping_1d, _calc_term_two_derivative_1d, log_prob_all_is_noise, \
-    _gradient_descent, calc_most_likelihood_and_optimized_power_1d, relative_error, _calc_mapping_1d_many
+    _gradient_descent, calc_most_likelihood_and_optimized_power_1d, relative_error, _calc_mapping_1d_many, gram_schmidt
 from src.experimental.dev3 import heuristic_dp
 
 np.random.seed(500)
@@ -373,6 +373,17 @@ def create_span_basis(length, size):
             end += 1
         basis[i, start: end] = 1
 
+    return basis
+
+
+def create_chebyshev_basis(length, dim):
+    basis = np.zeros(shape=(dim, length))
+
+    xs = np.linspace(-1, 1, length)
+    for i in range(dim):
+        chebyshev_basis_element = np.polynomial.chebyshev.Chebyshev.basis(i)
+        basis[i] = chebyshev_basis_element(xs)
+    basis = gram_schmidt(basis)
     return basis
 
 

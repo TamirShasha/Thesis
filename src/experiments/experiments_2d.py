@@ -179,12 +179,12 @@ class Experiment2D:
 def __main__():
     sim_data = DataSimulator2D(rows=2000,
                                columns=2000,
-                               signal_length=200,
+                               signal_length=150,
                                signal_power=1,
                                signal_fraction=1 / 6,
                                signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.ellipse(l, l // 2, p),
-                               noise_std=5,
+                               noise_std=8,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -195,7 +195,7 @@ def __main__():
         simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.array([100, 200, 300, 400]),
+        length_options=np.array([50, 100, 150, 200, 250, 300, 400]),
         # length_options=np.arange(20, 501, 50),
         signal_num_of_occurrences_boundaries=(0, 20000),
         signal_area_coverage_boundaries=(0.05, 0.20),

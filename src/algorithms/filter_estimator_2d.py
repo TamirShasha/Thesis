@@ -4,7 +4,7 @@ from skimage.draw import disk, circle_perimeter
 
 from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, \
     _calc_likelihood_and_likelihood_derivative_without_constants_2d, log_prob_all_is_noise, _gradient_descent, \
-    estimate_locations_2d
+    estimate_locations_2d, gram_schmidt
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 
 
@@ -170,16 +170,6 @@ def create_basis(diamiter, dim):
         basis[i] = temp_map * (temp_map == i + 1) / (i + 1)
 
     return basis
-
-
-def gram_schmidt(vectors, eps=1e-10):
-    basis = []
-    for v in vectors:
-        w = v - np.sum([np.dot(v, b) * b for b in basis], axis=0)
-        if (w > eps).any():
-            basis.append(w / np.linalg.norm(w))
-    return np.array(basis)
-
 
 def create_chebyshev_basis(diamiter, dim):
     basis = np.zeros(shape=(dim, diamiter, diamiter))
@@ -369,8 +359,67 @@ def exp2():
     plt.show()
 
 
+def exp3():
+    rows = 1500
+    columns = 1500
+    signal_length = 80
+    signal_power = 1
+    signal_fraction = 1 / 5
+    # signal_gen = lambda l, p: Shapes2D.double_disk(l, l // 2, -p // 2, p)
+    signal_gen = Shapes2D.sphere
+    noise_std = 5
+    noise_mean = 0
+    apply_ctf = False
+
+    sim_data = DataSimulator2D(rows=rows,
+                               columns=columns,
+                               signal_length=signal_length,
+                               signal_power=signal_power,
+                               signal_fraction=signal_fraction,
+                               signal_gen=signal_gen,
+                               noise_std=noise_std,
+                               noise_mean=noise_mean,
+                               apply_ctf=apply_ctf)
+
+    data = sim_data.simulate()
+    signal = sim_data.create_signal_instance()
+    k = sim_data.occurrences
+    print(k)
+
+    # plt.imshow(signal)
+    # plt.colorbar()
+    # plt.show()
+    plt.imshow(data, cmap='gray')
+    plt.show()
+
+    filter_basis = create_chebyshev_basis(signal_length, 5)
+
+    # ks = [1, 5, 10, 15, 20, 25, 30, 35, 45, 60, 80]
+    ks = np.concatenate([[1, 5], np.arange(10, 121, 10)])
+    # ks = [k//10, k//8, k//5, k//3, k//2, k, int(k*1.2), int(k*1.5), int(k*2)]
+    print(ks)
+    # ks = [10]
+    errors = np.zeros_like(ks, dtype=float)
+    likelihoods = np.zeros_like(ks, dtype=float)
+    for i, _k in enumerate(ks):
+        filter_estimator = FilterEstimator2D(data, filter_basis, _k)
+        likelihoods[i], optimal_coeffs = filter_estimator.estimate()
+        est_signal = filter_basis.T.dot(optimal_coeffs)
+        err = calc_error(signal, est_signal)
+        errors[i] = err
+        print(f'for k={_k} error is {err}')
+
+    plt.title(f'({rows}, {columns}), length={signal_length}, k={k}, std={noise_std}')
+    plt.plot(ks, likelihoods)
+    plt.show()
+
+    plt.title(f'({rows}, {columns}), length={signal_length}, k={k}, std={noise_std}')
+    plt.plot(ks, errors)
+    plt.show()
+
+
 if __name__ == '__main__':
-    exp()
+    exp3()
     # basis = create_chebyshev_basis(101, 5)
     # # plt.imshow(-basis[1])
     # # plt.show()
