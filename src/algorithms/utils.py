@@ -4,6 +4,27 @@ import numba as nb
 from src.utils.logsumexp import logsumexp_simple
 
 
+def relative_error(estimated_signal, true_signal):
+    """
+    Calculate the relative error between estimated signal and true signal up to circular shift
+    :return: relative error
+    """
+    n = len(true_signal)
+    corr = [np.linalg.norm(true_signal - np.roll(estimated_signal, i)) for i in range(n)]
+    shift = np.argmin(corr)
+    error = np.min(corr) / np.linalg.norm(true_signal)
+    return error, shift
+
+
+def gram_schmidt(vectors, eps=1e-10):
+    basis = []
+    for v in vectors:
+        w = v - np.sum([np.dot(v, b) * b for b in basis], axis=0)
+        if (w > eps).any():
+            basis.append(w / np.linalg.norm(w))
+    return np.array(basis)
+
+
 # utils, private, change names
 def generate_random_bars(n, k):
     """
@@ -179,6 +200,30 @@ def log_prob_all_is_noise(y, noise_std):
 
 
 # names,
+# @nb.jit
+# def calc_mapping_1d(n, k, d, constants):
+#     """
+#     Compute log(\sum_{s in S_(n,k,d)}\prod_{i in s}c_i)
+#     :param n:
+#     :param k:
+#     :param d:
+#     :param constants:
+#     :return:
+#     """
+#     # Allocating memory
+#     # Default is -inf everywhere as there are many places where the probability is 0 (when i > n - k * d)
+#     # when k=0 the probability is 1
+#     mapping = np.full((n + 1, k + 1), -np.inf)
+#     mapping[:, 0] = 0
+#
+#     # Filling values one by one, skipping irrelevant values
+#     # We already filled values when k=0 (=0) and when i>n-k*d
+#     for curr_k in range(1, k + 1):
+#         for i in range(n - curr_k * d, -1, -1):
+#             mapping[i, curr_k] = np.logaddexp(constants[i] + mapping[i + d, curr_k - 1], mapping[i + 1, curr_k])
+#
+#     return mapping
+
 @nb.jit
 def calc_mapping_1d(n, k, d, constants):
     """
@@ -200,6 +245,7 @@ def calc_mapping_1d(n, k, d, constants):
     for curr_k in range(1, k + 1):
         for i in range(n - curr_k * d, -1, -1):
             mapping[i, curr_k] = np.logaddexp(constants[i] + mapping[i + d, curr_k - 1], mapping[i + 1, curr_k])
+            # mapping[i, curr_k] = np.maximum(constants[i] + mapping[i + d, curr_k - 1], mapping[i + 1, curr_k])
 
     return mapping
 
@@ -267,6 +313,43 @@ def _calc_mapping_2d_after_precompute(n, k, d, constants):
     return mapping
 
 
+def estimate_locations_2d(n, k, d, row_constants):
+    max_k_in_row = min(n // d, k)
+    # mapping_per_row = _calc_mapping_1d_many(n, max_k_in_row, d, row_constants)[:, 0, 1:]
+
+    row_mapping = np.full((n + 1, k + 1, row_constants.shape[-1]), -np.inf)
+    row_mapping[:, 0] = 0
+    row_mapping_locs = np.zeros((row_constants.shape[-1], n + 1, k + 1, n))
+
+    # Filling values one by one, skipping irrelevant values
+    # We already filled values when k=0 (=0) and when i>n-k*d
+    for curr_k in range(1, k + 1):
+        for i in range(n - curr_k * d, -1, -1):
+            row_mapping[i, curr_k] = np.maximum(row_constants[i] + row_mapping[i + d, curr_k - 1],
+                                                row_mapping[i + 1, curr_k])
+            is_bigger = (row_constants[i] + row_mapping[i + d, curr_k - 1] > row_mapping[i + 1, curr_k])[:, np.newaxis]
+            option1 = row_mapping_locs[:, i + d, curr_k - 1]
+            option1[:, i] = 1
+            option2 = row_mapping_locs[:, i + 1, curr_k]
+            row_mapping_locs[:, i, curr_k] = is_bigger * option1 + (1 - is_bigger) * option2
+
+    row_mapping = row_mapping.transpose((2, 0, 1)).copy()
+    row_mapping_locs = row_mapping_locs[:, 0]
+
+    mapping = np.full((n + 1, k + 1), -np.inf)
+    mapping[:, 0] = 0
+    mapping_locs = np.zeros(row_constants.shape[-1], k + 1)
+
+    # Filling values one by one, skipping irrelevant values
+    for curr_k in range(1, k + 1):
+        max_k = min(curr_k, max_k_in_row)
+        for i in range(n - d, -1, -1):
+            mapping[i, curr_k] = logsumexp_simple(mapping[i + d, curr_k - max_k:curr_k] + constants[i, -max_k:])
+            mapping[i, curr_k] = np.logaddexp(mapping[i, curr_k], mapping[i + 1, curr_k])
+
+    return _calc_mapping_2d_after_precompute(n, k, d, mapping_per_row)
+
+
 # Utils for optimization
 def _calc_constants(data, signal_filter, filter_coeff, noise_std):
     flipped_signal_filter = np.flip(signal_filter)  # Flipping to cross-correlate
@@ -282,31 +365,32 @@ def _calc_constants(data, signal_filter, filter_coeff, noise_std):
 
 
 @nb.jit
-def _calc_term_two_derivative_1d(n, k, d, prod_consts, sum_consts, mapping=None):
+def _calc_term_two_derivative_1d(n, k, d, sum_consts, prod_consts, mapping=None):
     """
     Compute log(\sum_{s in S_(n,k,d)}\prod_{i in s}c_i)
     :param n:
     :param k:
     :param d:
-    :param prod_consts:
     :param sum_consts:
+    :param prod_consts:
     :param mapping:
     :return:
     """
-    mapping = calc_mapping_1d(n, k, d, sum_consts) if mapping is None else mapping
+    mapping = calc_mapping_1d(n, k, d, prod_consts) if mapping is None else mapping
 
-    r = - np.min(prod_consts) + 1
-    prod_consts = np.log(prod_consts + r)
+    r = - np.min(sum_consts) + 1
+    log_sum_consts = np.log(sum_consts + r)
 
     derivative_mapping = np.full((n + 1, k + 1), -np.inf)
     derivative_mapping[:, 0] = 0
 
     for curr_k in range(1, k + 1):
         for i in range(n - curr_k * d, -1, -1):
-            derivative_mapping[i, curr_k] = np.logaddexp(sum_consts[i] + derivative_mapping[i + d, curr_k - 1],
+            derivative_mapping[i, curr_k] = np.logaddexp(prod_consts[i] + derivative_mapping[i + d, curr_k - 1],
                                                          derivative_mapping[i + 1, curr_k])
-            derivative_mapping[i, curr_k] = np.logaddexp(prod_consts[i] + sum_consts[i] + mapping[i + d, curr_k - 1],
-                                                         derivative_mapping[i, curr_k])
+            derivative_mapping[i, curr_k] = np.logaddexp(
+                log_sum_consts[i] + prod_consts[i] + mapping[i + d, curr_k - 1],
+                derivative_mapping[i, curr_k])
 
     term2 = np.exp(derivative_mapping[0, k] - mapping[0, k]) - k * r
     return term2
@@ -403,9 +487,10 @@ def _gradient_descent(F_F_derivative, initial_x, t=0.1, epsilon=1e-10, max_iter=
         # print(x_prev, F_prev, F_tag_prev, t)
         x_current = x_prev + t * F_tag_prev if concave else x_prev - t * F_tag_prev
         F_current, F_tag_current = F_F_derivative(x_current)
+        # print(f'at iteration # {i + 1}, {np.abs(F_current - F_prev)}')
         if np.abs(F_current - F_prev) < epsilon:
             break
-        t = np.abs((x_current - x_prev) / (F_tag_prev - F_tag_current))
+        t = np.abs(np.linalg.norm(x_current - x_prev) / np.linalg.norm(F_tag_prev - F_tag_current))
         x_prev, F_prev, F_tag_prev = x_current, F_current, F_tag_current
     # print(x_current, F_current, F_tag_current, t)
     return F_current, x_current

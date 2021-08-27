@@ -50,6 +50,12 @@ class Experiment2D:
         self._logs = logs
         self._results = {}
 
+        if self._save:
+            curr_date = str(datetime.now().strftime("%d-%m-%Y"))
+            curr_time = str(datetime.now().strftime("%H-%M-%S"))
+            self.experiment_dir = os.path.join(self._save_dir, curr_date, curr_time)
+            pathlib.Path(self.experiment_dir).mkdir(parents=True, exist_ok=True)
+
         if mrc is None:
             logger.info(f'Simulating data, number of occurrences is {simulator.occurrences}')
             if simulator is None:
@@ -65,6 +71,7 @@ class Experiment2D:
             logger.info(f'Loading given micrograph from {mrc.name}')
             self._data = mrc.load_micrograph()
             self._data = self._data[:min(self._data.shape), :min(self._data.shape)]
+            self._data = self._data[:2000, :2000]
             self._num_of_occurrences = mrc.occurrences
             self._noise_std = mrc.noise_std
             self._noise_mean = mrc.noise_mean
@@ -95,7 +102,8 @@ class Experiment2D:
                                                                    signal_filter_gen_1d=signal_1d_filter_gen,
                                                                    noise_mean=self._noise_mean,
                                                                    noise_std=self._noise_std,
-                                                                   logs=self._logs)
+                                                                   logs=self._logs,
+                                                                   experiment_dir=self.experiment_dir)
         else:
             self._length_estimator = LengthEstimator2DVeryWellSeparated(self._data,
                                                                         self._signal_length_options,
@@ -103,7 +111,8 @@ class Experiment2D:
                                                                         signal_1d_filter_gen,
                                                                         self._noise_mean,
                                                                         self._noise_std,
-                                                                        self._logs)
+                                                                        self._logs,
+                                                                        experiment_dir=self.experiment_dir)
 
     def run(self):
         start_time = time.time()
@@ -158,12 +167,8 @@ class Experiment2D:
             particle_fig.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
 
         if self._save:
-            curr_date = str(datetime.now().strftime("%d-%m-%Y"))
-            dir_path = os.path.join(self._save_dir, curr_date)
-            pathlib.Path(dir_path).mkdir(parents=True, exist_ok=True)
-
-            curr_time = str(datetime.now().strftime("%H-%M-%S"))
-            fig_path = os.path.join(dir_path, f'{curr_time}_{self._name}.png')
+            # curr_time = str(datetime.now().strftime("%H-%M-%S"))
+            fig_path = os.path.join(self.experiment_dir, f'{self._name}.png')
             plt.savefig(fname=fig_path)
         if self._plot:
             plt.show()
@@ -172,27 +177,26 @@ class Experiment2D:
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=4000,
-                               columns=4000,
-                               # signal_length=PARTICLE_200.particle_length,
-                               signal_length=700,
+    sim_data = DataSimulator2D(rows=2000,
+                               columns=2000,
+                               signal_length=150,
                                signal_power=1,
                                signal_fraction=1 / 6,
-                               # signal_gen=PARTICLE_200.get_signal_gen(),
-                               signal_gen=Shapes2D.disk,
-                               # signal_gen=sig_gen,
-                               noise_std=10,
+                               signal_gen=Shapes2D.sphere,
+                               # signal_gen=lambda l, p: Shapes2D.ellipse(l, l // 2, p),
+                               noise_std=8,
                                noise_mean=0,
                                apply_ctf=False)
 
     Experiment2D(
         name=f"expy",
-        # mrc=MICROGRAPHS['EMD-2984_0010'],
+        # mrc=MICROGRAPHS['002_whitened'],
         # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
         simulator=sim_data,
-        estimation_method=EstimationMethod.Curves,
+        estimation_method=EstimationMethod.VeryWellSeparated,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-        length_options=np.arange(100, 1001, 100),
+        length_options=np.array([50, 100, 150, 200, 250, 300, 400]),
+        # length_options=np.arange(20, 501, 50),
         signal_num_of_occurrences_boundaries=(0, 20000),
         signal_area_coverage_boundaries=(0.05, 0.20),
         num_of_power_options=10,

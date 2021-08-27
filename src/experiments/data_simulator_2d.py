@@ -76,7 +76,7 @@ class Shapes2D:
         radius = length // 2
         rr, cc = disk((radius, radius), radius)
         signal[rr, cc] = power * (
-                np.sqrt(1 - np.square((rr - radius) / radius) - np.square((cc - radius) / radius)) - 0.3)
+                np.sqrt(1 - np.square((rr - radius) / radius) - np.square((cc - radius) / radius)) - 0.5)
 
         return signal
 

@@ -5,6 +5,7 @@ from src.algorithms.length_estimator_1d import LengthEstimator1D
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 from src.utils.logger import logger
 from src.algorithms.utils import calc_most_likelihood_and_optimized_power_1d
+from src.algorithms.filter_estimator_1d import FilterEstimator1D, create_symmetric_basis, create_span_basis
 
 
 class LengthEstimator2DCurvesMethod:
@@ -16,7 +17,8 @@ class LengthEstimator2DCurvesMethod:
                  noise_std,
                  noise_mean=0,
                  curve_width=31,
-                 logs=True):
+                 logs=True,
+                 experiment_dir=None):
         self._data = data
         self._length_options = length_options
         self._signal_filter_gen = signal_filter_gen_1d
@@ -24,9 +26,10 @@ class LengthEstimator2DCurvesMethod:
         self._noise_std = noise_std
         self._curve_width = curve_width
         self._logs = logs
+        self._experiment_dir = experiment_dir
 
         self._n = self._data.shape[0]
-        self._num_of_curves = 50
+        self._num_of_curves = 100
         self._cut_fix_factor = 0.7
         self._fixed_num_of_occurrences = 3
         self._curves_noise = self._noise_std / np.sqrt(self._num_of_curves)
@@ -85,6 +88,43 @@ class LengthEstimator2DCurvesMethod:
             top_curves = np.array(curves)[np.argsort(curves_powers)[-num * concat:]]
             top_concatenated_curves = np.array([np.concatenate(x) for x in np.split(top_curves, num)])
             return top_concatenated_curves
+
+    def estimate2(self):
+        """
+        calculate likelihood per length, returns the most likely one and the optimal filter power for it
+        :return: (likelihoods, most likely length, most likely power)
+        """
+        fixed_length_options = (np.int32(self._length_options * self._cut_fix_factor))
+
+        likelihoods = np.zeros(len(fixed_length_options))
+        powers = np.zeros(len(fixed_length_options))
+        for i, length in enumerate(fixed_length_options):
+            # signal_filter = np.concatenate([self._signal_filter_gen(length, 1),
+            #                                 np.zeros(int(length * 0.8))])
+            # likelihoods[i], powers[i] = calc_most_likelihood_and_optimized_power_1d(self._curves,
+            #                                                                         signal_filter,
+            #                                                                         self._fixed_num_of_occurrences,
+            #                                                                         self._curves_noise)
+            # filter_basis = create_symmetric_basis(length, 10)
+            filter_basis = create_span_basis(length, 10)
+            likelihoods[i], p = FilterEstimator1D(self._curves,
+                                                  filter_basis,
+                                                  self._fixed_num_of_occurrences,
+                                                  self._curves_noise).estimate()
+            import matplotlib.pyplot as plt
+            import os
+            plt.plot(filter_basis.T.dot(p))
+            fig_path = os.path.join(self._experiment_dir, f'_{length}.png')
+            plt.savefig(fname=fig_path)
+            plt.close()
+
+            # plt.show()
+            logger.info(
+                f'For length {self._length_options[i]} matched power is {powers[i]}, Likelihood={likelihoods[i]}')
+
+        most_likely_length = self._length_options[np.nanargmax(likelihoods)]
+        most_likely_power = powers[np.nanargmax(likelihoods)]
+        return likelihoods, most_likely_length, most_likely_power
 
     def estimate(self):
         """
