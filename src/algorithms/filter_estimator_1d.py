@@ -271,7 +271,7 @@ class FilterEstimator1D:
 
 def create_filter_basis(filter_length, basis_size, basis_type='chebyshev'):
     """
-    creates basis for symmetric signals of given size
+    creates basis for signals of given size
     the higher the size, the finer the basis
     :param filter_length: size of each basis element
     :param basis_size: num of elements in returned basis

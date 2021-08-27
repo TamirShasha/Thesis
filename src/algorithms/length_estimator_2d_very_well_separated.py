@@ -6,7 +6,7 @@ import os
 
 import src.algorithms.utils as utils
 from src.algorithms.utils import calc_most_likelihood_and_optimized_power_2d
-from src.algorithms.filter_estimator_2d import FilterEstimator2D, create_basis, create_chebyshev_basis
+from src.algorithms.filter_estimator_2d import FilterEstimator2D, _create_rings_basis, _create_chebyshev_basis
 from src.algorithms.signal_power_estimator import SignalPowerEstimator as SPE
 from src.utils.logger import logger
 
@@ -59,7 +59,7 @@ class LengthEstimator2DVeryWellSeparated:
         likelihoods = np.zeros(len(self._length_options))
         for i, length in enumerate(self._length_options):
             # filter_basis = create_basis(length, 5)
-            filter_basis = create_chebyshev_basis(length, 5)
+            filter_basis = _create_chebyshev_basis(length, 5)
             filter_estimator = FilterEstimator2D(self._data, filter_basis, 20, self._noise_std)
 
             likelihoods[i], optimal_coeffs = filter_estimator.estimate()

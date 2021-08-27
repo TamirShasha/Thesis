@@ -1,11 +1,9 @@
 import numpy as np
 from scipy.signal import convolve
-from skimage.draw import disk, circle_perimeter
+from skimage.draw import disk
 
-from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, \
-    _calc_likelihood_and_likelihood_derivative_without_constants_2d, log_prob_all_is_noise, _gradient_descent, \
-    estimate_locations_2d, gram_schmidt
-from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
+from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, log_prob_all_is_noise, \
+    _gradient_descent, gram_schmidt
 
 
 class FilterEstimator2D:
@@ -35,7 +33,6 @@ class FilterEstimator2D:
         self.filter_shape = unnormalized_filter_basis[0].shape
         self.filter_basis, self.basis_norms = self.normalize_basis()
 
-        # self.convolved_basis, self.convolved_filter = self.calc_constants()
         self.convolved_basis = self.convolve_basis()
         self.term_one = -self.calc_log_size_s()
         self.term_two = log_prob_all_is_noise(self.data, 1)
@@ -155,306 +152,62 @@ class FilterEstimator2D:
         return likelihood, optimal_coeffs
 
 
-def create_basis(diamiter, dim):
-    ring_width = diamiter // (dim * 2)
-    basis = np.zeros(shape=(dim, diamiter, diamiter))
-    temp_map = np.zeros(shape=(diamiter, diamiter))
+def create_filter_basis(filter_length, basis_size, basis_type='chebyshev'):
+    """
+    creates basis for symmetric signals of given size
+    the higher the size, the finer the basis
+    :param filter_length: size of each basis element
+    :param basis_size: num of elements in returned basis
+    :param basis_type: basis type, can be 'chebyshev', 'classic' or 'classic_symmetric'
+    :return: returns array of shape (basis_size, filter_length, filter_length) contains basis elements
+    """
+    if basis_type == 'chebyshev':
+        return _create_chebyshev_basis(filter_length, basis_size)
+    if basis_type == 'rings':
+        return _create_rings_basis(filter_length, basis_size)
 
-    radius = diamiter // 2
+    raise Exception('Unsupported basis type was provided.')
+
+
+def _create_rings_basis(filter_length, basis_size):
+    """
+    this basis contains 'basis_size' rings that cover circle of diamiter 'filter_length'
+    :param filter_length: each element length
+    :param basis_size: num of elements in returned basis
+    """
+    ring_width = filter_length // (basis_size * 2)
+    basis = np.zeros(shape=(basis_size, filter_length, filter_length))
+    temp_map = np.zeros(shape=(filter_length, filter_length))
+
+    radius = filter_length // 2
     center = (radius, radius)
-    for i in range(dim):
+    for i in range(basis_size):
         rr, cc = disk(center, radius - i * ring_width)
         temp_map[rr, cc] = i + 1
 
-    for i in range(dim):
+    for i in range(basis_size):
         basis[i] = temp_map * (temp_map == i + 1) / (i + 1)
 
     return basis
 
-def create_chebyshev_basis(diamiter, dim):
-    basis = np.zeros(shape=(dim, diamiter, diamiter))
-    center = (int(diamiter / 2), int(diamiter / 2))
-    radius = min(center[0], center[1], diamiter - center[0], diamiter - center[1])
 
-    Y, X = np.ogrid[:diamiter, :diamiter]
+def _create_chebyshev_basis(filter_length, basis_size):
+    """
+    creates basis contains even chebyshev terms for symmetric signals
+    :param filter_length: each element length
+    :param basis_size: num of elements in returned basis
+    """
+    basis = np.zeros(shape=(basis_size, filter_length, filter_length))
+    center = (int(filter_length / 2), int(filter_length / 2))
+    radius = min(center[0], center[1], filter_length - center[0], filter_length - center[1])
+
+    Y, X = np.ogrid[:filter_length, :filter_length]
     dist_from_center = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2)
     mask = dist_from_center > radius
-    for i in range(dim):
+    for i in range(basis_size):
         chebyshev_basis_element = np.polynomial.chebyshev.Chebyshev.basis(2 * i, [-radius, radius])
         basis_element = chebyshev_basis_element(dist_from_center)
         basis_element[mask] = 0
         basis[i] = basis_element
-    gs_basis = gram_schmidt(basis.reshape(dim, -1)).reshape(dim, diamiter, diamiter)
+    gs_basis = gram_schmidt(basis.reshape(basis_size, -1)).reshape(basis_size, filter_length, filter_length)
     return gs_basis
-
-
-import matplotlib.pyplot as plt
-
-
-def plot_signal_3d(signal):
-    from matplotlib import cm
-
-    fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-
-    # Make data.
-    X = np.arange(signal.shape[0])
-    Y = np.arange(signal.shape[1])
-    X, Y = np.meshgrid(X, Y)
-
-    # Plot the surface.
-    # surf = ax.plot_surface(X, Y, signal,
-    #                        linewidth=0, antialiased=False)
-    #
-    # # Customize the z axis.
-    # # ax.set_zlim(-1.01, 1.01)
-    # # ax.zaxis.set_major_locator(LinearLocator(10))
-    # ax.zaxis.set_major_formatter('{x:.02f}')
-    #
-    # plt.show()
-
-    plt.figure()
-    ax = plt.axes(projection='3d')
-    ax.plot_surface(X, Y, signal, rstride=1, cstride=1,
-                    cmap='viridis', edgecolor='none')
-    ax.set_xlabel('x')
-    ax.set_ylabel('y')
-    ax.set_zlabel('z')
-    plt.show()
-
-
-def calc_error(signal, est_signal):
-    return np.linalg.norm(signal - est_signal)
-
-
-def exp():
-    rows = 1500
-    columns = 1500
-    signal_length = 100
-    signal_power = 1
-    signal_fraction = 1 / 7
-    # signal_gen = lambda l, p: Shapes2D.double_disk(l, l // 2, -p // 2, p)
-    signal_gen = Shapes2D.sphere
-    noise_std = 0.01
-    noise_mean = 0
-    apply_ctf = False
-
-    sim_data = DataSimulator2D(rows=rows,
-                               columns=columns,
-                               signal_length=signal_length,
-                               signal_power=signal_power,
-                               signal_fraction=signal_fraction,
-                               signal_gen=signal_gen,
-                               noise_std=noise_std,
-                               noise_mean=noise_mean,
-                               apply_ctf=apply_ctf)
-
-    data = sim_data.simulate()
-    signal = sim_data.create_signal_instance()
-    k = sim_data.occurrences
-    print(k)
-
-    # plt.imshow(signal)
-    # plt.colorbar()
-    # plt.show()
-    plt.imshow(data, cmap='gray')
-    plt.show()
-
-    filter_basis = create_basis(signal_length, 5)
-    filter_estimator = FilterEstimator2D(data, filter_basis, k // 2, noise_std)
-    likelihood, optimal_coeffs = filter_estimator.estimate()
-    est_signal = filter_basis.T.dot(optimal_coeffs)
-
-    print(optimal_coeffs)
-    err = calc_error(signal, est_signal)
-    print(f'err for normal basis {err}')
-    print(f'likelihood for normal basis {likelihood}')
-    plt.title(f'({rows}, {columns}), length={signal_length}, k={k}, std={noise_std}, \nerror={np.round(err, 3)}')
-
-    filter_basis_cheb = create_chebyshev_basis(signal_length, 5)
-    # filter_basis_cheb = create_basis(signal_length, 5)
-    filter_estimator = FilterEstimator2D(data, filter_basis_cheb, k // 2, noise_std)
-    likelihood_cheb, optimal_coeffs_cheb = filter_estimator.estimate()
-    est_signal_cheb = filter_basis_cheb.T.dot(optimal_coeffs_cheb)
-    err = calc_error(signal, est_signal_cheb)
-    print(f'err for cheb basis {err}')
-    print(f'likelihood for cheb basis {likelihood_cheb}')
-
-    filter_basis_signal = np.array([signal])
-    filter_estimator = FilterEstimator2D(data, filter_basis_signal, k // 2, noise_std)
-    likelihood_signal, optimal_coeffs_signal = filter_estimator.estimate()
-    est_signal_signal = filter_basis_signal.T.dot(optimal_coeffs_signal)
-    err = calc_error(signal, est_signal_signal)
-    print(optimal_coeffs_signal)
-    print(f'err for signal basis {err}')
-    print(f'likelihood for signal basis {likelihood_signal}')
-
-    plt.imshow(signal)
-    plt.show()
-    plt.imshow(est_signal)
-    plt.colorbar()
-    plt.show()
-
-    plt.imshow(est_signal_cheb)
-    plt.colorbar()
-    plt.show()
-
-    # plot_signal_3d(est_signal)
-
-
-def exp2():
-    rows = 1200
-    columns = 1200
-    signal_length = 80
-    signal_power = 1
-    signal_fraction = 1 / 8
-    # signal_gen = lambda l, p: Shapes2D.double_disk(l, l // 2, -p // 2, p)
-    signal_gen = Shapes2D.sphere
-    noise_std = .1
-    noise_mean = 0
-    apply_ctf = False
-
-    sim_data = DataSimulator2D(rows=rows,
-                               columns=columns,
-                               signal_length=signal_length,
-                               signal_power=signal_power,
-                               signal_fraction=signal_fraction,
-                               signal_gen=signal_gen,
-                               noise_std=noise_std,
-                               noise_mean=noise_mean,
-                               apply_ctf=apply_ctf)
-
-    data = sim_data.simulate()
-    signal = sim_data.create_signal_instance()
-    k = sim_data.occurrences
-    print(k)
-
-    # plt.imshow(signal)
-    # plt.colorbar()
-    # plt.show()
-    plt.imshow(data, cmap='gray')
-    plt.show()
-
-    filter_basis = create_chebyshev_basis(signal_length, 5)
-
-    ks = [1, 5, 10, 15, 20, 25, 30, 35, 45, 60, 80]
-    # ks = [k//10, k//8, k//5, k//3, k//2, k, int(k*1.2), int(k*1.5), int(k*2)]
-    print(ks)
-    # ks = [10]
-    errors = np.zeros_like(ks, dtype=float)
-    likelihoods = np.zeros_like(ks, dtype=float)
-    for i, _k in enumerate(ks):
-        filter_estimator = FilterEstimator2D(data, filter_basis, _k)
-        likelihoods[i], optimal_coeffs = filter_estimator.estimate()
-        est_signal = filter_basis.T.dot(optimal_coeffs)
-        err = calc_error(signal, est_signal)
-        errors[i] = err
-        print(f'for k={_k} error is {err}')
-
-    plt.title(f'({rows}, {columns}), length={signal_length}, k={k}, std={noise_std}')
-    plt.plot(ks, likelihoods)
-    plt.show()
-
-    plt.title(f'({rows}, {columns}), length={signal_length}, k={k}, std={noise_std}')
-    plt.plot(ks, errors)
-    plt.show()
-
-
-def exp3():
-    rows = 1500
-    columns = 1500
-    signal_length = 80
-    signal_power = 1
-    signal_fraction = 1 / 5
-    # signal_gen = lambda l, p: Shapes2D.double_disk(l, l // 2, -p // 2, p)
-    signal_gen = Shapes2D.sphere
-    noise_std = 5
-    noise_mean = 0
-    apply_ctf = False
-
-    sim_data = DataSimulator2D(rows=rows,
-                               columns=columns,
-                               signal_length=signal_length,
-                               signal_power=signal_power,
-                               signal_fraction=signal_fraction,
-                               signal_gen=signal_gen,
-                               noise_std=noise_std,
-                               noise_mean=noise_mean,
-                               apply_ctf=apply_ctf)
-
-    data = sim_data.simulate()
-    signal = sim_data.create_signal_instance()
-    k = sim_data.occurrences
-    print(k)
-
-    # plt.imshow(signal)
-    # plt.colorbar()
-    # plt.show()
-    plt.imshow(data, cmap='gray')
-    plt.show()
-
-    filter_basis = create_chebyshev_basis(signal_length, 5)
-
-    # ks = [1, 5, 10, 15, 20, 25, 30, 35, 45, 60, 80]
-    ks = np.concatenate([[1, 5], np.arange(10, 121, 10)])
-    # ks = [k//10, k//8, k//5, k//3, k//2, k, int(k*1.2), int(k*1.5), int(k*2)]
-    print(ks)
-    # ks = [10]
-    errors = np.zeros_like(ks, dtype=float)
-    likelihoods = np.zeros_like(ks, dtype=float)
-    for i, _k in enumerate(ks):
-        filter_estimator = FilterEstimator2D(data, filter_basis, _k)
-        likelihoods[i], optimal_coeffs = filter_estimator.estimate()
-        est_signal = filter_basis.T.dot(optimal_coeffs)
-        err = calc_error(signal, est_signal)
-        errors[i] = err
-        print(f'for k={_k} error is {err}')
-
-    plt.title(f'({rows}, {columns}), length={signal_length}, k={k}, std={noise_std}')
-    plt.plot(ks, likelihoods)
-    plt.show()
-
-    plt.title(f'({rows}, {columns}), length={signal_length}, k={k}, std={noise_std}')
-    plt.plot(ks, errors)
-    plt.show()
-
-
-if __name__ == '__main__':
-    exp3()
-    # basis = create_chebyshev_basis(101, 5)
-    # # plt.imshow(-basis[1])
-    # # plt.show()
-    # # crea+-te_chebyshev_basis2(100, 5)
-    # sim_data = DataSimulator2D(rows=1000,
-    #                            columns=1000,
-    #                            signal_length=100,
-    #                            signal_power=1,
-    #                            signal_fraction=1 / 7,
-    #                            signal_gen=Shapes2D.sphere,
-    #                            noise_std=0.1,
-    #                            noise_mean=0,
-    #                            apply_ctf=False)
-    #
-    # signal = sim_data.create_signal_instance()
-    # # plt.imshow(signal)
-    # # plt.show()
-    #
-    # xs = np.linspace(-1, 1, 100)
-    # ys = np.sqrt(1 - np.square(xs))
-    # plt.plot(ys)
-    # plt.show()
-    #
-    # p = np.polynomial.chebyshev.Chebyshev.fit(xs, ys, 5)
-    # print(p)
-    #
-    # est_signal = 0.64 * basis[0] - 0.417 * basis[1] - 0.071 * basis[2]
-    #
-    # for i in range(5):
-    #     plt.plot(basis[i][:, 50])
-    # plt.show()
-    #
-    # # plt.imshow(est_signal)
-    # # plt.show()
-    # diff = est_signal - signal
-    # print(np.linalg.norm(diff))
-    # plt.imshow(diff)
-    # plt.show()

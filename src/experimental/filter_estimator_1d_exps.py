@@ -1,8 +1,10 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import time
 
-from src.algorithms.filter_estimator_1d import FilterEstimator1D, _create_classic_basis, _create_chebyshev_basis
+from src.algorithms.filter_estimator_1d import FilterEstimator1D, create_filter_basis
 from src.experiments.data_simulator_1d import simulate_data
+from src.algorithms.utils import relative_error
 
 
 def exp():
@@ -37,7 +39,7 @@ def exp():
                         data.append(_data)
                     data = np.array(data)
                     # filter_basis = create_symmetric_basis(_d, 7)
-                    filter_basis = _create_classic_basis(_d, 7)
+                    filter_basis = create_filter_basis(_d, 7, 'classic')
                     # plt.plot(filter_basis)
                     # plt.show()
                     # filter_basis = create_span_basis(_d, 10)
@@ -154,7 +156,7 @@ def exp2():
                         # plt.show()
                         data.append(_data)
                     data = np.array(data)
-                    filter_basis = create_symmetric_basis(_d, 1)
+                    filter_basis = create_filter_basis(_d, 7, 'classic_symmetric')
                     # filter_basis = create_span_basis(_d, 10)
                     # plt.plot(filter_basis)
                     # plt.show()
