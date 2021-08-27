@@ -6,12 +6,11 @@ from src.constants import ROOT_DIR
 import logging
 from datetime import datetime
 import pathlib
+from enum import Enum
 
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
-from src.algorithms.length_estimator_1d import SignalPowerEstimator
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.algorithms.length_estimator_2d_very_well_separated import LengthEstimator2DVeryWellSeparated
-from src.algorithms.length_estimator_2d import LengthEstimator2D, EstimationMethod
 from src.experiments.micrograph import Micrograph, MICROGRAPHS
 from src.experiments.particles_projections import PARTICLE_200
 from src.utils.logger import logger
@@ -20,26 +19,25 @@ from src.utils.logger import logger
 logger.setLevel(logging.INFO)
 
 
+class EstimationMethod(Enum):
+    Curves = 0,
+    VeryWellSeparated = 1
+
+
 class Experiment2D:
 
     def __init__(self,
                  name=str(time.time()),
                  mrc: Micrograph = None,
                  simulator=None,
-                 signal_2d_filter_gen=lambda d, p=1: Shapes2D.disk(d, p),
                  signal_1d_filter_gen=lambda d, p=1: np.full(d, p),
-                 signal_power_estimator_method=SignalPowerEstimator.Exact,
                  length_options=None,
-                 signal_area_coverage_boundaries=(0.05, 0.4),
-                 signal_num_of_occurrences_boundaries=(10, 150),
-                 num_of_power_options=10,
                  estimation_method: EstimationMethod = EstimationMethod.VeryWellSeparated,
                  plot=True,
                  save=True,
                  save_dir=os.path.join(ROOT_DIR, f'src/experiments/plots/'),
                  logs=True):
         self._name = name  # Experiment name
-        self._signal_power_estimator_method = signal_power_estimator_method
         self._estimation_method = estimation_method
         self._data_simulator = simulator
         self._mrc = mrc
@@ -194,12 +192,7 @@ def __main__():
         # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
         simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
-        signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         length_options=np.array([50, 100, 150, 200, 250, 300, 400]),
-        # length_options=np.arange(20, 501, 50),
-        signal_num_of_occurrences_boundaries=(0, 20000),
-        signal_area_coverage_boundaries=(0.05, 0.20),
-        num_of_power_options=10,
         plot=True,
         save=True
     ).run()
