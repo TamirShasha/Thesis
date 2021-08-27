@@ -5,7 +5,7 @@ from src.algorithms.length_estimator_1d import LengthEstimator1D
 from src.algorithms.signal_power_estimator import estimate_signal_power, SignalPowerEstimator
 from src.utils.logger import logger
 from src.algorithms.utils import calc_most_likelihood_and_optimized_power_1d
-from src.algorithms.filter_estimator_1d import FilterEstimator1D, create_symmetric_basis, create_span_basis
+from src.algorithms.filter_estimator_1d import FilterEstimator1D, _create_classic_symmetric_basis, _create_classic_basis
 
 
 class LengthEstimator2DCurvesMethod:
@@ -106,7 +106,7 @@ class LengthEstimator2DCurvesMethod:
             #                                                                         self._fixed_num_of_occurrences,
             #                                                                         self._curves_noise)
             # filter_basis = create_symmetric_basis(length, 10)
-            filter_basis = create_span_basis(length, 10)
+            filter_basis = _create_classic_basis(length, 10)
             likelihoods[i], p = FilterEstimator1D(self._curves,
                                                   filter_basis,
                                                   self._fixed_num_of_occurrences,

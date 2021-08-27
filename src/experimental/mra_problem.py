@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from src.algorithms.filter_estimator_1d import FilterEstimator1D, create_chebyshev_basis
+from src.algorithms.filter_estimator_1d import FilterEstimator1D, _create_chebyshev_basis
 
 
 def shift_signal(signal, shift=None, dist=None):
@@ -106,7 +106,7 @@ def experiment():
 
     augmented_data = np.concatenate([mra_data, mra_data], axis=1)
 
-    filter_basis = create_chebyshev_basis(signal.shape[0], 30)
+    filter_basis = _create_chebyshev_basis(signal.shape[0], 30)
     filter_estimator = FilterEstimator1D(augmented_data, filter_basis, 2, noise_std)
     l, ps = filter_estimator.estimate()
     signal_est = filter_basis.T.dot(ps)

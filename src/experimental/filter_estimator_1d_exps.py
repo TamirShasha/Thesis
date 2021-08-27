@@ -1,16 +1,8 @@
-import numpy as np
-from src.experiments.data_simulator_1d import simulate_data
 import matplotlib.pyplot as plt
-from src.algorithms.filter_estimator_1d import FilterEstimator1D, _create_classic_basis, _create_classic_symmetric_basis
-from src.algorithms.utils import relative_error
-from time import time
+import numpy as np
 
-
-# b = create_span_basis(19, 10)
-# print(b)
-# for a in b:
-#     plt.plot(a)
-# plt.show()
+from src.algorithms.filter_estimator_1d import FilterEstimator1D, _create_classic_basis, _create_chebyshev_basis
+from src.experiments.data_simulator_1d import simulate_data
 
 
 def exp():
@@ -108,7 +100,7 @@ def exp():
 
 
 def exp2():
-    n, d, p, k, sig = 4000, 300, 1, 3, 20
+    n, d, p, k, sig = 8000, 300, 1, 3, 20
 
     # signal = np.array([1 - np.square(i) for i in np.linspace(-1, 1, d)])
     signal = np.concatenate([np.full(d // 8, 1 / 3),
@@ -139,30 +131,30 @@ def exp2():
     #     np.array([1 - 1.5 * np.square(i) for i in np.linspace(-1, 1, d - 150)]),
     #     np.full(75, -0.5)])
 
-    sigmas = [0.1, 1, 5, 10, 15, 20]
-    # sigmas = [1, 2]
+    # sigmas = [0.1, 1, 5, 10, 15, 20]
+    sigmas = [1]
 
     T = 1
-    Ms = [1, 5, 10, 50, 100, 300]
-    # Ms = [1]
+    # Ms = [1, 5, 10, 50, 100, 300]
+    Ms = [1]
     lns = np.arange(300, 301, 100)
     powers = np.zeros(shape=(len(Ms), len(sigmas), len(lns), T))
     likelihoods = np.zeros(shape=(len(Ms), len(sigmas), len(lns), T))
-    errors = np.zeros(shape=(len(Ms), len(sigmas), len(lns), T))
 
     for mi, m in enumerate(Ms):
-        for sig, sigma in enumerate(sigmas):
+        for l, sigma in enumerate(sigmas):
             print(f'At sigma={sigma}')
-            for ln, _d in enumerate(lns):
+            for j, _d in enumerate(lns):
                 for t in range(T):
                     data = []
                     for i in range(m):
                         _k = np.random.choice(np.arange(1, 6))
                         _data, pulses = simulate_data(n, d, p, k, sigma, signal)
+                        # plt.plot(_data)
+                        # plt.show()
                         data.append(_data)
-
                     data = np.array(data)
-                    filter_basis = _create_classic_symmetric_basis(_d, 5)
+                    filter_basis = create_symmetric_basis(_d, 1)
                     # filter_basis = create_span_basis(_d, 10)
                     # plt.plot(filter_basis)
                     # plt.show()
@@ -175,38 +167,26 @@ def exp2():
                     t0 = time()
                     f, p = fil_est.estimate()
                     t1 = time()
-                    # print(f'took {t1 - t0} seconds')
+                    print(f'took {t1 - t0} seconds')
                     # print(p)
 
                     # f, p = calc_most_likelihood_and_optimized_power_1d(data,
                     #                                                    filter_basis[0],
                     #                                                    k,
                     #                                                    sigma)
-                    # powers[mi, sig, ln, t] = p
-                    likelihoods[mi, sig, ln, t] = f
+                    # powers[mi, l, j, t] = p
+                    # likelihoods[mi, l, j, t] = f
 
                     est_signal = filter_basis.T.dot(p)
                     if len(signal) <= len(est_signal):
                         padded_signal = np.concatenate([signal, np.zeros(len(est_signal) - len(signal))])
                         err, shift = relative_error(est_signal, padded_signal)
-                        errors[mi, sig, ln, t] = err
 
-                        # plt.title(f'Error is {err}')
-                        # plt.plot(est_signal, label='filter')
-                        # plt.plot(np.roll(padded_signal, -shift), label='signal')
-                        # plt.legend()
-                        # plt.show()
-
-    avg_errors = errors.mean(axis=3)
-    for sig, sigma in enumerate(sigmas):
-        for ln, _d in enumerate(lns):
-            ln_sig_err = avg_errors[:, sig, ln]
-            plt.plot(Ms, ln_sig_err, label=f'std={sigma} len={_d}')
-    plt.title(f'n={n}, k={k}')
-    plt.xlabel('# of samples')
-    plt.ylabel('Relative error')
-    plt.legend()
-    plt.show()
+                        plt.title(f'Error is {err}')
+                        plt.plot(est_signal, label='filter')
+                        plt.plot(np.roll(padded_signal, -shift), label='signal')
+                        plt.legend()
+                        plt.show()
 
 
 if __name__ == '__main__':
