@@ -69,7 +69,6 @@ class Experiment2D:
             logger.info(f'Loading given micrograph from {mrc.name}')
             self._data = mrc.load_micrograph()
             self._data = self._data[:min(self._data.shape), :min(self._data.shape)]
-            self._data = self._data[:2000, :2000]
             self._num_of_occurrences = mrc.occurrences
             self._noise_std = mrc.noise_std
             self._noise_mean = mrc.noise_mean
@@ -109,6 +108,7 @@ class Experiment2D:
                                                                         signal_1d_filter_gen,
                                                                         self._noise_mean,
                                                                         self._noise_std,
+                                                                        1000,
                                                                         self._logs,
                                                                         experiment_dir=self.experiment_dir)
 
@@ -175,14 +175,15 @@ class Experiment2D:
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=2000,
-                               columns=2000,
-                               signal_length=150,
+    sim_data = DataSimulator2D(rows=4000,
+                               columns=4000,
+                               signal_length=200,
                                signal_power=1,
                                signal_fraction=1 / 6,
+                               # signal_gen=Shapes2D.sphere,
+                               # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.sphere,
-                               # signal_gen=lambda l, p: Shapes2D.ellipse(l, l // 2, p),
-                               noise_std=8,
+                               noise_std=10,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -192,7 +193,7 @@ def __main__():
         # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
         simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
-        length_options=np.array([50, 100, 150, 200, 250, 300, 400]),
+        length_options=np.array([50, 100, 120, 150, 200, 250]),
         plot=True,
         save=True
     ).run()

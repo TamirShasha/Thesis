@@ -191,5 +191,55 @@ def exp2():
                         plt.show()
 
 
+def exp3():
+    n, d, p, k, sig = 4000, 300, 1, 5, 1
+    m = 1
+
+    # signal = np.array([1 - np.square(i) for i in np.linspace(-1, 1, d)])
+    signal = np.concatenate([np.full(d // 8, 1 / 3),
+                             np.full(d // 8, -2 / 3),
+                             np.full(d // 8, -1),
+                             np.full(d // 8, 2 / 3),
+                             np.full(d // 8, 2 / 3),
+                             np.full(d // 8, -1),
+                             np.full(d // 8, -2 / 3),
+                             np.full(d // 8 + d % 8, 1 / 3)])
+
+    signal2 = np.concatenate([np.full(d // 8, 1 / 3),
+                              np.full(d // 8, 2 / 3),
+                              np.full(d // 8, 1),
+                              np.full(d // 8, 2 / 3),
+                              np.full(d // 8, 2 / 3),
+                              np.full(d // 8, 1),
+                              np.full(d // 8, 2 / 3),
+                              np.full(d // 8 + d % 8, 1 / 3)])
+
+    signal = np.ones(d)
+
+    plt.plot(signal)
+    plt.show()
+
+    data = []
+    for i in range(m):
+        _k = np.random.choice(np.arange(1, 6))
+        _data, pulses = simulate_data(n, d, p, k, sig, signal)
+        data.append(_data)
+    data = np.array(data)
+    filter_basis = create_filter_basis(d, 10)
+    fil_est = FilterEstimator1D(data, filter_basis, k, sig)
+    f, p = fil_est.estimate()
+    est_signal = filter_basis.T.dot(p)
+
+    if len(signal) <= len(est_signal):
+        padded_signal = np.concatenate([signal, np.zeros(len(est_signal) - len(signal))])
+        err, shift = relative_error(est_signal, padded_signal)
+
+        plt.title(f'Error is {err}')
+        plt.plot(est_signal, label='filter')
+        plt.plot(np.roll(padded_signal, -shift), label='signal')
+        plt.legend()
+        plt.show()
+
+
 if __name__ == '__main__':
-    exp2()
+    exp3()

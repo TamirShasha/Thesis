@@ -176,12 +176,12 @@ def exp2():
 def exp3():
     rows = 1500
     columns = 1500
-    signal_length = 80
+    signal_length = 100
     signal_power = 1
     signal_fraction = 1 / 5
     # signal_gen = lambda l, p: Shapes2D.double_disk(l, l // 2, -p // 2, p)
     signal_gen = Shapes2D.sphere
-    noise_std = 5
+    noise_std = .1
     noise_mean = 0
     apply_ctf = False
 
@@ -193,7 +193,8 @@ def exp3():
                                signal_gen=signal_gen,
                                noise_std=noise_std,
                                noise_mean=noise_mean,
-                               apply_ctf=apply_ctf)
+                               apply_ctf=apply_ctf,
+                               method='VWS')
 
     data = sim_data.simulate()
     signal = sim_data.create_signal_instance()
@@ -206,10 +207,11 @@ def exp3():
     plt.imshow(data, cmap='gray')
     plt.show()
 
-    filter_basis = create_filter_basis(signal_length, 5)
+    filter_basis = create_filter_basis(signal_length, 20)
 
     # ks = [1, 5, 10, 15, 20, 25, 30, 35, 45, 60, 80]
-    ks = np.concatenate([[1, 5], np.arange(10, 121, 10)])
+    # ks = np.concatenate([[1, 5], np.arange(10, 121, 10)])
+    ks = np.arange(40, 71, 10)
     # ks = [k//10, k//8, k//5, k//3, k//2, k, int(k*1.2), int(k*1.5), int(k*2)]
     print(ks)
     # ks = [10]
@@ -232,8 +234,20 @@ def exp3():
     plt.show()
 
 
+from src.algorithms.utils import cryo_downsample
+
+
+def exp4():
+    data = np.random.normal(0, 1, (100, 100))
+    # print(np.nanvar(data))
+    data_downsampled = np.real(cryo_downsample(data, (10, 10)))
+    # print(np.nanvar(data_downsampled))
+    print(np.sqrt(np.prod(data.shape) / np.prod(data_downsampled.shape)))
+    print(np.nanstd(data) / np.nanstd(data_downsampled))
+
+
 if __name__ == '__main__':
-    exp3()
+    exp4()
     # basis = create_chebyshev_basis(101, 5)
     # # plt.imshow(-basis[1])
     # # plt.show()

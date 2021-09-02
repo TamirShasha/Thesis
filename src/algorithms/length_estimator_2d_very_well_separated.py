@@ -5,8 +5,8 @@ import matplotlib.pyplot as plt
 import os
 
 import src.algorithms.utils as utils
-from src.algorithms.utils import calc_most_likelihood_and_optimized_power_2d
-from src.algorithms.filter_estimator_2d import FilterEstimator2D, _create_rings_basis, _create_chebyshev_basis
+from src.algorithms.utils import calc_most_likelihood_and_optimized_power_2d, cryo_downsample
+from src.algorithms.filter_estimator_2d import FilterEstimator2D, create_filter_basis
 from src.algorithms.signal_power_estimator import SignalPowerEstimator as SPE
 from src.utils.logger import logger
 
@@ -24,6 +24,7 @@ class LengthEstimator2DVeryWellSeparated:
                  signal_filter_gen,
                  noise_mean,
                  noise_std,
+                 downsample_to_num_of_rows=2000,
                  logs=True,
                  experiment_dir=None):
         self._data = data
@@ -36,6 +37,16 @@ class LengthEstimator2DVeryWellSeparated:
         self._experiment_dir = experiment_dir
 
         self._n = self._data.shape[0]
+        if self._n > downsample_to_num_of_rows:
+            self._downsample_factor = (self._n / downsample_to_num_of_rows)
+            self._data = cryo_downsample(self._data, (downsample_to_num_of_rows, downsample_to_num_of_rows))
+            self._noise_std = self._noise_std / self._downsample_factor
+            self._n = self._data.shape[0]
+            # plt.imshow(self._data, cmap='gray')
+            # plt.show()
+            self._length_options = np.array(np.ceil(self._length_options / self._downsample_factor), dtype=int)
+            logger.info(f'Length options after downsample: {self._length_options}')
+
         self.log_prob_all_noise = utils.log_prob_all_is_noise(self._data, self._noise_std)
 
     def estimate_2(self):
@@ -59,8 +70,8 @@ class LengthEstimator2DVeryWellSeparated:
         likelihoods = np.zeros(len(self._length_options))
         for i, length in enumerate(self._length_options):
             # filter_basis = create_basis(length, 5)
-            filter_basis = _create_chebyshev_basis(length, 5)
-            filter_estimator = FilterEstimator2D(self._data, filter_basis, 20, self._noise_std)
+            filter_basis = create_filter_basis(length, 10)
+            filter_estimator = FilterEstimator2D(self._data, filter_basis, 30, self._noise_std)
 
             likelihoods[i], optimal_coeffs = filter_estimator.estimate()
             est_signal = filter_basis.T.dot(optimal_coeffs)

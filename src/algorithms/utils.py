@@ -16,7 +16,7 @@ def relative_error(estimated_signal, true_signal):
     return error, shift
 
 
-def gram_schmidt(vectors, eps=1e-10):
+def gram_schmidt(vectors, eps=1e-15):
     basis = []
     for v in vectors:
         w = v - np.sum([np.dot(v, b) * b for b in basis], axis=0)
