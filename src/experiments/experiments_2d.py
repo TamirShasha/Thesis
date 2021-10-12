@@ -110,6 +110,7 @@ class Experiment2D:
                                                                         self._noise_std,
                                                                         1000,
                                                                         self._logs,
+                                                                        plots=True,
                                                                         experiment_dir=self.experiment_dir)
 
     def run(self):
@@ -189,11 +190,11 @@ def __main__():
 
     Experiment2D(
         name=f"expy",
-        # mrc=MICROGRAPHS['002_whitened'],
+        mrc=MICROGRAPHS['002_whitened'],
         # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
-        simulator=sim_data,
+        # simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
-        length_options=np.array([50, 100, 120, 150, 200, 250]),
+        length_options=np.array([50, 100, 200, 300, 400, 500]),
         plot=True,
         save=True
     ).run()

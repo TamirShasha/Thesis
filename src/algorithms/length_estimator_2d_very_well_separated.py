@@ -26,6 +26,7 @@ class LengthEstimator2DVeryWellSeparated:
                  noise_std,
                  downsample_to_num_of_rows=2000,
                  logs=True,
+                 plots=False,
                  experiment_dir=None):
         self._data = data
         self._length_options = length_options
@@ -34,16 +35,18 @@ class LengthEstimator2DVeryWellSeparated:
         self._noise_mean = noise_mean
         self._noise_std = noise_std
         self._logs = logs
+        self._plots = plots
         self._experiment_dir = experiment_dir
 
         self._n = self._data.shape[0]
         if self._n > downsample_to_num_of_rows:
             self._downsample_factor = (self._n / downsample_to_num_of_rows)
             self._data = cryo_downsample(self._data, (downsample_to_num_of_rows, downsample_to_num_of_rows))
-            self._noise_std = self._noise_std / self._downsample_factor
+            self._noise_std = self._noise_std / self._downsample_fagictor
             self._n = self._data.shape[0]
-            # plt.imshow(self._data, cmap='gray')
-            # plt.show()
+            if self._plots:
+                plt.imshow(self._data, cmap='gray')
+                plt.show()
             self._length_options = np.array(np.ceil(self._length_options / self._downsample_factor), dtype=int)
             logger.info(f'Length options after downsample: {self._length_options}')
 
