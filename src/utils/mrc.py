@@ -35,12 +35,12 @@ def read_mrc(file_path):
 
 # import matplotlib.pyplot as plt
 # from src.algorithms.utils import cryo_downsample
-#
-# file_path = '../../../data/EMD-2984_0010.mat'
-# # x = read_mrc(file_path)
+
+# file_path = '../../../data/001.mrc'
+# x = read_mrc(file_path)
 # x = mat_to_npy(file_path)
-# # x = cryo_downsample(x, (500, 500))
-# # write_mrc('../../../data/EMD-2984_0010.mrc', x)
+# x = cryo_downsample(x, (500, 500))
+# write_mrc('../../../data/EMD-2984_0010.mrc', x)
 # x -= np.min(x)
 # x /= np.max(x)
 # plt.imshow(x, cmap='gray', vmin=0, vmax=0.1)

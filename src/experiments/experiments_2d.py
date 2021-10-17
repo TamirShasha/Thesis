@@ -11,7 +11,7 @@ from enum import Enum
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.algorithms.length_estimator_2d_very_well_separated import LengthEstimator2DVeryWellSeparated
-from src.experiments.micrograph import Micrograph, MICROGRAPHS
+from src.experiments.micrograph import Micrograph
 from src.experiments.particles_projections import PARTICLE_200
 from src.utils.logger import logger
 
@@ -32,6 +32,9 @@ class Experiment2D:
                  simulator=None,
                  signal_1d_filter_gen=lambda d, p=1: np.full(d, p),
                  length_options=None,
+                 filter_basis_size=20,
+                 down_sample_size=1000,
+                 fixed_num_of_occurrences=30,
                  estimation_method: EstimationMethod = EstimationMethod.VeryWellSeparated,
                  plot=True,
                  save=True,
@@ -41,6 +44,9 @@ class Experiment2D:
         self._estimation_method = estimation_method
         self._data_simulator = simulator
         self._mrc = mrc
+        self._filter_basis_size = filter_basis_size
+        self._fixed_num_of_occurrences = fixed_num_of_occurrences
+        self._down_sample_size = down_sample_size
 
         self._plot = plot
         self._save = save
@@ -48,11 +54,10 @@ class Experiment2D:
         self._logs = logs
         self._results = {}
 
-        if self._save:
-            curr_date = str(datetime.now().strftime("%d-%m-%Y"))
-            curr_time = str(datetime.now().strftime("%H-%M-%S"))
-            self.experiment_dir = os.path.join(self._save_dir, curr_date, curr_time)
-            pathlib.Path(self.experiment_dir).mkdir(parents=True, exist_ok=True)
+        curr_date = str(datetime.now().strftime("%d-%m-%Y"))
+        curr_time = str(datetime.now().strftime("%H-%M-%S"))
+        self.experiment_dir = os.path.join(self._save_dir, curr_date, curr_time)
+        pathlib.Path(self.experiment_dir).mkdir(parents=True, exist_ok=True)
 
         if mrc is None:
             logger.info(f'Simulating data, number of occurrences is {simulator.occurrences}')
@@ -60,19 +65,17 @@ class Experiment2D:
                 simulator = DataSimulator2D()
 
             self._data = simulator.simulate()
-            self._num_of_occurrences = simulator.occurrences
             self._noise_std = simulator.noise_std
             self._noise_mean = simulator.noise_mean
             self._signal_length = simulator.signal_length
             self._applied_ctf = simulator.apply_ctf
         else:
             logger.info(f'Loading given micrograph from {mrc.name}')
-            self._data = mrc.load_micrograph()
+            self._data = mrc.get_micrograph()
             self._data = self._data[:min(self._data.shape), :min(self._data.shape)]
-            self._num_of_occurrences = mrc.occurrences
             self._noise_std = mrc.noise_std
             self._noise_mean = mrc.noise_mean
-            self._signal_length = mrc.signal_length
+            self._signal_length = None
             self._applied_ctf = True
 
         self._rows = self._data.shape[0]
@@ -84,13 +87,8 @@ class Experiment2D:
             plt.show()
 
         if length_options is None:
-            length_options = np.arange(self._signal_length // 4, int(self._signal_length), 10)
+            length_options = np.arange(100, 801, 100)
         self._signal_length_options = length_options
-
-        self._exp_attr = {
-            "d": self._signal_length,
-            "k": self._num_of_occurrences,
-        }
 
         if self._estimation_method == EstimationMethod.Curves:
             logger.info(f'Estimating signal length using Curves method')
@@ -102,26 +100,27 @@ class Experiment2D:
                                                                    logs=self._logs,
                                                                    experiment_dir=self.experiment_dir)
         else:
-            self._length_estimator = LengthEstimator2DVeryWellSeparated(self._data,
-                                                                        self._signal_length_options,
-                                                                        10,  # Need to get as input
-                                                                        signal_1d_filter_gen,
-                                                                        self._noise_mean,
-                                                                        self._noise_std,
-                                                                        1000,
-                                                                        self._logs,
-                                                                        plots=True,
+            self._length_estimator = LengthEstimator2DVeryWellSeparated(data=self._data,
+                                                                        length_options=self._signal_length_options,
+                                                                        fixed_num_of_occurrences=self._fixed_num_of_occurrences,
+                                                                        noise_mean=self._noise_mean,
+                                                                        noise_std=self._noise_std,
+                                                                        downsample_to_num_of_rows=self._down_sample_size,
+                                                                        filter_basis_size=self._filter_basis_size,
+                                                                        logs=self._logs,
+                                                                        plots=self._plot,
+                                                                        save=self._save,
                                                                         experiment_dir=self.experiment_dir)
 
     def run(self):
         start_time = time.time()
-        likelihoods, most_likely_length, most_likely_power = self._length_estimator.estimate()
+        likelihoods, optimal_coeffs, estimated_signal = self._length_estimator.estimate()
         end_time = time.time()
 
         self._results = {
             "likelihoods": likelihoods,
-            "most_likely_length": most_likely_length,
-            "most_likely_power": most_likely_power,
+            "optimal_coeffs": optimal_coeffs,
+            "estimated_signal": estimated_signal,
             "total_time": end_time - start_time
         }
 
@@ -131,11 +130,16 @@ class Experiment2D:
 
     def save_and_plot(self):
 
+        likelihoods = self._results['likelihoods']
+        most_likely_index = np.nanargmax(likelihoods)
+
         fig = plt.figure()
 
-        mrc_fig = plt.subplot2grid((2, 2), (1, 1))
-        likelihoods_fig = plt.subplot2grid((2, 2), (0, 0), colspan=2)
-        particle_fig = plt.subplot2grid((2, 2), (1, 0))
+        mrc_fig = plt.subplot2grid((2, 3), (0, 2))
+        likelihoods_fig = plt.subplot2grid((2, 3), (0, 0), colspan=2)
+        particle_fig = plt.subplot2grid((2, 3), (1, 0))
+        est_particle_fig = plt.subplot2grid((2, 3), (1, 1))
+        est_basis_coeffs_fig = plt.subplot2grid((2, 3), (1, 2))
 
         title = f"MRC size=({self._rows}, {self._columns}), " \
                 f"Signal length={self._signal_length}, " \
@@ -150,14 +154,16 @@ class Experiment2D:
 
         title += f"CTF={self._applied_ctf}, " \
                  f"Estimation method={self._estimation_method.name}\n" \
-                 f"Most likely length={self._results['most_likely_length']}, " \
-                 f"Most likely power={np.round(self._results['most_likely_power'], 2)}\n" \
+                 f"Most likely length={self._signal_length_options[most_likely_index]}, " \
                  f"Took {int(self._results['total_time'])} seconds"
         fig.suptitle(title)
 
         mrc_fig.imshow(self._data, cmap='gray')
+        est_particle_fig.imshow(self._results['estimated_signal'], cmap='gray')
 
-        likelihoods = self._results['likelihoods']
+        most_likely_coeffs = self._results['optimal_coeffs'][most_likely_index]
+        est_basis_coeffs_fig.bar(np.arange(len(most_likely_coeffs)), most_likely_coeffs)
+
         likelihoods_fig.plot(self._signal_length_options, likelihoods)
         likelihoods_fig.set_xlabel('Lengths')
         likelihoods_fig.set_ylabel('Likelihood')
@@ -190,13 +196,13 @@ def __main__():
 
     Experiment2D(
         name=f"expy",
-        mrc=MICROGRAPHS['002_whitened'],
-        # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
-        # simulator=sim_data,
+        # mrc=MICROGRAPHS['002_whitened'],
+        mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
+        simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
-        length_options=np.array([50, 100, 200, 300, 400, 500]),
+        length_options=np.array([50, 100, 200, 300]),
         plot=True,
-        save=True
+        save=False
     ).run()
 
 
