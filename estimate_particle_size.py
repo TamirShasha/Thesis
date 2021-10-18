@@ -48,6 +48,7 @@ def estimate(name, mrc_path, length_options, estimation_method, num_of_occurrenc
     else:
         normalize_noise_method = NoiseNormalizationMethod.Whitening
     micrograph = Micrograph(mrc_path,
+                            downsample=down_sample_size,
                             load_micrograph=True,
                             noise_normalization_method=normalize_noise_method,
                             noise_mean=noise_mean,
@@ -81,5 +82,6 @@ def estimate(name, mrc_path, length_options, estimation_method, num_of_occurrenc
 if __name__ == "__main__":
     estimate(['--name', 'Tamir',
               '--mrc_path', 'C:\\Users\\tamir\\Desktop\\Thesis\\data\\001_raw.mat',
-              '--length_options', '100', '800', '100',
+              '--down_sample_size', '500',
+              '--length_options', '20', '30', '10',
               '--plot', 'True'])

@@ -72,7 +72,7 @@ class Experiment2D:
         else:
             logger.info(f'Loading given micrograph from {mrc.name}')
             self._data = mrc.get_micrograph()
-            self._data = self._data[:min(self._data.shape), :min(self._data.shape)]
+            # self._data = self._data[:min(self._data.shape), :min(self._data.shape)]
             self._noise_std = mrc.noise_std
             self._noise_mean = mrc.noise_mean
             self._signal_length = None
@@ -182,25 +182,25 @@ class Experiment2D:
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=4000,
-                               columns=4000,
-                               signal_length=200,
+    sim_data = DataSimulator2D(rows=300,
+                               columns=300,
+                               signal_length=30,
                                signal_power=1,
                                signal_fraction=1 / 6,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.sphere,
-                               noise_std=10,
+                               noise_std=1,
                                noise_mean=0,
                                apply_ctf=False)
 
     Experiment2D(
         name=f"expy",
         # mrc=MICROGRAPHS['002_whitened'],
-        mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
+        # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
         simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
-        length_options=np.array([50, 100, 200, 300]),
+        length_options=np.array([20, 30, 40]),
         plot=True,
         save=False
     ).run()

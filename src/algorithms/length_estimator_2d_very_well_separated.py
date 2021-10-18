@@ -40,16 +40,16 @@ class LengthEstimator2DVeryWellSeparated:
         self._experiment_dir = experiment_dir
 
         self._n = self._data.shape[0]
-        if self._n > downsample_to_num_of_rows:
-            self._downsample_factor = (self._n / downsample_to_num_of_rows)
-            self._data = cryo_downsample(self._data, (downsample_to_num_of_rows, downsample_to_num_of_rows))
-            self._noise_std = self._noise_std / self._downsample_factor
-            self._n = self._data.shape[0]
-            if self._plots:
-                plt.imshow(self._data, cmap='gray')
-                plt.show()
-            self._length_options = np.array(np.ceil(self._length_options / self._downsample_factor), dtype=int)
-            logger.info(f'Length options after downsample: {self._length_options}')
+        # if self._n > downsample_to_num_of_rows:
+        #     self._downsample_factor = (self._n / downsample_to_num_of_rows)
+        #     self._data = cryo_downsample(self._data, (downsample_to_num_of_rows, downsample_to_num_of_rows))
+        #     self._noise_std = self._noise_std / self._downsample_factor
+        #     self._n = self._data.shape[0]
+        #     if self._plots:
+        #         plt.imshow(self._data, cmap='gray')
+        #         plt.show()
+        #     self._length_options = np.array(np.ceil(self._length_options / self._downsample_factor), dtype=int)
+        #     logger.info(f'Length options after downsample: {self._length_options}')
 
         self.log_prob_all_noise = utils.log_prob_all_is_noise(self._data, self._noise_std)
 
@@ -77,6 +77,7 @@ class LengthEstimator2DVeryWellSeparated:
 
             logger.info(
                 f'For length {self._length_options[i]}, Likelihood={likelihoods[i]}')
+            return likelihoods, optimal_coeffs, est_signal
 
         most_likely_index = np.nanargmax(likelihoods)
         filter_basis = create_filter_basis(self._length_options[most_likely_index], self._filter_basis_size)

@@ -48,10 +48,15 @@ class Micrograph:
         else:
             raise Exception('Unsupported File Extension!')
 
-        if self.downsample:
-            mrc = cryo_downsample(mrc, self.downsample)
+        mrc = mrc[:min(mrc.shape), :min(mrc.shape)]
 
         mrc = self.normalize_noise(mrc)
+
+        if self.downsample:
+            mrc = cryo_downsample(mrc, (self.downsample, self.downsample))
+            downsample_factor = (mrc.shape[0] / self.downsample)
+            self.noise_std = self.noise_std / downsample_factor
+
         return mrc
 
     def normalize_noise(self, mrc):
