@@ -20,6 +20,7 @@ def simple_cli(debug, verbosity):
 
 
 @simple_cli.command('create_simulated_mrc', short_help='Creates Simulated Micrograph')
+@click.option('--name', type=str)
 @click.option('--size', type=int, default=1000)
 @click.option('--signal_size', type=int, default=80)
 @click.option('--signal_power', type=float, default=1)
@@ -29,7 +30,7 @@ def simple_cli(debug, verbosity):
 @click.option('--noise_std', type=int, default=10)
 @click.option('--apply_ctf', type=bool, default=False)
 @click.option('--save_to', type=str, default=os.path.join(ROOT_DIR, f'../simulated_data/'))
-def create_simulated_mrc(size, signal_size, signal_power, signal_fraction, signal_shape, noise_mean, noise_std,
+def create_simulated_mrc(name, size, signal_size, signal_power, signal_fraction, signal_shape, noise_mean, noise_std,
                          apply_ctf, save_to):
     pathlib.Path(save_to).mkdir(parents=True, exist_ok=True)
 
@@ -48,7 +49,7 @@ def create_simulated_mrc(size, signal_size, signal_power, signal_fraction, signa
                                 apply_ctf=apply_ctf)
 
     mrc = simulator.simulate()
-    file_name = f'{size}x{size}_{simulator.occurrences}occ_{signal_shape}_{signal_size}_N_{noise_mean}_{noise_std}'
+    file_name = f'{name}_{size}x{size}_{simulator.occurrences}occ_{signal_shape}_{signal_size}_N_{noise_mean}_{noise_std}'
     file_path = os.path.join(save_to, file_name)
     np.save(file_path, mrc)
 
