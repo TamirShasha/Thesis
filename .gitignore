@@ -2,3 +2,4 @@
 __pycache__
 src/experiments/plots
 src/experiments/baselines/plots
+simulated_data

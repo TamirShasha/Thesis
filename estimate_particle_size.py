@@ -30,7 +30,7 @@ def simple_cli(debug, verbosity):
               type=click.Choice(['none', 'simple', 'whitening'], case_sensitive=False))
 @click.option('--noise_mean', type=int, default=0)
 @click.option('--noise_std', type=int, default=1)
-@click.option('--down_sample_size', type=int, default=1000)
+@click.option('--down_sample_size', type=int, default=-1)
 @click.option('--filter_basis_size', type=int, default=20)
 @click.option('--plot', type=bool, default=False)
 @click.option('--save', type=bool, default=True)
@@ -80,8 +80,8 @@ def estimate(name, mrc_path, length_options, estimation_method, num_of_occurrenc
 
 
 if __name__ == "__main__":
-    estimate(['--name', 'Tamir',
-              '--mrc_path', 'C:\\Users\\tamir\\Desktop\\Thesis\\data\\001_raw.mat',
-              '--down_sample_size', '500',
-              '--length_options', '20', '30', '10',
-              '--plot', 'True'])
+    # estimate(['--name', 'Tamir',
+    #           '--mrc_path', 'C:\\Users\\tamir\\Desktop\\Thesis\\simulated_data\\1000x1000_33occ_sphere_80_N_0_10.npy',
+    #           '--length_options', '20', '30', '10',
+    #           '--plot', 'True'])
+    estimate()

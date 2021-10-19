@@ -41,7 +41,9 @@ class Micrograph:
     def load_micrograph(self):
 
         file_extension = pathlib.Path(self.file_path).suffix
-        if file_extension == '.mat':
+        if file_extension == '.npy':
+            mrc = np.load(self.file_path)
+        elif file_extension == '.mat':
             mrc = mat_to_npy(self.file_path)
         elif file_extension == '.mrc':
             mrc = read_mrc(self.file_path)
@@ -52,7 +54,7 @@ class Micrograph:
 
         mrc = self.normalize_noise(mrc)
 
-        if self.downsample:
+        if self.downsample > 0:
             mrc = cryo_downsample(mrc, (self.downsample, self.downsample))
             downsample_factor = (mrc.shape[0] / self.downsample)
             self.noise_std = self.noise_std / downsample_factor

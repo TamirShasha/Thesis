@@ -32,7 +32,9 @@ class LengthEstimator2DVeryWellSeparated:
         self._length_options = length_options
         self._fixed_num_of_occurrences = fixed_num_of_occurrences
         self._noise_mean = noise_mean
+        # self._noise_mean = np.nanmean(data)
         self._noise_std = noise_std
+        # self._noise_std = np.nanstd(data)
         self._filter_basis_size = filter_basis_size
         self._logs = logs
         self._plots = plots
@@ -52,6 +54,20 @@ class LengthEstimator2DVeryWellSeparated:
         #     logger.info(f'Length options after downsample: {self._length_options}')
 
         self.log_prob_all_noise = utils.log_prob_all_is_noise(self._data, self._noise_std)
+
+    def _save_results(self, likelihoods, optimal_coeffs):
+        parameters = {
+            "length_options": self._length_options,
+            "fixed_num_of_occurrences": self._fixed_num_of_occurrences,
+            "noise_mean": self._noise_mean,
+            "noise_std": self._noise_std,
+            "filter_basis_size": self._filter_basis_size
+        }
+
+        results = {
+            "likelihoods": likelihoods,
+            "optimal_coeffs": optimal_coeffs
+        }
 
     def estimate(self):
 
@@ -77,10 +93,12 @@ class LengthEstimator2DVeryWellSeparated:
 
             logger.info(
                 f'For length {self._length_options[i]}, Likelihood={likelihoods[i]}')
-            return likelihoods, optimal_coeffs, est_signal
 
         most_likely_index = np.nanargmax(likelihoods)
         filter_basis = create_filter_basis(self._length_options[most_likely_index], self._filter_basis_size)
         est_signals = filter_basis.T.dot(optimal_coeffs[most_likely_index])
+
+        # if self._save:
+        #     self._save_results(likelihoods, optimal_coeffs)
 
         return likelihoods, optimal_coeffs, est_signals
