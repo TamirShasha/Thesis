@@ -87,7 +87,7 @@ class Experiment2D:
 
         if length_options is None:
             length_options = np.arange(100, 801, 100)
-        self._signal_length_options = length_options
+        self._signal_length_options = np.array(length_options)
 
         if self._estimation_method == EstimationMethod.Curves:
             logger.info(f'Estimating signal length using Curves method')

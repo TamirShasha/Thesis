@@ -169,7 +169,7 @@ class MultipleLengthsEstimator1D:
         likelihood = self._estimate_likelihood(len_dist)
         toc = time.time()
 
-        logger.debug(f'For d = {len_dist.lengths}, k = {self._k}, took {toc - tic} seconds, likelihood={likelihood}\n')
+        logger.debug(f'For d = {len_dist.sizes}, k = {self._k}, took {toc - tic} seconds, likelihood={likelihood}\n')
 
         return likelihood
 
