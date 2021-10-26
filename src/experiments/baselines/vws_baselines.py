@@ -29,6 +29,6 @@ for i, signal_shape in enumerate(SIGNAL_SHAPES):
             simulator=data,
             estimation_method=EstimationMethod.VeryWellSeparated,
             length_options=LENGTH_OPTIONS,
-            plot=True,
+            plot=False,
             save=True
         ).run()
