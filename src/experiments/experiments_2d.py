@@ -35,6 +35,7 @@ class Experiment2D:
                  down_sample_size=1000,
                  fixed_num_of_occurrences=30,
                  estimation_method: EstimationMethod = EstimationMethod.VeryWellSeparated,
+                 estimate_noise=False,
                  plot=True,
                  save=True,
                  save_dir=os.path.join(ROOT_DIR, f'src/experiments/plots/'),
@@ -46,6 +47,7 @@ class Experiment2D:
         self._filter_basis_size = filter_basis_size
         self._fixed_num_of_occurrences = fixed_num_of_occurrences
         self._down_sample_size = down_sample_size
+        self._estimate_noise = estimate_noise
 
         self._plot = plot
         self._save = save
@@ -59,13 +61,18 @@ class Experiment2D:
         pathlib.Path(self.experiment_dir).mkdir(parents=True, exist_ok=True)
 
         if mrc is None:
-            logger.info(f'Simulating data, number of occurrences is {simulator.occurrences}')
             if simulator is None:
                 simulator = DataSimulator2D()
-
             self._data = simulator.simulate()
+
+            logger.info(f'Simulating data, number of occurrences is {simulator.occurrences}')
+
             self._noise_std = simulator.noise_std
             self._noise_mean = simulator.noise_mean
+            if self._estimate_noise:
+                self._noise_std = np.nanstd(self._data)
+                self._noise_mean = np.nanmean(self._data)
+
             self._signal_length = simulator.signal_length
             self._applied_ctf = simulator.apply_ctf
         else:

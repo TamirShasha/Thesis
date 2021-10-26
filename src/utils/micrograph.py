@@ -28,7 +28,7 @@ def write_mrc(file_path, x):
 
 
 def read_mrc(file_path):
-    mrc = np.ascontiguousarray(mrcfile.open(file_path).data.T)
+    mrc = np.ascontiguousarray(mrcfile.open(file_path).simulator.T)
     # mrc /= np.max(mrc)
     return mrc
 
