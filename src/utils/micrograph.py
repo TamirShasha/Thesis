@@ -1,11 +1,36 @@
-import os
 import pathlib
 from enum import Enum
 import numpy as np
+import mrcfile
+import os
+from scipy.io import loadmat
 
 from src.constants import ROOT_DIR
-from src.utils.mrc import read_mrc, mat_to_npy
 from src.algorithms.utils import cryo_downsample
+
+
+def mat_to_npy(file_name):
+    if '.mat' not in file_name:
+        file_name += '.mat'
+    full_mat = loadmat(file_name)
+    key = None
+    for k in full_mat:
+        if '__' not in k:
+            key = k
+    return full_mat[key]
+
+
+def write_mrc(file_path, x):
+    # For now it is transposed, when moving to C aligned this should be removed
+    with mrcfile.new(file_path, overwrite=True) as mrc_fh:
+        mrc_fh.set_data(x.astype('float32').T)
+    return
+
+
+def read_mrc(file_path):
+    mrc = np.ascontiguousarray(mrcfile.open(file_path).data.T)
+    # mrc /= np.max(mrc)
+    return mrc
 
 
 class NoiseNormalizationMethod(Enum):
@@ -65,7 +90,7 @@ class Micrograph:
         if self.noise_normalization_method == NoiseNormalizationMethod.NoNormalization:
             mrc -= self.noise_mean
             mrc /= self.noise_std
-        if self.noise_normalization_method == NoiseNormalizationMethod.Simple:
+        elif self.noise_normalization_method == NoiseNormalizationMethod.Simple:
             mrc -= np.nanmean(mrc)
             mrc /= np.nanstd(mrc)
         else:

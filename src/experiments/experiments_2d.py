@@ -11,8 +11,7 @@ from enum import Enum
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.algorithms.length_estimator_2d_very_well_separated import LengthEstimator2DVeryWellSeparated
-from src.experiments.micrograph import Micrograph
-from src.experiments.particles_projections import PARTICLE_200
+from src.utils.micrograph import Micrograph
 from src.utils.logger import logger
 
 # np.random.seed(501)

@@ -2,7 +2,6 @@ import os
 import numpy as np
 
 from src.constants import ROOT_DIR
-from src.utils.mrc import mat_to_npy
 from src.algorithms.utils import crop
 
 

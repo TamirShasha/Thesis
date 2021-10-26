@@ -1,12 +1,11 @@
 import click
-import time
 import os
 import warnings
 import numpy as np
 
 from src.constants import ROOT_DIR
 from src.experiments.experiments_2d import Experiment2D, EstimationMethod
-from src.experiments.micrograph import Micrograph, NoiseNormalizationMethod
+from src.utils.micrograph import Micrograph, NoiseNormalizationMethod
 
 warnings.filterwarnings('ignore')
 
