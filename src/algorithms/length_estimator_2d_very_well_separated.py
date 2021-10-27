@@ -22,7 +22,6 @@ class LengthEstimator2DVeryWellSeparated:
                  fixed_num_of_occurrences=30,
                  noise_mean=0,
                  noise_std=1,
-                 downsample_to_num_of_rows=1000,
                  filter_basis_size=20,
                  logs=True,
                  plots=False,
@@ -32,26 +31,13 @@ class LengthEstimator2DVeryWellSeparated:
         self._length_options = length_options
         self._fixed_num_of_occurrences = fixed_num_of_occurrences
         self._noise_mean = noise_mean
-        # self._noise_mean = np.nanmean(data)
         self._noise_std = noise_std
-        # self._noise_std = np.nanstd(data)
         self._filter_basis_size = filter_basis_size
         self._logs = logs
         self._plots = plots
         self._save = save
         self._experiment_dir = experiment_dir
-
         self._n = self._data.shape[0]
-        # if self._n > downsample_to_num_of_rows:
-        #     self._downsample_factor = (self._n / downsample_to_num_of_rows)
-        #     self._data = cryo_downsample(self._data, (downsample_to_num_of_rows, downsample_to_num_of_rows))
-        #     self._noise_std = self._noise_std / self._downsample_factor
-        #     self._n = self._data.shape[0]
-        #     if self._plots:
-        #         plt.imshow(self._data, cmap='gray')
-        #         plt.show()
-        #     self._length_options = np.array(np.ceil(self._length_options / self._downsample_factor), dtype=int)
-        #     logger.info(f'Length options after downsample: {self._length_options}')
 
         self.log_prob_all_noise = utils.log_prob_all_is_noise(self._data, self._noise_std)
 

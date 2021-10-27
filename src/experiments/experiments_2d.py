@@ -111,7 +111,6 @@ class Experiment2D:
                                                                         fixed_num_of_occurrences=self._fixed_num_of_occurrences,
                                                                         noise_mean=self._noise_mean,
                                                                         noise_std=self._noise_std,
-                                                                        downsample_to_num_of_rows=self._down_sample_size,
                                                                         filter_basis_size=self._filter_basis_size,
                                                                         logs=self._logs,
                                                                         plots=self._plot,
@@ -153,7 +152,7 @@ class Experiment2D:
 
         if self._mrc is None:
             title += f"Signal power={self._data_simulator.signal_power}, " \
-                     f"Signal area coverage={int(np.round(self._data_simulator.signal_fraction, 2) * 100)}% \n" \
+                     f"Total instances = {self._data_simulator.occurrences}\n" \
                      f"SNR={self._data_simulator.snr}db (MRC-SNR={self._data_simulator.mrc_snr}db), "
         else:
             title += f"MRC={self._mrc.name}\n"
