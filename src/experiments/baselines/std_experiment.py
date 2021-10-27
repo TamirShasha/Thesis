@@ -1,60 +1,33 @@
-import numpy as np
-import matplotlib.pyplot as plt
-from datetime import datetime
-import os
-import pathlib
-
-from src.constants import ROOT_DIR
-from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
+from src.experiments.experiments_2d import Experiment2D, EstimationMethod
 
-TIMES = 20
-LENGTH_OPTIONS = np.concatenate([[50], np.arange(100, 1001, 100)])
-STDS = np.arange(5, 40, 5)
-SIGNAL_LENGTH = 400
+NOISE_MEAN = 0
+NOISE_STD = 10
+LENGTH_OPTIONS = [20, 40, 60, 80, 100, 120, 140, 160]
+SIGNAL_SHAPES = [Shapes2D.disk,
+                 Shapes2D.sphere,
+                 lambda l, p: Shapes2D.ellipse(l, l // 1.7, p),
+                 lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0)]
+sizes = [40, 80, 120]
 
-avg_results = np.zeros_like(STDS)
-for i, std in enumerate(STDS):
-    acc_results = 0
-    for t in range(TIMES):
-        print(f'At experiment #{t + 1} for std {std}')
-
-        data = DataSimulator2D(rows=4000,
-                               columns=4000,
-                               signal_length=SIGNAL_LENGTH,
+for i, signal_shape in enumerate(SIGNAL_SHAPES):
+    print(f'At signal shape #{i + 1}')
+    for signal_size in sizes:
+        data = DataSimulator2D(rows=1000,
+                               columns=1000,
+                               signal_length=signal_size,
                                signal_power=1,
                                signal_fraction=1 / 6,
-                               signal_gen=Shapes2D.sphere,
-                               noise_std=std,
-                               noise_mean=0,
-                               apply_ctf=False).simulate()
+                               signal_gen=signal_shape,
+                               noise_std=NOISE_STD,
+                               noise_mean=NOISE_MEAN,
+                               apply_ctf=False)
 
-        length_estimator = LengthEstimator2DCurvesMethod(data=data,
-                                                         length_options=LENGTH_OPTIONS,
-                                                         signal_filter_gen_1d=lambda d, p=1: np.full(d, p),
-                                                         noise_mean=0,
-                                                         noise_std=std,
-                                                         logs=False)
-
-        likelihoods, most_likely_length, most_likely_power = length_estimator.estimate()
-        acc_results += most_likely_length
-
-    avg_results[i] = acc_results / TIMES
-
-errors = np.abs(avg_results - SIGNAL_LENGTH)
-
-plt.plot(STDS, errors)
-plt.xlabel('Noise STD')
-plt.ylabel('Relative Error')
-
-save_dir = os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/')
-curr_date = str(datetime.now().strftime("%d-%m-%Y"))
-dir_path = os.path.join(save_dir, curr_date)
-pathlib.Path(dir_path).mkdir(parents=True, exist_ok=True)
-
-curr_time = str(datetime.now().strftime("%H-%M-%S"))
-fig_path = os.path.join(dir_path, f'{curr_time}_std_experiment.png')
-plt.savefig(fname=fig_path)
-
-plt.show()
-plt.close()
+        Experiment2D(
+            name=f"baseline_disk",
+            simulator=data,
+            estimation_method=EstimationMethod.VeryWellSeparated,
+            length_options=LENGTH_OPTIONS,
+            plot=False,
+            save=True
+        ).run()
