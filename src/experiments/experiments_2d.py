@@ -151,8 +151,7 @@ class Experiment2D:
                 f"Noise\u007E\u2115({self._noise_mean}, {self._noise_std})\n"
 
         if self._mrc is None:
-            title += f"Signal power={self._data_simulator.signal_power}, " \
-                     f"Total instances = {self._data_simulator.occurrences}\n" \
+            title += f"Total instances = {self._data_simulator.occurrences}\n" \
                      f"SNR={self._data_simulator.snr}db (MRC-SNR={self._data_simulator.mrc_snr}db), "
         else:
             title += f"MRC={self._mrc.name}\n"
