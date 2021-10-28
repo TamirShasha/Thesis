@@ -190,11 +190,11 @@ def __main__():
                                columns=1000,
                                signal_length=80,
                                signal_power=1,
-                               signal_fraction=1 / 6,
+                               signal_fraction=1 / 8,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.sphere,
-                               noise_std=10,
+                               noise_std=8,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -204,9 +204,10 @@ def __main__():
         # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
         simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
-        length_options=np.array([40, 60, 80, 100, 120]),
+        length_options=np.array([80]),
+        fixed_num_of_occurrences=60,
         plot=True,
-        save=True
+        save=False
     ).run()
 
 
