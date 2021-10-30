@@ -204,7 +204,7 @@ def __main__():
         # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
         simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
-        length_options=np.array([80]),
+        length_options=np.array([200]),
         fixed_num_of_occurrences=60,
         plot=False,
         save=False

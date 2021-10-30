@@ -34,10 +34,15 @@ class FilterEstimator2D:
         self.filter_shape = unnormalized_filter_basis[0].shape
         self.filter_basis, self.basis_norms = self.normalize_basis()
 
+        # find max possible instances for given filter size
+        self.max_possible_instances = min(
+            self.num_of_instances,
+            (self.data.shape[0] // self.filter_shape[0]) * (self.data.shape[1] // self.filter_shape[1]))
+
         self.convolved_basis = self.convolve_basis()
-        self.term_one = -self.calc_log_size_s()
+        # self.term_one = -self.calc_log_size_s()
         self.term_two = log_prob_all_is_noise(self.data, 1)
-        self.term_three_const = self.calc_term_three_const()
+        # self.term_three_const = self.calc_term_three_const()
 
     def normalize_basis(self):
         """
@@ -98,17 +103,18 @@ class FilterEstimator2D:
         :return: likelihood mapping
         """
         return calc_mapping_2d(self.data.shape[0],
-                               self.num_of_instances,
+                               self.max_possible_instances,
                                self.filter_shape[0],
                                convolved_filter)
 
     def calc_likelihood(self, filter_coeffs, mapping):
         term1 = -logsumexp_simple(
             np.array([log_size_S_2d_1axis(self.data.shape[0], k + 1, self.filter_shape[0]) for k in
-                      range(self.num_of_instances)]))
+                      range(self.max_possible_instances)]))
         term2 = self.term_two
         term3 = logsumexp_simple(
-            -np.arange(1, self.num_of_instances + 1) / 2 * np.inner(filter_coeffs, filter_coeffs) + mapping[0, 1:])
+            -np.arange(1, self.max_possible_instances + 1) / 2 * np.inner(filter_coeffs, filter_coeffs) + mapping[0,
+                                                                                                          1:])
 
         likelihood = term1 + term2 + term3
         return likelihood
@@ -148,8 +154,8 @@ class FilterEstimator2D:
 
         # import matplotlib.pyplot as plt
         # term_ones = np.array([log_size_S_2d_1axis(self.data.shape[0], k + 1, self.filter_shape[0]) for k in
-        #                       range(self.num_of_instances)])
-        # term_threes = -np.arange(1, self.num_of_instances + 1) / 2
+        #                       range(self.max_possible_instances)])
+        # term_threes = -np.arange(1, self.max_possible_instances + 1) / 2
         # likelihoods = -term_ones + self.term_two + term_threes * np.inner(filter_coeffs, filter_coeffs) + mapping[0, 1:]
         # plt.plot(likelihoods)
         # plt.show()
@@ -169,8 +175,8 @@ class FilterEstimator2D:
         :return: likelihood value and optimal unnormalized filter coefficient (can be used on user basis)
         """
 
-        if self.term_one == np.inf:
-            return -np.inf, np.zeros(self.filter_basis_size)
+        # if self.term_one == np.inf:
+        #     return -np.inf, np.zeros(self.filter_basis_size)
 
         initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-2, 100
         likelihood, normalized_optimal_coeffs = _gradient_descent(self.calc_likelihood_and_gradient, initial_coeffs, t,
