@@ -4,6 +4,7 @@ from skimage.draw import disk
 
 from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, log_prob_all_is_noise, \
     _gradient_descent, gram_schmidt
+from src.utils.logsumexp import logsumexp_simple
 
 
 class FilterEstimator2D:
@@ -101,6 +102,17 @@ class FilterEstimator2D:
                                self.filter_shape[0],
                                convolved_filter)
 
+    def calc_likelihood(self, filter_coeffs, mapping):
+        term1 = -logsumexp_simple(
+            np.array([log_size_S_2d_1axis(self.data.shape[0], k + 1, self.filter_shape[0]) for k in
+                      range(self.num_of_instances)]))
+        term2 = self.term_two
+        term3 = logsumexp_simple(
+            -np.arange(1, self.num_of_instances + 1) / 2 * np.inner(filter_coeffs, filter_coeffs) + mapping[0, 1:])
+
+        likelihood = term1 + term2 + term3
+        return likelihood
+
     def calc_gradient_discrete(self, filter_coeffs, likelihood):
         """
         calculate gradient with respect to each filter coefficient
@@ -115,11 +127,13 @@ class FilterEstimator2D:
             filter_coeffs_perturbation = filter_coeffs + np.eye(1, self.filter_basis_size, i)[0] * eps
             convolved_filter = self.calc_convolved_filter(filter_coeffs_perturbation)
             mapping = self.calc_mapping(convolved_filter)
-            likelihood_perturbation = mapping[0, -1] + \
-                                      self.term_one + \
-                                      self.term_two + \
-                                      self.term_three_const * np.inner(filter_coeffs_perturbation,
-                                                                       filter_coeffs_perturbation)
+
+            likelihood_perturbation = self.calc_likelihood(filter_coeffs_perturbation, mapping)
+            # likelihood_perturbation = mapping[0, -1] + \
+            #                           self.term_one + \
+            #                           self.term_two + \
+            #                           self.term_three_const * np.inner(filter_coeffs_perturbation,
+            #                                                            filter_coeffs_perturbation)
             gradient[i] = (likelihood_perturbation - likelihood) / eps
 
         return gradient
@@ -132,18 +146,19 @@ class FilterEstimator2D:
         convolved_filter = self.calc_convolved_filter(filter_coeffs)
         mapping = self.calc_mapping(convolved_filter)
 
-        import matplotlib.pyplot as plt
-        term_ones = np.array([-log_size_S_2d_1axis(self.data.shape[0], k + 1, self.filter_shape[0]) for k in
-                              range(self.num_of_instances)])
-        term_threes = -np.arange(1, self.num_of_instances + 1) / 2
-        likelihoods = term_ones + self.term_two + term_threes * np.inner(filter_coeffs, filter_coeffs) + mapping[0, 1:]
-        plt.plot(likelihoods)
-        plt.show()
+        # import matplotlib.pyplot as plt
+        # term_ones = np.array([log_size_S_2d_1axis(self.data.shape[0], k + 1, self.filter_shape[0]) for k in
+        #                       range(self.num_of_instances)])
+        # term_threes = -np.arange(1, self.num_of_instances + 1) / 2
+        # likelihoods = -term_ones + self.term_two + term_threes * np.inner(filter_coeffs, filter_coeffs) + mapping[0, 1:]
+        # plt.plot(likelihoods)
+        # plt.show()
 
-        likelihood = self.term_one + \
-                     self.term_two + \
-                     self.term_three_const * np.inner(filter_coeffs, filter_coeffs) + \
-                     mapping[0, self.num_of_instances]
+        # likelihood = self.term_one + \
+        #              self.term_two + \
+        #              self.term_three_const * np.inner(filter_coeffs, filter_coeffs) + \
+        #              mapping[0, self.num_of_instances]
+        likelihood = self.calc_likelihood(filter_coeffs, mapping)
         gradient = self.calc_gradient_discrete(filter_coeffs, likelihood)
 
         return likelihood, gradient

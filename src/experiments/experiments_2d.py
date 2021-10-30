@@ -206,7 +206,7 @@ def __main__():
         estimation_method=EstimationMethod.VeryWellSeparated,
         length_options=np.array([80]),
         fixed_num_of_occurrences=60,
-        plot=True,
+        plot=False,
         save=False
     ).run()
 
