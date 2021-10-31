@@ -42,7 +42,7 @@ class FilterEstimator2D:
         self.convolved_basis = self.convolve_basis()
 
         self.term_one = -logsumexp_simple(
-            np.array([self.calc_log_size_s(k) for k in range(self.max_possible_instances)]))
+            np.array([self.calc_log_size_s(k + 1) for k in range(self.max_possible_instances)]))
         self.term_two = log_prob_all_is_noise(self.data, 1)
         self.term_three_const = self.calc_term_three_const()
 
@@ -111,13 +111,8 @@ class FilterEstimator2D:
                                convolved_filter)
 
     def calc_likelihood(self, filter_coeffs, mapping):
-        term1 = -logsumexp_simple(
-            np.array([log_size_S_2d_1axis(self.data.shape[0], k + 1, self.filter_shape[0]) for k in
-                      range(self.max_possible_instances)]))
-        term2 = self.term_two
-        term3 = logsumexp_simple(self.term_three_const * np.inner(filter_coeffs, filter_coeffs) + mapping[0, 1:])
-
-        likelihood = term1 + term2 + term3
+        term_three = logsumexp_simple(self.term_three_const * np.inner(filter_coeffs, filter_coeffs) + mapping[0, 1:])
+        likelihood = self.term_one + self.term_two + term_three
         return likelihood
 
     def calc_gradient_discrete(self, filter_coeffs, likelihood):
@@ -152,14 +147,6 @@ class FilterEstimator2D:
 
         convolved_filter = self.calc_convolved_filter(filter_coeffs)
         mapping = self.calc_mapping(convolved_filter)
-
-        # import matplotlib.pyplot as plt
-        # term_ones = np.array([log_size_S_2d_1axis(self.data.shape[0], k + 1, self.filter_shape[0]) for k in
-        #                       range(self.max_possible_instances)])
-        # term_threes = -np.arange(1, self.max_possible_instances + 1) / 2
-        # likelihoods = -term_ones + self.term_two + term_threes * np.inner(filter_coeffs, filter_coeffs) + mapping[0, 1:]
-        # plt.plot(likelihoods)
-        # plt.show()
 
         # likelihood = self.term_one + \
         #              self.term_two + \

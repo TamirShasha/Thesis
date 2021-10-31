@@ -188,13 +188,13 @@ class Experiment2D:
 def __main__():
     sim_data = DataSimulator2D(rows=1000,
                                columns=1000,
-                               signal_length=80,
+                               signal_length=60,
                                signal_power=1,
-                               signal_fraction=1 / 8,
+                               signal_fraction=1 / 6,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
-                               signal_gen=Shapes2D.sphere,
-                               noise_std=8,
+                               signal_gen=Shapes2D.disk,
+                               noise_std=1,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -204,8 +204,9 @@ def __main__():
         # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
         simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
-        length_options=np.array([200]),
-        fixed_num_of_occurrences=60,
+        length_options=np.array([60]),
+        fixed_num_of_occurrences=100,
+        filter_basis_size=7,
         plot=False,
         save=False
     ).run()

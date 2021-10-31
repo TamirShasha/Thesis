@@ -6,10 +6,12 @@ from src.experiments.experiments_2d import Experiment2D, EstimationMethod
 
 NOISE_MEAN = 0
 NOISE_STD = 8
-LENGTH_OPTIONS = [80, 100, 120, 140]
+LENGTH_OPTIONS = [20, 40, 60, 80, 100, 120, 140, 160]
 SIGNAL_SHAPES = [(Shapes2D.disk, 'disk'),
-                 (Shapes2D.sphere, 'sphere')]
-sizes = [100, 120]
+                 (Shapes2D.sphere, 'sphere'),
+                 (lambda l, p: Shapes2D.ellipse(l, l // 1.7, p), 'ellipse'),
+                 (lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0), 'ring')]
+sizes = [40, 120]
 
 for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
     for signal_size in sizes:
@@ -27,8 +29,8 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             name=f"{shape_name}_{signal_size}",
             simulator=data_simulator,
             estimation_method=EstimationMethod.VeryWellSeparated,
-            filter_basis_size=10,
-            fixed_num_of_occurrences=30,
+            filter_basis_size=20,
+            fixed_num_of_occurrences=80,
             length_options=LENGTH_OPTIONS,
             plot=False,
             save=True,
