@@ -178,7 +178,7 @@ class FilterEstimator2D:
         # if self.term_one == np.inf:
         #     return -np.inf, np.zeros(self.filter_basis_size)
 
-        initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-2, 100
+        initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-2, 20
         likelihood, normalized_optimal_coeffs = _gradient_descent(self.calc_likelihood_and_gradient, initial_coeffs, t,
                                                                   epsilon, max_iter, concave=True)
 
