@@ -11,7 +11,7 @@ SIGNAL_SHAPES = [(Shapes2D.disk, 'disk'),
                  (Shapes2D.sphere, 'sphere'),
                  (lambda l, p: Shapes2D.ellipse(l, l // 1.7, p), 'ellipse'),
                  (lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0), 'ring')]
-sizes = [40, 120]
+sizes = [40, 60, 80, 100, 120]
 
 for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
     for signal_size in sizes:
