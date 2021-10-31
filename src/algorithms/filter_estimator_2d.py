@@ -40,9 +40,11 @@ class FilterEstimator2D:
             (self.data.shape[0] // self.filter_shape[0]) * (self.data.shape[1] // self.filter_shape[1]))
 
         self.convolved_basis = self.convolve_basis()
-        # self.term_one = -self.calc_log_size_s()
+
+        self.term_one = -logsumexp_simple(
+            np.array([self.calc_log_size_s(k) for k in range(self.max_possible_instances)]))
         self.term_two = log_prob_all_is_noise(self.data, 1)
-        # self.term_three_const = self.calc_term_three_const()
+        self.term_three_const = self.calc_term_three_const()
 
     def normalize_basis(self):
         """
@@ -57,15 +59,16 @@ class FilterEstimator2D:
 
         return normalized_basis, basis_norms
 
-    def calc_log_size_s(self):
-        return log_size_S_2d_1axis(self.data.shape[0], self.num_of_instances, self.filter_shape[0])
+    def calc_log_size_s(self, k):
+        return log_size_S_2d_1axis(self.data.shape[0], k, self.filter_shape[0])
 
     def calc_term_three_const(self):
         """
         The 3rd term of the likelihood function
         """
-        term = -self.num_of_instances / 2
-        return term
+        return -np.arange(1, self.max_possible_instances + 1) / 2
+        # term = -self.num_of_instances / 2
+        # return term
 
     def convolve_basis_element(self, filter_element):
         """
@@ -112,9 +115,7 @@ class FilterEstimator2D:
             np.array([log_size_S_2d_1axis(self.data.shape[0], k + 1, self.filter_shape[0]) for k in
                       range(self.max_possible_instances)]))
         term2 = self.term_two
-        term3 = logsumexp_simple(
-            -np.arange(1, self.max_possible_instances + 1) / 2 * np.inner(filter_coeffs, filter_coeffs) + mapping[0,
-                                                                                                          1:])
+        term3 = logsumexp_simple(self.term_three_const * np.inner(filter_coeffs, filter_coeffs) + mapping[0, 1:])
 
         likelihood = term1 + term2 + term3
         return likelihood

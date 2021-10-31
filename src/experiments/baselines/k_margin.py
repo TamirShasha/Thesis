@@ -27,10 +27,10 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             name=f"{shape_name}_{signal_size}",
             simulator=data_simulator,
             estimation_method=EstimationMethod.VeryWellSeparated,
-            filter_basis_size=5,
+            filter_basis_size=10,
             fixed_num_of_occurrences=30,
             length_options=LENGTH_OPTIONS,
-            plot=True,
+            plot=False,
             save=True,
             save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/k_margin/')
         ).run()
