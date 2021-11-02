@@ -23,6 +23,7 @@ class LengthEstimator2DVeryWellSeparated:
                  noise_mean=0,
                  noise_std=1,
                  filter_basis_size=20,
+                 particles_margin=0.01,
                  logs=True,
                  plots=False,
                  save=False,
@@ -33,6 +34,7 @@ class LengthEstimator2DVeryWellSeparated:
         self._noise_mean = noise_mean
         self._noise_std = noise_std
         self._filter_basis_size = filter_basis_size
+        self._particles_margin = particles_margin
         self._logs = logs
         self._plots = plots
         self._save = save
@@ -57,11 +59,20 @@ class LengthEstimator2DVeryWellSeparated:
 
     def estimate(self):
 
+        margin = int(self._particles_margin * self._data.shape[0]) // 2
+        logger.info(f'Particles margin is {margin} pixels')
+
         likelihoods = np.zeros(len(self._length_options))
         optimal_coeffs = np.zeros(shape=(len(self._length_options), self._filter_basis_size))
         for i, length in enumerate(self._length_options):
 
+            logger.info(f'Estimating likelihood for size={length}')
+
             filter_basis = create_filter_basis(length, self._filter_basis_size)
+            filter_basis = np.array(
+                [np.pad(x, ((margin, margin), (margin, margin)), 'constant', constant_values=((0, 0), (0, 0)))
+                 for x in filter_basis])
+
             filter_estimator = FilterEstimator2D(self._data,
                                                  filter_basis,
                                                  self._fixed_num_of_occurrences,
