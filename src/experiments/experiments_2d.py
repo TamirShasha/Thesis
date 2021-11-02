@@ -34,6 +34,7 @@ class Experiment2D:
                  filter_basis_size=20,
                  down_sample_size=1000,
                  fixed_num_of_occurrences=30,
+                 particles_margin=0.01,
                  estimation_method: EstimationMethod = EstimationMethod.VeryWellSeparated,
                  estimate_noise=False,
                  plot=True,
@@ -48,6 +49,7 @@ class Experiment2D:
         self._fixed_num_of_occurrences = fixed_num_of_occurrences
         self._down_sample_size = down_sample_size
         self._estimate_noise = estimate_noise
+        self._particles_margin = particles_margin
 
         self._plot = plot
         self._save = save
@@ -112,6 +114,7 @@ class Experiment2D:
                                                                         noise_mean=self._noise_mean,
                                                                         noise_std=self._noise_std,
                                                                         filter_basis_size=self._filter_basis_size,
+                                                                        particles_margin=self._particles_margin,
                                                                         logs=self._logs,
                                                                         plots=self._plot,
                                                                         save=self._save,
