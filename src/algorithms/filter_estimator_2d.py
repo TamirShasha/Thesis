@@ -2,6 +2,7 @@ import numpy as np
 from scipy.signal import convolve
 from skimage.draw import disk
 
+from src.utils.logger import logger
 from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, log_prob_all_is_noise, \
     _gradient_descent, gram_schmidt
 from src.utils.logsumexp import logsumexp_simple
@@ -14,7 +15,8 @@ class FilterEstimator2D:
                  unnormalized_filter_basis: np.ndarray,
                  num_of_instances: int,
                  noise_std=1.,
-                 noise_mean=0.):
+                 noise_mean=0.,
+                 logs=True):
         """
         initialize the filter estimator
         :param unnormalized_data: 1d data
@@ -38,6 +40,7 @@ class FilterEstimator2D:
         self.max_possible_instances = min(
             self.num_of_instances,
             (self.data.shape[0] // self.filter_shape[0]) * (self.data.shape[1] // self.filter_shape[1]))
+        logger.info(f'Maximum possible instances for size={self.filter_shape[0]} is {self.max_possible_instances}')
 
         self.convolved_basis = self.convolve_basis()
 
