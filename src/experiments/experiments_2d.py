@@ -194,13 +194,13 @@ np.random.seed(500)
 def __main__():
     sim_data = DataSimulator2D(rows=1000,
                                columns=1000,
-                               signal_length=120,
+                               signal_length=40,
                                signal_power=1,
                                signal_fraction=1 / 6,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.disk,
-                               noise_std=.1,
+                               noise_std=8,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -210,6 +210,7 @@ def __main__():
         estimation_method=EstimationMethod.VeryWellSeparated,
         length_options=np.array([40, 60, 80, 100, 120, 140]),
         fixed_num_of_occurrences=100,
+        particles_margin=0.01,
         filter_basis_size=1,
         plot=True,
         save=True

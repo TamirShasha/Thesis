@@ -60,7 +60,7 @@ class LengthEstimator2DVeryWellSeparated:
     def estimate(self):
 
         margin = int(self._particles_margin * self._data.shape[0]) // 2
-        logger.info(f'Particles margin is {margin} pixels')
+        logger.info(f'Particles margin is {margin * 2} pixels')
 
         likelihoods = np.zeros(len(self._length_options))
         optimal_coeffs = np.zeros(shape=(len(self._length_options), self._filter_basis_size))
