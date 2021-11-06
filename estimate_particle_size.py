@@ -69,7 +69,7 @@ def estimate(name, mrc_path, length_options, estimation_method, num_of_occurrenc
                               length_options=length_options,
                               filter_basis_size=filter_basis_size,
                               down_sample_size=down_sample_size,
-                              fixed_num_of_occurrences=num_of_occurrences,
+                              num_of_instances_range=num_of_occurrences,
                               estimation_method=estimation_method,
                               plot=plot,
                               save=save,

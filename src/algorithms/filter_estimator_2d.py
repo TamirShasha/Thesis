@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.signal import convolve
 from skimage.draw import disk
+import matplotlib.pyplot as plt
+import os
 
 from src.utils.logger import logger
 from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, log_prob_all_is_noise, \
@@ -13,9 +15,13 @@ class FilterEstimator2D:
     def __init__(self,
                  unnormalized_data: np.ndarray,
                  unnormalized_filter_basis: np.ndarray,
-                 num_of_instances: int,
+                 num_of_instances_range: (int, int),
                  noise_std=1.,
                  noise_mean=0.,
+                 signal_margin=0,
+                 estimate_locations_and_num_of_instances=False,
+                 experiment_dir=None,
+                 plots=False,
                  logs=True):
         """
         initialize the filter estimator
@@ -28,24 +34,39 @@ class FilterEstimator2D:
 
         self.unnormalized_data = unnormalized_data
         self.unnormalized_filter_basis = unnormalized_filter_basis
-        self.num_of_instances = num_of_instances
+        self.num_of_instances_range = num_of_instances_range
         self.noise_std = noise_std
+        self.particle_margin = signal_margin
+        self.estimate_locations_and_num_of_instances = estimate_locations_and_num_of_instances
+        if estimate_locations_and_num_of_instances and experiment_dir is None:
+            raise Exception('Must provide experiment_dir for saving location')
+        self.experiment_dir = experiment_dir
+        self.plots = plots
 
         self.data = (unnormalized_data - noise_mean) / noise_std
         self.filter_basis_size = len(unnormalized_filter_basis)
-        self.filter_shape = unnormalized_filter_basis[0].shape
-        self.filter_basis, self.basis_norms = self.normalize_basis()
+        self.unmarginized_filter_basis, self.basis_norms = self.normalize_basis()
+        self.signal_size = self.unmarginized_filter_basis[0].shape[0]
+
+        # apply signal margin on filter basis
+        self.filter_basis = np.array(
+            [np.pad(x, ((self.particle_margin, self.particle_margin), (self.particle_margin, self.particle_margin)),
+                    'constant', constant_values=((0, 0), (0, 0)))
+             for x in self.unmarginized_filter_basis])
+        self.signal_support = self.filter_basis[0].shape[0]
 
         # find max possible instances for given filter size
         self.max_possible_instances = min(
-            self.num_of_instances,
-            (self.data.shape[0] // self.filter_shape[0]) * (self.data.shape[1] // self.filter_shape[1]))
-        logger.info(f'Maximum possible instances for size={self.filter_shape[0]} is {self.max_possible_instances}')
+            self.num_of_instances_range[1],
+            (self.data.shape[0] // self.signal_support) * (self.data.shape[1] // self.signal_support))
+        logger.info(f'Maximum possible instances for size={self.signal_size} is {self.max_possible_instances}')
+        self.min_possible_instances = self.num_of_instances_range[0]
 
         self.convolved_basis = self.convolve_basis()
 
         self.term_one = -logsumexp_simple(
-            np.array([self.calc_log_size_s(k + 1) for k in range(self.max_possible_instances)]))
+            np.array([self.calc_log_size_s(k) for k in
+                      np.arange(self.min_possible_instances, self.max_possible_instances + 1)]))
         self.term_two = log_prob_all_is_noise(self.data, 1)
         self.term_three_const = self.calc_term_three_const()
 
@@ -63,15 +84,13 @@ class FilterEstimator2D:
         return normalized_basis, basis_norms
 
     def calc_log_size_s(self, k):
-        return log_size_S_2d_1axis(self.data.shape[0], k, self.filter_shape[0])
+        return log_size_S_2d_1axis(self.data.shape[0], k, self.signal_support)
 
     def calc_term_three_const(self):
         """
         The 3rd term of the likelihood function
         """
-        return -np.arange(1, self.max_possible_instances + 1) / 2
-        # term = -self.num_of_instances / 2
-        # return term
+        return -np.arange(self.min_possible_instances, self.max_possible_instances + 1) / 2
 
     def convolve_basis_element(self, filter_element):
         """
@@ -89,8 +108,8 @@ class FilterEstimator2D:
         :return: (T, n-d, m-d) array where T is basis size, n is #rows, m is #columns
         """
         constants = np.zeros(shape=(self.filter_basis_size,
-                                    self.data.shape[0] - self.filter_shape[0] + 1,
-                                    self.data.shape[1] - self.filter_shape[1] + 1))
+                                    self.data.shape[0] - self.signal_support + 1,
+                                    self.data.shape[1] - self.signal_support + 1))
         for i, fil in enumerate(self.filter_basis):
             constants[i] = self.convolve_basis_element(fil)
         return constants
@@ -110,11 +129,12 @@ class FilterEstimator2D:
         """
         return calc_mapping_2d(self.data.shape[0],
                                self.max_possible_instances,
-                               self.filter_shape[0],
+                               self.signal_support,
                                convolved_filter)
 
     def calc_likelihood(self, filter_coeffs, mapping):
-        term_three = logsumexp_simple(self.term_three_const * np.inner(filter_coeffs, filter_coeffs) + mapping[0, 1:])
+        term_three = logsumexp_simple(
+            self.term_three_const * np.inner(filter_coeffs, filter_coeffs) + mapping[0, self.min_possible_instances:])
         likelihood = self.term_one + self.term_two + term_three
         return likelihood
 
@@ -132,13 +152,7 @@ class FilterEstimator2D:
             filter_coeffs_perturbation = filter_coeffs + np.eye(1, self.filter_basis_size, i)[0] * eps
             convolved_filter = self.calc_convolved_filter(filter_coeffs_perturbation)
             mapping = self.calc_mapping(convolved_filter)
-
             likelihood_perturbation = self.calc_likelihood(filter_coeffs_perturbation, mapping)
-            # likelihood_perturbation = mapping[0, -1] + \
-            #                           self.term_one + \
-            #                           self.term_two + \
-            #                           self.term_three_const * np.inner(filter_coeffs_perturbation,
-            #                                                            filter_coeffs_perturbation)
             gradient[i] = (likelihood_perturbation - likelihood) / eps
 
         return gradient
@@ -150,11 +164,6 @@ class FilterEstimator2D:
 
         convolved_filter = self.calc_convolved_filter(filter_coeffs)
         mapping = self.calc_mapping(convolved_filter)
-
-        # likelihood = self.term_one + \
-        #              self.term_two + \
-        #              self.term_three_const * np.inner(filter_coeffs, filter_coeffs) + \
-        #              mapping[0, self.num_of_instances]
         likelihood = self.calc_likelihood(filter_coeffs, mapping)
         gradient = self.calc_gradient_discrete(filter_coeffs, likelihood)
 
@@ -165,27 +174,46 @@ class FilterEstimator2D:
         Estimate optimal the match filter using given data samples and with respect to given filter basis
         :return: likelihood value and optimal unnormalized filter coefficient (can be used on user basis)
         """
-
-        # if self.term_one == np.inf:
-        #     return -np.inf, np.zeros(self.filter_basis_size)
-
         initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-2, 100
         likelihood, normalized_optimal_coeffs = _gradient_descent(self.calc_likelihood_and_gradient, initial_coeffs, t,
                                                                   epsilon, max_iter, concave=True)
 
         optimal_coeffs = normalized_optimal_coeffs * self.noise_std / self.basis_norms
 
-        # convolved_filter = self.calc_convolved_filter(normalized_optimal_coeffs)
-        # self.find_optimal_signals_locations(convolved_filter, 14*3)
+        if self.estimate_locations_and_num_of_instances:
+            convolved_filter = self.calc_convolved_filter(normalized_optimal_coeffs)
+            k = self.estimate_most_likely_num_of_instances(optimal_coeffs, convolved_filter)
+            logger.info(f'For size {self.signal_size} most likely k is {k}')
+            self.find_optimal_signals_locations(convolved_filter, k)
+
+            plt.imshow(self.filter_basis.T.dot(optimal_coeffs), cmap='gray')
+            plt.colorbar()
+            fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_matched_filter.png')
+            plt.savefig(fname=fig_path)
+            plt.close()
 
         return likelihood, optimal_coeffs
 
+    def estimate_most_likely_num_of_instances(self, filter_coeffs, convolved_filter):
+        mapping = self.calc_mapping(convolved_filter)
+        term_two = self.term_three_const * np.inner(filter_coeffs, filter_coeffs)
+        term_three = mapping[0, self.min_possible_instances:]
+        likelihoods = self.term_one + term_two + term_three
+
+        most_likely_num_of_instances = np.nanargmax(likelihoods) + self.min_possible_instances
+
+        plt.title(f'Most likeliy number of instances for size {self.signal_size} is {most_likely_num_of_instances}')
+        plt.plot(np.arange(self.min_possible_instances, self.max_possible_instances + 1), likelihoods)
+        fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_instances_likelihoods.png')
+        plt.savefig(fname=fig_path)
+        plt.close()
+
+        return most_likely_num_of_instances
+
     def find_optimal_signals_locations(self, convolved_filter, num_of_instances):
 
-        n, m, k, d = self.data.shape[0], convolved_filter.shape[0], num_of_instances, self.filter_shape[0]
+        n, m, k, d = self.data.shape[0], convolved_filter.shape[0], num_of_instances, self.signal_support
         max_k_in_row = min(n // d, k)
-
-        print('0')
 
         # maximum likelihood for each row
         rows_best_loc_probs = np.full((m, n + 1, k + 1), -np.inf)
@@ -199,8 +227,6 @@ class FilterEstimator2D:
                         rows_best_loc_probs[row, i, curr_k] = curr_prob
                     else:
                         rows_best_loc_probs[row, i, curr_k] = prev_prob
-
-        print('1')
 
         rows_head_best_loc_probs = rows_best_loc_probs[:, 0, :]
 
@@ -217,8 +243,6 @@ class FilterEstimator2D:
                 best_ks[row, curr_k] = best_k
                 best_loc_probs[row, curr_k] = probs[best_k]
 
-        print('2')
-
         rows_and_number_of_instances = []
         left = k
         i = 0
@@ -231,18 +255,14 @@ class FilterEstimator2D:
             else:
                 i += 1
 
-        print('3')
-
         locations = []
         for (row, num) in rows_and_number_of_instances:
             pivot_idx = 0
-            for k in np.arange(num, 0, -1):
-                x = rows_best_loc_probs[row, pivot_idx:, k]
+            for j in np.arange(num, 0, -1):
+                x = rows_best_loc_probs[row, pivot_idx:, j]
                 idx = np.flatnonzero(np.diff(x[:n - num * d + 1]))[0]
                 locations.append((pivot_idx + idx, row))
                 pivot_idx += idx + d
-
-        print('4')
 
         import matplotlib.pyplot as plt
         import matplotlib.patches as patches
@@ -251,7 +271,7 @@ class FilterEstimator2D:
         fig, ax = plt.subplots()
 
         # Display the image
-        ax.imshow(self.data)
+        ax.imshow(self.data, cmap='gray')
 
         # Create a Rectangle patch
         for loc in locations:
@@ -259,17 +279,11 @@ class FilterEstimator2D:
             # Add the patch to the Axes
             ax.add_patch(rect)
 
-        plt.show()
-
-        # plt.imshow(best_ks)
-        # plt.colorbar()
-        # plt.show()
-        # plt.imshow(convolved_filter)
-        # plt.show()
-        # plt.imshow(rows_best_loc_probs[:, :m, 1])
-        # plt.show()
-
-        print()
+        fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_locations.png')
+        plt.title(f'Likely locations for size {self.signal_size}\n'
+                  f'Likely number of instances is {k}')
+        plt.savefig(fname=fig_path)
+        plt.close()
 
 
 def create_filter_basis(filter_length, basis_size, basis_type='chebyshev'):

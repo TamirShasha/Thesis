@@ -31,7 +31,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             estimation_method=EstimationMethod.VeryWellSeparated,
             estimate_noise=True,
             length_options=LENGTH_OPTIONS,
-            fixed_num_of_occurrences=int(0.8 * data_simulator.occurrences),
+            num_of_instances_range=int(0.8 * data_simulator.occurrences),
             plot=False,
             save=True,
             save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/fixed_num_of_instances/')
