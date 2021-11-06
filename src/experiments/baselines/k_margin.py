@@ -6,17 +6,17 @@ from src.experiments.experiments_2d import Experiment2D, EstimationMethod
 
 NOISE_MEAN = 0
 NOISE_STD = 8
-LENGTH_OPTIONS = [20, 40, 60, 80, 100, 120, 140, 160]
+LENGTH_OPTIONS = [50, 75, 100, 200, 300, 400, 500]
 SIGNAL_SHAPES = [(Shapes2D.disk, 'disk'),
                  (Shapes2D.sphere, 'sphere'),
                  (lambda l, p: Shapes2D.ellipse(l, l // 1.7, p), 'ellipse'),
                  (lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0), 'ring')]
-sizes = [40, 60, 80, 100, 120]
+sizes = [75, 100, 200, 300, 400]
 
 for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
     for signal_size in sizes:
-        data_simulator = DataSimulator2D(rows=1000,
-                                         columns=1000,
+        data_simulator = DataSimulator2D(rows=2000,
+                                         columns=2000,
                                          signal_length=signal_size,
                                          signal_power=1,
                                          signal_fraction=1 / 6,
@@ -28,11 +28,14 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
         Experiment2D(
             name=f"{shape_name}_{signal_size}",
             simulator=data_simulator,
+            length_options=LENGTH_OPTIONS,
             estimation_method=EstimationMethod.VeryWellSeparated,
             filter_basis_size=20,
-            num_of_instances_range=80,
-            length_options=LENGTH_OPTIONS,
+            num_of_instances_range=(20, 100),
+            estimate_noise=False,
+            estimate_locations_and_num_of_instances=True,
+            particles_margin=0.01,
             plot=False,
             save=True,
-            save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/k_margin/')
+            save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/k_margin_v2/')
         ).run()
