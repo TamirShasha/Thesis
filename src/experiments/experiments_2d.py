@@ -154,7 +154,11 @@ class Experiment2D:
                 f"Noise\u007E\u2115({self._noise_mean}, {self._noise_std})\n"
 
         if self._mrc is None:
-            title += f"Total instances = {self._data_simulator.occurrences}\n" \
+            title += f"Total instances = {self._data_simulator.occurrences}, " \
+                     f"Given fixed number = {self._fixed_num_of_occurrences}, " \
+                     f"Basis size = {self._filter_basis_size}\n" \
+                     f"Noise estimation = {self._estimate_noise}, " \
+                     f"Particles seperation = {self._particles_margin}\n" \
                      f"SNR={self._data_simulator.snr}db (MRC-SNR={self._data_simulator.mrc_snr}db), "
         else:
             title += f"MRC={self._mrc.name}\n"
@@ -188,18 +192,18 @@ class Experiment2D:
         plt.close()
 
 
-np.random.seed(500)
+# np.random.seed(500)
 
 
 def __main__():
     sim_data = DataSimulator2D(rows=1000,
                                columns=1000,
-                               signal_length=40,
+                               signal_length=80,
                                signal_power=1,
                                signal_fraction=1 / 6,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
-                               signal_gen=Shapes2D.disk,
+                               signal_gen=Shapes2D.sphere,
                                noise_std=8,
                                noise_mean=0,
                                apply_ctf=False)
@@ -208,10 +212,11 @@ def __main__():
         name=f"expy",
         simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
-        length_options=np.array([40, 60, 80, 100, 120, 140]),
+        length_options=np.array([60, 80, 100, 120]),
         fixed_num_of_occurrences=100,
-        particles_margin=0.01,
-        filter_basis_size=1,
+        estimate_noise=False,
+        particles_margin=0,
+        filter_basis_size=5,
         plot=True,
         save=True
     ).run()

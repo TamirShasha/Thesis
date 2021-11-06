@@ -100,7 +100,7 @@ class FilterEstimator2D:
         :param filter_coeffs: coefficients for the filter basis
         :return: the dot product between relevant data sample and filter
         """
-        convolved_filter = np.inner(self.convolved_basis.T, filter_coeffs)
+        convolved_filter = np.inner(self.convolved_basis.T, filter_coeffs).T
         return convolved_filter
 
     def calc_mapping(self, convolved_filter):
@@ -169,12 +169,107 @@ class FilterEstimator2D:
         # if self.term_one == np.inf:
         #     return -np.inf, np.zeros(self.filter_basis_size)
 
-        initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-2, 20
+        initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-2, 100
         likelihood, normalized_optimal_coeffs = _gradient_descent(self.calc_likelihood_and_gradient, initial_coeffs, t,
                                                                   epsilon, max_iter, concave=True)
 
         optimal_coeffs = normalized_optimal_coeffs * self.noise_std / self.basis_norms
+
+        # convolved_filter = self.calc_convolved_filter(normalized_optimal_coeffs)
+        # self.find_optimal_signals_locations(convolved_filter, 14*3)
+
         return likelihood, optimal_coeffs
+
+    def find_optimal_signals_locations(self, convolved_filter, num_of_instances):
+
+        n, m, k, d = self.data.shape[0], convolved_filter.shape[0], num_of_instances, self.filter_shape[0]
+        max_k_in_row = min(n // d, k)
+
+        print('0')
+
+        # maximum likelihood for each row
+        rows_best_loc_probs = np.full((m, n + 1, k + 1), -np.inf)
+        rows_best_loc_probs[:, :, 0] = 0
+        for row in range(m):
+            for curr_k in range(1, max_k_in_row + 1):
+                for i in range(n - curr_k * d, -1, -1):
+                    curr_prob = convolved_filter[row, i] + rows_best_loc_probs[row, i + d, curr_k - 1]
+                    prev_prob = rows_best_loc_probs[row, i + 1, curr_k]
+                    if curr_prob > prev_prob:
+                        rows_best_loc_probs[row, i, curr_k] = curr_prob
+                    else:
+                        rows_best_loc_probs[row, i, curr_k] = prev_prob
+
+        print('1')
+
+        rows_head_best_loc_probs = rows_best_loc_probs[:, 0, :]
+
+        best_loc_probs = np.full((n, k + 1), -np.inf)
+        best_loc_probs[m - 1] = rows_head_best_loc_probs[m - 1]
+        best_loc_probs[:, 0] = 0
+        best_ks = np.zeros(shape=(m, k + 1), dtype=int)
+        for row in np.arange(m - 2, -1, -1):
+            for curr_k in range(1, k + 1):
+                probs = [rows_head_best_loc_probs[row, k_tag] + best_loc_probs[row + d, curr_k - k_tag]
+                         for k_tag in range(1, curr_k + 1)]
+                probs = [best_loc_probs[row + 1, curr_k]] + probs
+                best_k = np.nanargmax(probs)
+                best_ks[row, curr_k] = best_k
+                best_loc_probs[row, curr_k] = probs[best_k]
+
+        print('2')
+
+        rows_and_number_of_instances = []
+        left = k
+        i = 0
+        while i < m and left > 0:
+            k_in_row = best_ks[i][left]
+            if k_in_row > 0:
+                rows_and_number_of_instances.append((i, k_in_row))
+                left -= k_in_row
+                i += d
+            else:
+                i += 1
+
+        print('3')
+
+        locations = []
+        for (row, num) in rows_and_number_of_instances:
+            pivot_idx = 0
+            for k in np.arange(num, 0, -1):
+                x = rows_best_loc_probs[row, pivot_idx:, k]
+                idx = np.flatnonzero(np.diff(x[:n - num * d + 1]))[0]
+                locations.append((pivot_idx + idx, row))
+                pivot_idx += idx + d
+
+        print('4')
+
+        import matplotlib.pyplot as plt
+        import matplotlib.patches as patches
+
+        # Create figure and axes
+        fig, ax = plt.subplots()
+
+        # Display the image
+        ax.imshow(self.data)
+
+        # Create a Rectangle patch
+        for loc in locations:
+            rect = patches.Rectangle(loc, d, d, linewidth=1, edgecolor='r', facecolor='none')
+            # Add the patch to the Axes
+            ax.add_patch(rect)
+
+        plt.show()
+
+        # plt.imshow(best_ks)
+        # plt.colorbar()
+        # plt.show()
+        # plt.imshow(convolved_filter)
+        # plt.show()
+        # plt.imshow(rows_best_loc_probs[:, :m, 1])
+        # plt.show()
+
+        print()
 
 
 def create_filter_basis(filter_length, basis_size, basis_type='chebyshev'):
