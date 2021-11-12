@@ -32,7 +32,7 @@ def simple_cli(debug, verbosity):
 @click.option('--down_sample_size', type=int, default=-1)
 @click.option('--filter_basis_size', type=int, default=20)
 @click.option('--particles_margin', type=float, default=0.01)
-@click.option('--estimate_locations_and_num_of_instances', type=bool, default=False)
+@click.option('--estimate_locations_and_num_of_instances', is_flag=True)
 @click.option('--plot', type=bool, default=False)
 @click.option('--save', type=bool, default=True)
 @click.option('--save_dir', type=str, default=os.path.join(ROOT_DIR, f'src/experiments/plots/'))
@@ -98,8 +98,9 @@ def estimate(name,
 
 
 if __name__ == "__main__":
-    estimate(['--name', 'Tamir',
-              '--mrc_path', 'C:\\Users\\tamir\\Desktop\\Thesis\\simulated_data\\1000x1000_33occ_sphere_80_N_0_10.npy',
-              '--length_options', '20', '30', '10',
-              '--plot', 'True'])
-    # estimate()
+    # estimate(['--name', 'Tamir',
+    #           '--mrc_path', 'C:\\Users\\tamir\\Desktop\\Thesis\\simulated_data\\1000x1000_33occ_sphere_80_N_0_10.npy',
+    #           '--length_options', '20', '30', '10',
+    #           '--estimate_locations_and_num_of_instances',
+    #           '--plot', 'True'])
+    estimate()
