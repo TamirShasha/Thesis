@@ -1,17 +1,20 @@
 import os
+import numpy as np
 
 from src.constants import ROOT_DIR
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.experiments.experiments_2d import Experiment2D, EstimationMethod
 
+np.random.seed(500)
+
 NOISE_MEAN = 0
 NOISE_STD = 8
-LENGTH_OPTIONS = [50, 75, 100, 200, 300, 400, 500]
+LENGTH_OPTIONS = [60, 80, 100, 150, 200, 250]
 SIGNAL_SHAPES = [(Shapes2D.disk, 'disk'),
                  (Shapes2D.sphere, 'sphere'),
                  (lambda l, p: Shapes2D.ellipse(l, l // 1.7, p), 'ellipse'),
                  (lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0), 'ring')]
-sizes = [75, 100, 200, 300, 400]
+sizes = [80, 100, 150, 200]
 
 for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
     for signal_size in sizes:
