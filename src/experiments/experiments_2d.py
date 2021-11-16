@@ -33,10 +33,11 @@ class Experiment2D:
                  length_options=None,
                  filter_basis_size=20,
                  down_sample_size=1000,
-                 fixed_num_of_occurrences=30,
+                 num_of_instances_range=(1, 100),
                  particles_margin=0.01,
                  estimation_method: EstimationMethod = EstimationMethod.VeryWellSeparated,
                  estimate_noise=False,
+                 estimate_locations_and_num_of_instances=False,
                  plot=True,
                  save=True,
                  save_dir=os.path.join(ROOT_DIR, f'src/experiments/plots/'),
@@ -46,10 +47,11 @@ class Experiment2D:
         self._data_simulator = simulator
         self._mrc = mrc
         self._filter_basis_size = filter_basis_size
-        self._fixed_num_of_occurrences = fixed_num_of_occurrences
+        self._num_of_instances_range = num_of_instances_range
         self._down_sample_size = down_sample_size
         self._estimate_noise = estimate_noise
         self._particles_margin = particles_margin
+        self._estimate_locations_and_num_of_instances = estimate_locations_and_num_of_instances
 
         self._plot = plot
         self._save = save
@@ -60,7 +62,8 @@ class Experiment2D:
         curr_date = str(datetime.now().strftime("%d-%m-%Y"))
         curr_time = str(datetime.now().strftime("%H-%M-%S"))
         self.experiment_dir = os.path.join(self._save_dir, curr_date, curr_time)
-        pathlib.Path(self.experiment_dir).mkdir(parents=True, exist_ok=True)
+        if self._save:
+            pathlib.Path(self.experiment_dir).mkdir(parents=True, exist_ok=True)
 
         if mrc is None:
             if simulator is None:
@@ -110,11 +113,12 @@ class Experiment2D:
         else:
             self._length_estimator = LengthEstimator2DVeryWellSeparated(data=self._data,
                                                                         length_options=self._signal_length_options,
-                                                                        fixed_num_of_occurrences=self._fixed_num_of_occurrences,
+                                                                        num_of_instances_range=self._num_of_instances_range,
                                                                         noise_mean=self._noise_mean,
                                                                         noise_std=self._noise_std,
                                                                         filter_basis_size=self._filter_basis_size,
                                                                         particles_margin=self._particles_margin,
+                                                                        estimate_locations_and_num_of_instances=self._estimate_locations_and_num_of_instances,
                                                                         logs=self._logs,
                                                                         plots=self._plot,
                                                                         save=self._save,
@@ -154,7 +158,11 @@ class Experiment2D:
                 f"Noise\u007E\u2115({self._noise_mean}, {self._noise_std})\n"
 
         if self._mrc is None:
-            title += f"Total instances = {self._data_simulator.occurrences}\n" \
+            title += f"Total instances = {self._data_simulator.occurrences}, " \
+                     f"Num of instances range = {self._num_of_instances_range}, " \
+                     f"Basis size = {self._filter_basis_size}\n" \
+                     f"Noise estimation = {self._estimate_noise}, " \
+                     f"Particles separation = {self._particles_margin}\n" \
                      f"SNR={self._data_simulator.snr}db (MRC-SNR={self._data_simulator.mrc_snr}db), "
         else:
             title += f"MRC={self._mrc.name}\n"
@@ -188,6 +196,9 @@ class Experiment2D:
         plt.close()
 
 
+np.random.seed(500)
+
+
 def __main__():
     sim_data = DataSimulator2D(rows=1000,
                                columns=1000,
@@ -197,17 +208,20 @@ def __main__():
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.sphere,
-                               noise_std=10,
+                               noise_std=1,
                                noise_mean=0,
                                apply_ctf=False)
 
     Experiment2D(
         name=f"expy",
-        # mrc=MICROGRAPHS['002_whitened'],
-        # mrc=Micrograph('Tamir', 300, 'C:\\Users\\tamir\\Desktop\\תזה\\data\\001_raw.mat'),
         simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
         length_options=np.array([40, 60, 80, 100, 120]),
+        num_of_instances_range=(20, 100),
+        estimate_noise=False,
+        estimate_locations_and_num_of_instances=True,
+        particles_margin=0.01,
+        filter_basis_size=3,
         plot=True,
         save=True
     ).run()
