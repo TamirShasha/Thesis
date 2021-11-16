@@ -33,10 +33,10 @@ def simple_cli(debug, verbosity):
 @click.option('--filter_basis_size', type=int, default=20)
 @click.option('--particles_margin', type=float, default=0.01)
 @click.option('--estimate_locations_and_num_of_instances', is_flag=True)
-@click.option('--plot', type=bool, default=False)
-@click.option('--save', type=bool, default=True)
+@click.option('--plot', is_flag=True)
+@click.option('--un-save', is_flag=True)
 @click.option('--save_dir', type=str, default=os.path.join(ROOT_DIR, f'src/experiments/plots/'))
-@click.option('--logs', type=bool, default=True)
+@click.option('--logs', is_flag=True)
 @click.option('--random_seed', type=int, default=500)
 def estimate(name,
              mrc_path,
@@ -51,10 +51,12 @@ def estimate(name,
              particles_margin,
              estimate_locations_and_num_of_instances,
              plot,
-             save,
+             unsave,
              save_dir,
              logs,
              random_seed):
+    np.random.seed(random_seed)
+
     # load micrograph
     normalize_noise_method = normalize_noise_method.lower()
     if normalize_noise_method == 'none':
@@ -91,16 +93,17 @@ def estimate(name,
                               estimate_locations_and_num_of_instances=estimate_locations_and_num_of_instances,
                               particles_margin=particles_margin,
                               plot=plot,
-                              save=save,
+                              save=not unsave,
                               save_dir=save_dir,
                               logs=logs)
     experiment.run()
 
 
 if __name__ == "__main__":
-    # estimate(['--name', 'Tamir',
-    #           '--mrc_path', 'C:\\Users\\tamir\\Desktop\\Thesis\\simulated_data\\1000x1000_33occ_sphere_80_N_0_10.npy',
-    #           '--length_options', '20', '30', '10',
-    #           '--estimate_locations_and_num_of_instances',
-    #           '--plot', 'True'])
-    estimate()
+    estimate(['--name', 'Tamir',
+              '--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\001_automatic_normalized.mrc',
+              '--length_options', '20', '30', '10',
+              '--estimate_locations_and_num_of_instances',
+              '--num_of_instances_range', '50', '150',
+              '--plot', 'True'])
+    # estimate()
