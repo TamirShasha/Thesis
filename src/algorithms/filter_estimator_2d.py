@@ -100,6 +100,21 @@ class FilterEstimator2D:
         """
         flipped_signal_filter = np.flip(filter_element)  # Flipping to cross-correlate
         conv = convolve(self.data, flipped_signal_filter, mode='valid')
+
+        rings = np.zeros(shape=(self.signal_support, self.signal_support))
+        for i in range(self.signal_support):
+            for j in range(self.signal_support):
+                rings[i, j] = int(np.linalg.norm([i - self.signal_support // 2, j - self.signal_support // 2]))
+
+        convolution_size = self.data.shape[0] - self.signal_support
+        radial_convolve = np.zeros(shape=(convolution_size, convolution_size))
+        for row in np.arange(convolution_size):
+            for col in np.arange(convolution_size):
+                patch = np.copy(self.data[row: row + self.signal_support, col: col + self.signal_support])
+                for r in np.arange(1, self.signal_support // 2 + 1):
+                    patch[rings == r] = np.nanmean(patch[rings == r])
+                radial_convolve[row, col] = np.nansum(np.inner(filter_element, patch))
+
         return conv
 
     def convolve_basis(self):
