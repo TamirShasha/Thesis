@@ -3,6 +3,7 @@ from scipy.signal import convolve
 from skimage.draw import disk
 import matplotlib.pyplot as plt
 import os
+import logging
 
 from src.utils.logger import logger
 from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, log_prob_all_is_noise, \
@@ -18,11 +19,12 @@ class FilterEstimator2D:
                  num_of_instances_range: (int, int),
                  noise_std=1.,
                  noise_mean=0.,
+                 estimate_noise_parameters=True,
                  signal_margin=0,
                  estimate_locations_and_num_of_instances=False,
                  experiment_dir=None,
                  plots=False,
-                 logs=True):
+                 log_level=logging.INFO):
         """
         initialize the filter estimator
         :param unnormalized_data: 1d data
@@ -35,25 +37,33 @@ class FilterEstimator2D:
         self.unnormalized_data = unnormalized_data
         self.unnormalized_filter_basis = unnormalized_filter_basis
         self.num_of_instances_range = num_of_instances_range
-        self.noise_std = noise_std
+        self.estimate_noise_parameters = estimate_noise_parameters
         self.particle_margin = signal_margin
         self.estimate_locations_and_num_of_instances = estimate_locations_and_num_of_instances
-        if estimate_locations_and_num_of_instances and experiment_dir is None:
-            raise Exception('Must provide experiment_dir for saving location')
         self.experiment_dir = experiment_dir
         self.plots = plots
 
+        logger.setLevel(log_level)
+
+        if estimate_locations_and_num_of_instances and experiment_dir is None:
+            raise Exception('Must provide experiment_dir for saving location')
+
+        if estimate_noise_parameters:
+            noise_mean = np.nanmean(unnormalized_data)
+            noise_std = np.nanstd(unnormalized_data)
+            logger.info(f'Will estimate white noise parameters. '
+                        f'Initial values are mean / std of entire data: '
+                        f'({np.round(noise_mean, 3)} / {np.round(noise_std, 3)})')
         self.data = (unnormalized_data - noise_mean) / noise_std
+        self.noise_std = 1  # We assume noise std is close to 1 after normalization
+
         self.filter_basis_size = len(unnormalized_filter_basis)
         self.unmarginized_filter_basis, self.basis_norms = self.normalize_basis()
         self.signal_size = self.unmarginized_filter_basis[0].shape[0]
 
         # apply signal margin on filter basis
-        self.filter_basis = np.array(
-            [np.pad(x, ((self.particle_margin, self.particle_margin), (self.particle_margin, self.particle_margin)),
-                    'constant', constant_values=((0, 0), (0, 0)))
-             for x in self.unmarginized_filter_basis])
-        self.signal_support = self.filter_basis[0].shape[0]
+        self.filter_basis, self.signal_support = self.margin_filter_basis()
+        self.summed_filters = np.nansum(self.filter_basis, axis=(1, 2))
 
         # find max possible instances for given filter size
         self.max_possible_instances = min(
@@ -67,7 +77,6 @@ class FilterEstimator2D:
         self.term_one = -logsumexp_simple(
             np.array([self.calc_log_size_s(k) for k in
                       np.arange(self.min_possible_instances, self.max_possible_instances + 1)]))
-        self.term_two = log_prob_all_is_noise(self.data, 1)
         self.term_three_const = self.calc_term_three_const()
 
     def normalize_basis(self):
@@ -83,8 +92,23 @@ class FilterEstimator2D:
 
         return normalized_basis, basis_norms
 
+    def margin_filter_basis(self):
+        """
+        Adds margin around the filter to create artificial separation between signals
+        :return:
+        """
+        filter_basis = np.array(
+            [np.pad(x, ((self.particle_margin, self.particle_margin), (self.particle_margin, self.particle_margin)),
+                    'constant', constant_values=((0, 0), (0, 0)))
+             for x in self.unmarginized_filter_basis])
+        signal_support = filter_basis[0].shape[0]
+        return filter_basis, signal_support
+
     def calc_log_size_s(self, k):
         return log_size_S_2d_1axis(self.data.shape[0], k, self.signal_support)
+
+    def calc_term_two(self, noise_mean):
+        return log_prob_all_is_noise(self.data - noise_mean, self.noise_std)
 
     def calc_term_three_const(self):
         """
@@ -122,50 +146,70 @@ class FilterEstimator2D:
         convolved_filter = np.inner(self.convolved_basis.T, filter_coeffs).T
         return convolved_filter
 
-    def calc_mapping(self, convolved_filter):
+    def calc_mapping(self, convolved_filter, filter_coeffs, noise_mean):
         """
         :param convolved_filter: dot product between data sample and a filter
+        :param filter_coeffs: current estimated filter basis coefficients
+        :param noise_mean: current estimated noise mean
         :return: likelihood mapping
         """
+
+        constants = convolved_filter - noise_mean * np.inner(filter_coeffs, self.summed_filters)
         return calc_mapping_2d(self.data.shape[0],
                                self.max_possible_instances,
                                self.signal_support,
-                               convolved_filter)
+                               constants)
 
-    def calc_likelihood(self, filter_coeffs, mapping):
+    def calc_likelihood(self, mapping, filter_coeffs, noise_mean):
+        """
+        Calculates the likelihood of given model parameters
+        """
         term_three = logsumexp_simple(
             self.term_three_const * np.inner(filter_coeffs, filter_coeffs) + mapping[0, self.min_possible_instances:])
-        likelihood = self.term_one + self.term_two + term_three
+        term_two = log_prob_all_is_noise(self.data - noise_mean, 1)
+        likelihood = self.term_one + term_two + term_three
         return likelihood
 
-    def calc_gradient_discrete(self, filter_coeffs, likelihood):
+    def calc_gradient_discrete(self, filter_coeffs, noise_mean, likelihood):
         """
-        calculate gradient with respect to each filter coefficient
+        calculate gradient with respect to each model parameter
         :param filter_coeffs: current point filter coefficients
+        :param noise_mean: current estimated noise mean
         :param likelihood: current point likelihood
         :return: gradient of the filter coefficients (current point)
         """
 
-        eps = 1e-4
-        gradient = np.zeros(self.filter_basis_size)
+        eps = 1e-8
+        gradient = np.zeros(self.filter_basis_size + 1)  # last entry contains noise mean gradient
+
         for i in range(self.filter_basis_size):
-            filter_coeffs_perturbation = filter_coeffs + np.eye(1, self.filter_basis_size, i)[0] * eps
-            convolved_filter = self.calc_convolved_filter(filter_coeffs_perturbation)
-            mapping = self.calc_mapping(convolved_filter)
-            likelihood_perturbation = self.calc_likelihood(filter_coeffs_perturbation, mapping)
-            gradient[i] = (likelihood_perturbation - likelihood) / eps
+            filter_coeffs_eps = filter_coeffs + np.eye(1, self.filter_basis_size, i)[0] * eps
+            convolved_filter = self.calc_convolved_filter(filter_coeffs_eps)
+            mapping = self.calc_mapping(convolved_filter, filter_coeffs, noise_mean)
+            likelihood_eps = self.calc_likelihood(mapping, filter_coeffs_eps, noise_mean)
+            gradient[i] = (likelihood_eps - likelihood) / eps
+
+        noise_mean_eps = noise_mean + eps
+        convolved_filter = self.calc_convolved_filter(filter_coeffs)
+        mapping = self.calc_mapping(convolved_filter, filter_coeffs, noise_mean_eps)
+        likelihood_eps = self.calc_likelihood(mapping, filter_coeffs, noise_mean_eps)
+        gradient[-1] = (likelihood_eps - likelihood) / eps
 
         return gradient
 
-    def calc_likelihood_and_gradient(self, filter_coeffs):
+    def calc_likelihood_and_gradient(self, model_parameters):
         """
         Calculates the likelihood function for given filter coefficients and its gradient
         """
 
+        filter_coeffs, noise_mean = model_parameters[:-1], model_parameters[-1]
+
         convolved_filter = self.calc_convolved_filter(filter_coeffs)
-        mapping = self.calc_mapping(convolved_filter)
-        likelihood = self.calc_likelihood(filter_coeffs, mapping)
-        gradient = self.calc_gradient_discrete(filter_coeffs, likelihood)
+        mapping = self.calc_mapping(convolved_filter, filter_coeffs, noise_mean)
+        likelihood = self.calc_likelihood(mapping, filter_coeffs, noise_mean)
+        gradient = self.calc_gradient_discrete(filter_coeffs, noise_mean, likelihood)
+
+        logger.debug(f'Current model parameters: {model_parameters}, likelihood is {likelihood}')
 
         return likelihood, gradient
 
@@ -174,15 +218,16 @@ class FilterEstimator2D:
         Estimate optimal the match filter using given data samples and with respect to given filter basis
         :return: likelihood value and optimal unnormalized filter coefficient (can be used on user basis)
         """
-        initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-2, 100
-        likelihood, normalized_optimal_coeffs = _gradient_descent(self.calc_likelihood_and_gradient, initial_coeffs, t,
-                                                                  epsilon, max_iter, concave=True)
+        model_parameters, t, epsilon, max_iter = np.zeros(self.filter_basis_size + 1), 0.1, 1e-2, 100
+        likelihood, optimal_model_parameters = _gradient_descent(self.calc_likelihood_and_gradient, model_parameters,
+                                                                 t, epsilon, max_iter, concave=True)
 
-        optimal_coeffs = normalized_optimal_coeffs * self.noise_std / self.basis_norms
+        optimal_filter_coeffs, optimal_noise_mean = optimal_model_parameters[:-1], optimal_model_parameters[-1]
+        optimal_coeffs = optimal_filter_coeffs * self.noise_std / self.basis_norms
 
         if self.estimate_locations_and_num_of_instances:
-            convolved_filter = self.calc_convolved_filter(normalized_optimal_coeffs)
-            k = self.estimate_most_likely_num_of_instances(optimal_coeffs, convolved_filter)
+            convolved_filter = self.calc_convolved_filter(optimal_filter_coeffs)
+            k = self.estimate_most_likely_num_of_instances(optimal_coeffs, optimal_noise_mean, convolved_filter)
             logger.info(f'For size {self.signal_size} most likely k is {k}')
             self.find_optimal_signals_locations(convolved_filter, k)
 
@@ -194,8 +239,8 @@ class FilterEstimator2D:
 
         return likelihood, optimal_coeffs
 
-    def estimate_most_likely_num_of_instances(self, filter_coeffs, convolved_filter):
-        mapping = self.calc_mapping(convolved_filter)
+    def estimate_most_likely_num_of_instances(self, filter_coeffs, noise_mean, convolved_filter):
+        mapping = self.calc_mapping(convolved_filter, filter_coeffs, noise_mean)
         term_two = self.term_three_const * np.inner(filter_coeffs, filter_coeffs)
         term_three = mapping[0, self.min_possible_instances:]
         likelihoods = self.term_one + term_two + term_three

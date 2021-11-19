@@ -2,6 +2,7 @@ import numpy as np
 from enum import Enum
 import matplotlib.pyplot as plt
 import os
+import logging
 
 import src.algorithms.utils as utils
 from src.algorithms.utils import cryo_downsample
@@ -22,10 +23,11 @@ class LengthEstimator2DVeryWellSeparated:
                  num_of_instances_range=(1, 100),
                  noise_mean=0,
                  noise_std=1,
+                 estimate_noise_parameters=True,
                  filter_basis_size=20,
                  particles_margin=0.01,
                  estimate_locations_and_num_of_instances=False,
-                 logs=True,
+                 log_level=logging.INFO,
                  plots=False,
                  save=False,
                  experiment_dir=None):
@@ -34,13 +36,16 @@ class LengthEstimator2DVeryWellSeparated:
         self._num_of_instances_range = num_of_instances_range
         self._noise_mean = noise_mean
         self._noise_std = noise_std
+        self._estimate_noise_parameters = estimate_noise_parameters
         self._filter_basis_size = filter_basis_size
         self._particles_margin = particles_margin
         self._estimate_locations_and_num_of_instances = estimate_locations_and_num_of_instances
-        self._logs = logs
+        self._log_level = log_level
         self._plots = plots
         self._save = save
         self._experiment_dir = experiment_dir
+
+        logger.setLevel(log_level)
 
     def estimate(self):
         margin = int(self._particles_margin * self._data.shape[0]) // 2
@@ -52,14 +57,17 @@ class LengthEstimator2DVeryWellSeparated:
             logger.info(f'Estimating likelihood for size={length}')
 
             filter_basis = create_filter_basis(length, self._filter_basis_size)
-            filter_estimator = FilterEstimator2D(self._data,
-                                                 filter_basis,
-                                                 self._num_of_instances_range,
-                                                 self._noise_std,
+            filter_estimator = FilterEstimator2D(unnormalized_data=self._data,
+                                                 unnormalized_filter_basis=filter_basis,
+                                                 num_of_instances_range=self._num_of_instances_range,
+                                                 noise_std=self._noise_std,
+                                                 noise_mean=self._noise_mean,
+                                                 estimate_noise_parameters=self._estimate_noise_parameters,
                                                  signal_margin=margin,
                                                  estimate_locations_and_num_of_instances=self._estimate_locations_and_num_of_instances,
                                                  experiment_dir=self._experiment_dir,
-                                                 plots=self._plots)
+                                                 plots=self._plots,
+                                                 log_level=self._log_level)
 
             likelihoods[i], optimal_coeffs[i] = filter_estimator.estimate()
             logger.info(

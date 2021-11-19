@@ -41,7 +41,7 @@ class Experiment2D:
                  plot=True,
                  save=True,
                  save_dir=os.path.join(ROOT_DIR, f'src/experiments/plots/'),
-                 logs=True):
+                 log_level=logging.INFO):
         self._name = name  # Experiment name
         self._estimation_method = estimation_method
         self._data_simulator = simulator
@@ -56,7 +56,7 @@ class Experiment2D:
         self._plot = plot
         self._save = save
         self._save_dir = save_dir
-        self._logs = logs
+        self._log_level = log_level
         self._results = {}
 
         curr_date = str(datetime.now().strftime("%d-%m-%Y"))
@@ -74,9 +74,6 @@ class Experiment2D:
 
             self._noise_std = simulator.noise_std
             self._noise_mean = simulator.noise_mean
-            if self._estimate_noise:
-                self._noise_std = np.nanstd(self._data)
-                self._noise_mean = np.nanmean(self._data)
 
             self._signal_length = simulator.signal_length
             self._applied_ctf = simulator.apply_ctf
@@ -108,7 +105,7 @@ class Experiment2D:
                                                                    signal_filter_gen_1d=signal_1d_filter_gen,
                                                                    noise_mean=self._noise_mean,
                                                                    noise_std=self._noise_std,
-                                                                   logs=self._logs,
+                                                                   logs=self._log_level,
                                                                    experiment_dir=self.experiment_dir)
         else:
             self._length_estimator = LengthEstimator2DVeryWellSeparated(data=self._data,
@@ -116,10 +113,11 @@ class Experiment2D:
                                                                         num_of_instances_range=self._num_of_instances_range,
                                                                         noise_mean=self._noise_mean,
                                                                         noise_std=self._noise_std,
+                                                                        estimate_noise_parameters=self._estimate_noise,
                                                                         filter_basis_size=self._filter_basis_size,
                                                                         particles_margin=self._particles_margin,
                                                                         estimate_locations_and_num_of_instances=self._estimate_locations_and_num_of_instances,
-                                                                        logs=self._logs,
+                                                                        log_level=self._log_level,
                                                                         plots=self._plot,
                                                                         save=self._save,
                                                                         experiment_dir=self.experiment_dir)
@@ -218,12 +216,13 @@ def __main__():
         estimation_method=EstimationMethod.VeryWellSeparated,
         length_options=np.array([40, 60, 80, 100, 120]),
         num_of_instances_range=(20, 100),
-        estimate_noise=False,
+        estimate_noise=True,
         estimate_locations_and_num_of_instances=True,
         particles_margin=0.01,
         filter_basis_size=3,
         plot=True,
-        save=True
+        save=True,
+        log_level=logging.DEBUG
     ).run()
 
 
