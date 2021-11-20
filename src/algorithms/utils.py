@@ -455,7 +455,10 @@ def _gradient_descent(F_F_derivative, initial_x, t=0.1, epsilon=1e-10, max_iter=
             break
         t = np.abs(np.linalg.norm(x_current - x_prev) / np.linalg.norm(F_tag_prev - F_tag_current))
         x_prev, F_prev, F_tag_prev = x_current, F_current, F_tag_current
-    # print(x_current, F_current, F_tag_current, t)
+        print(x_current)
+        print(F_tag_current)
+        print(t)
+
     return F_current, x_current
 
 

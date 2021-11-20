@@ -217,11 +217,11 @@ def __main__():
         length_options=np.array([40, 60, 80, 100, 120]),
         num_of_instances_range=(20, 100),
         estimate_noise=True,
-        estimate_locations_and_num_of_instances=True,
+        estimate_locations_and_num_of_instances=False,
         particles_margin=0.01,
-        filter_basis_size=3,
+        filter_basis_size=5,
         plot=True,
-        save=True,
+        save=False,
         log_level=logging.DEBUG
     ).run()
 
