@@ -19,7 +19,7 @@ class LengthEstimator2DVeryWellSeparated:
 
     def __init__(self,
                  data,
-                 length_options,
+                 signal_length_by_percentage=None,
                  num_of_instances_range=(1, 100),
                  noise_mean=0,
                  noise_std=1,
@@ -32,7 +32,7 @@ class LengthEstimator2DVeryWellSeparated:
                  save=False,
                  experiment_dir=None):
         self._data = data
-        self._length_options = length_options
+        self._signal_length_by_percentage = signal_length_by_percentage
         self._num_of_instances_range = num_of_instances_range
         self._noise_mean = noise_mean
         self._noise_std = noise_std
@@ -45,15 +45,24 @@ class LengthEstimator2DVeryWellSeparated:
         self._save = save
         self._experiment_dir = experiment_dir
 
+        self._data_size = self._data.shape[0]
+
+        if self._signal_length_by_percentage is None:
+            self._signal_length_by_percentage = [4, 6, 8, 10, 12]
+
+        self._signal_size_options = np.array(np.array(self._signal_length_by_percentage) / 100 * self._data_size,
+                                             dtype=int)
+        logger.info(f'Particle size options are: {self._signal_size_options}')
+
         logger.setLevel(log_level)
 
     def estimate(self):
         margin = int(self._particles_margin * self._data.shape[0]) // 2
         logger.info(f'Particles margin is {margin * 2} pixels')
 
-        likelihoods = np.zeros(len(self._length_options))
-        optimal_coeffs = np.zeros(shape=(len(self._length_options), self._filter_basis_size))
-        for i, length in enumerate(self._length_options):
+        likelihoods = np.zeros(len(self._signal_size_options))
+        optimal_coeffs = np.zeros(shape=(len(self._signal_size_options), self._filter_basis_size))
+        for i, length in enumerate(self._signal_size_options):
             logger.info(f'Estimating likelihood for size={length}')
 
             filter_basis = create_filter_basis(length, self._filter_basis_size)
@@ -71,10 +80,10 @@ class LengthEstimator2DVeryWellSeparated:
 
             likelihoods[i], optimal_coeffs[i] = filter_estimator.estimate()
             logger.info(
-                f'For length {self._length_options[i]}, Likelihood={likelihoods[i]}')
+                f'For length {self._signal_size_options[i]}, Likelihood={likelihoods[i]}')
 
         most_likely_index = np.nanargmax(likelihoods)
-        filter_basis = create_filter_basis(self._length_options[most_likely_index], self._filter_basis_size)
+        filter_basis = create_filter_basis(self._signal_size_options[most_likely_index], self._filter_basis_size)
         est_signals = filter_basis.T.dot(optimal_coeffs[most_likely_index])
 
         return likelihoods, optimal_coeffs, est_signals

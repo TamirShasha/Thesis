@@ -30,7 +30,7 @@ class Experiment2D:
                  mrc: Micrograph = None,
                  simulator=None,
                  signal_1d_filter_gen=lambda d, p=1: np.full(d, p),
-                 length_options=None,
+                 signal_length_by_percentage=None,
                  filter_basis_size=20,
                  down_sample_size=1000,
                  num_of_instances_range=(1, 100),
@@ -94,14 +94,14 @@ class Experiment2D:
             plt.imshow(self._data, cmap='gray')
             plt.show()
 
-        if length_options is None:
-            length_options = np.arange(100, 801, 100)
-        self._signal_length_options = np.array(length_options)
+        if signal_length_by_percentage is None:
+            signal_length_by_percentage = [3, 4, 5, 6, 8, 10]
+        self._signal_length_by_percentage = np.array(signal_length_by_percentage)
 
         if self._estimation_method == EstimationMethod.Curves:
             logger.info(f'Estimating signal length using Curves method')
             self._length_estimator = LengthEstimator2DCurvesMethod(data=self._data,
-                                                                   length_options=self._signal_length_options,
+                                                                   length_options=self._signal_length_by_percentage,
                                                                    signal_filter_gen_1d=signal_1d_filter_gen,
                                                                    noise_mean=self._noise_mean,
                                                                    noise_std=self._noise_std,
@@ -109,7 +109,7 @@ class Experiment2D:
                                                                    experiment_dir=self.experiment_dir)
         else:
             self._length_estimator = LengthEstimator2DVeryWellSeparated(data=self._data,
-                                                                        length_options=self._signal_length_options,
+                                                                        signal_length_by_percentage=self._signal_length_by_percentage,
                                                                         num_of_instances_range=self._num_of_instances_range,
                                                                         noise_mean=self._noise_mean,
                                                                         noise_std=self._noise_std,
@@ -167,7 +167,7 @@ class Experiment2D:
 
         title += f"CTF={self._applied_ctf}, " \
                  f"Estimation method={self._estimation_method.name}\n" \
-                 f"Most likely length={self._signal_length_options[most_likely_index]}, " \
+                 f"Most likely length={self._signal_length_by_percentage[most_likely_index]}, " \
                  f"Took {int(self._results['total_time'])} seconds"
         fig.suptitle(title)
 
@@ -177,7 +177,7 @@ class Experiment2D:
         most_likely_coeffs = self._results['optimal_coeffs'][most_likely_index]
         est_basis_coeffs_fig.bar(np.arange(len(most_likely_coeffs)), most_likely_coeffs)
 
-        likelihoods_fig.plot(self._signal_length_options, likelihoods)
+        likelihoods_fig.plot(self._signal_length_by_percentage, likelihoods)
         likelihoods_fig.set_xlabel('Lengths')
         likelihoods_fig.set_ylabel('Likelihood')
 
@@ -198,14 +198,14 @@ np.random.seed(500)
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=1000,
-                               columns=1000,
-                               signal_length=80,
+    sim_data = DataSimulator2D(rows=2000,
+                               columns=2000,
+                               signal_length=120,
                                signal_power=1,
                                signal_fraction=1 / 6,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
-                               signal_gen=Shapes2D.sphere,
+                               signal_gen=Shapes2D.disk,
                                noise_std=1,
                                noise_mean=0,
                                apply_ctf=False)
@@ -214,7 +214,7 @@ def __main__():
         name=f"expy",
         simulator=sim_data,
         estimation_method=EstimationMethod.VeryWellSeparated,
-        length_options=np.array([40, 60, 80, 100, 120]),
+        # signal_length_by_percentage=np.array([40, 60, 80, 100, 120]),
         num_of_instances_range=(20, 100),
         estimate_noise=True,
         estimate_locations_and_num_of_instances=False,

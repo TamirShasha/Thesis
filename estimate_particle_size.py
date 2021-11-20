@@ -22,7 +22,7 @@ def simple_cli(debug, verbosity):
 @simple_cli.command('estimate_particle_size', short_help='Estimates particle size')
 @click.option('--name', type=str)
 @click.option('--mrc_path', type=str)
-@click.option('--length_options', nargs=3, type=int)
+@click.option('--signal_length_by_percentage', nargs=3, type=int, default=None)
 @click.option('--estimation_method', type=click.Choice(['vws', 'curves'], case_sensitive=False), default='vws')
 @click.option('--num_of_instances_range', type=(int, int), default=(20, 100))
 @click.option('--normalize_noise_method', default='simple',
@@ -34,13 +34,13 @@ def simple_cli(debug, verbosity):
 @click.option('--particles_margin', type=float, default=0.01)
 @click.option('--estimate_locations_and_num_of_instances', is_flag=True)
 @click.option('--plot', is_flag=True)
-@click.option('--un-save', is_flag=True)
+@click.option('--save', is_flag=True)
 @click.option('--save_dir', type=str, default=os.path.join(ROOT_DIR, f'src/experiments/plots/'))
 @click.option('--logs', is_flag=True)
 @click.option('--random_seed', type=int, default=500)
 def estimate(name,
              mrc_path,
-             length_options,
+             signal_length_by_percentage,
              estimation_method,
              num_of_instances_range,
              normalize_noise_method,
@@ -51,7 +51,7 @@ def estimate(name,
              particles_margin,
              estimate_locations_and_num_of_instances,
              plot,
-             unsave,
+             save,
              save_dir,
              logs,
              random_seed):
@@ -73,8 +73,11 @@ def estimate(name,
                             noise_std=noise_std)
 
     # build length options
-    start, end, step = length_options
-    length_options = np.arange(start, end + 1, step)
+    if signal_length_by_percentage is not None:
+        start, end, step = signal_length_by_percentage
+        signal_length_by_percentage = np.arange(start, end + 1, step)
+    else:
+        signal_length_by_percentage = [3, 4, 5, 6, 8, 10]
 
     # estimation method
     estimation_method = estimation_method.lower()
@@ -85,7 +88,7 @@ def estimate(name,
 
     experiment = Experiment2D(name=name,
                               mrc=micrograph,
-                              length_options=length_options,
+                              signal_length_by_percentage=signal_length_by_percentage,
                               filter_basis_size=filter_basis_size,
                               down_sample_size=down_sample_size,
                               num_of_instances_range=num_of_instances_range,
@@ -93,17 +96,16 @@ def estimate(name,
                               estimate_locations_and_num_of_instances=estimate_locations_and_num_of_instances,
                               particles_margin=particles_margin,
                               plot=plot,
-                              save=not unsave,
-                              save_dir=save_dir,
-                              logs=logs)
+                              save=save,
+                              save_dir=save_dir)
     experiment.run()
 
 
 if __name__ == "__main__":
     estimate(['--name', 'Tamir',
               '--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\001_automatic_normalized.mrc',
-              '--length_options', '20', '30', '10',
+              # '--length_options', '20', '30', '10',
               '--estimate_locations_and_num_of_instances',
               '--num_of_instances_range', '50', '150',
-              '--plot', 'True'])
+              '--plot'])
     # estimate()
