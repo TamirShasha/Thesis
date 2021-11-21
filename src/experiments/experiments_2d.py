@@ -97,6 +97,7 @@ class Experiment2D:
         if signal_length_by_percentage is None:
             signal_length_by_percentage = [3, 4, 5, 6, 8, 10]
         self._signal_length_by_percentage = np.array(signal_length_by_percentage)
+        self._sizes_options = np.array(self._data.shape[0] * self._signal_length_by_percentage, dtype=int)
 
         if self._estimation_method == EstimationMethod.Curves:
             logger.info(f'Estimating signal length using Curves method')
@@ -167,7 +168,7 @@ class Experiment2D:
 
         title += f"CTF={self._applied_ctf}, " \
                  f"Estimation method={self._estimation_method.name}\n" \
-                 f"Most likely length={self._signal_length_by_percentage[most_likely_index]}, " \
+                 f"Most likely length={self._sizes_options[most_likely_index]}, " \
                  f"Took {int(self._results['total_time'])} seconds"
         fig.suptitle(title)
 
@@ -177,7 +178,7 @@ class Experiment2D:
         most_likely_coeffs = self._results['optimal_coeffs'][most_likely_index]
         est_basis_coeffs_fig.bar(np.arange(len(most_likely_coeffs)), most_likely_coeffs)
 
-        likelihoods_fig.plot(self._signal_length_by_percentage, likelihoods)
+        likelihoods_fig.plot(self._sizes_options, likelihoods)
         likelihoods_fig.set_xlabel('Lengths')
         likelihoods_fig.set_ylabel('Likelihood')
 
