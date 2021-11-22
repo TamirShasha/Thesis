@@ -361,6 +361,8 @@ class FilterEstimator2D:
         plt.savefig(fname=fig_path)
         plt.close()
 
+        return locations
+
 
 def create_filter_basis(filter_length, basis_size, basis_type='chebyshev'):
     """

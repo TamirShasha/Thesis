@@ -97,7 +97,7 @@ class Experiment2D:
         if signal_length_by_percentage is None:
             signal_length_by_percentage = [3, 4, 5, 6, 8, 10]
         self._signal_length_by_percentage = np.array(signal_length_by_percentage)
-        self._sizes_options = np.array(self._data.shape[0] * self._signal_length_by_percentage, dtype=int)
+        self._sizes_options = np.array(self._data.shape[0] * self._signal_length_by_percentage // 100, dtype=int)
 
         if self._estimation_method == EstimationMethod.Curves:
             logger.info(f'Estimating signal length using Curves method')
@@ -207,7 +207,7 @@ def __main__():
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.disk,
-                               noise_std=1,
+                               noise_std=10,
                                noise_mean=0,
                                apply_ctf=False)
 

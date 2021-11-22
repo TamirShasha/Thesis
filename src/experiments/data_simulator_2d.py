@@ -102,6 +102,7 @@ class DataSimulator2D:
         self.mrc_area = self.rows * self.columns
         self.occurrences = int(self.signal_fraction * self.mrc_area / self.signal_area)
         self.snr, self.mrc_snr = self._calc_snr()
+        self.clean_data = None
 
         logger.info(f'SNR (MRC) is {self.snr}db ({self.mrc_snr}db)')
 
@@ -118,6 +119,7 @@ class DataSimulator2D:
         # add noise
         noise = self._random_gaussian_noise()
 
+        self.clean_data = data.copy()
         simulated_data = data + noise
 
         return simulated_data
