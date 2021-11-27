@@ -2,6 +2,7 @@ import click
 import os
 import warnings
 import numpy as np
+import logging
 
 from src.constants import ROOT_DIR
 from src.experiments.experiments_2d import Experiment2D, EstimationMethod
@@ -20,11 +21,11 @@ def simple_cli(debug, verbosity):
 
 
 @simple_cli.command('estimate_particle_size', short_help='Estimates particle size')
-@click.option('--name', type=str)
 @click.option('--mrc_path', type=str)
+@click.option('--name', type=str, default=None)
 @click.option('--signal_length_by_percentage', nargs=3, type=int, default=None)
 @click.option('--estimation_method', type=click.Choice(['vws', 'curves'], case_sensitive=False), default='vws')
-@click.option('--num_of_instances_range', type=(int, int), default=(20, 100))
+@click.option('--num_of_instances_range', type=(int, int), default=(50, 150))
 @click.option('--normalize_noise_method', default='simple',
               type=click.Choice(['none', 'simple', 'whitening'], case_sensitive=False))
 @click.option('--noise_mean', type=int, default=0)
@@ -37,9 +38,10 @@ def simple_cli(debug, verbosity):
 @click.option('--save', is_flag=True)
 @click.option('--save_dir', type=str, default=os.path.join(ROOT_DIR, f'src/experiments/plots/'))
 @click.option('--logs', is_flag=True)
+@click.option('--logs-debug', is_flag=False)
 @click.option('--random_seed', type=int, default=500)
-def estimate(name,
-             mrc_path,
+def estimate(mrc_path,
+             name,
              signal_length_by_percentage,
              estimation_method,
              num_of_instances_range,
@@ -54,8 +56,12 @@ def estimate(name,
              save,
              save_dir,
              logs,
+             logs_debug,
              random_seed):
     np.random.seed(random_seed)
+
+    if name is None:
+        name = os.path.basename(mrc_path)
 
     # load micrograph
     normalize_noise_method = normalize_noise_method.lower()
@@ -86,6 +92,12 @@ def estimate(name,
     else:
         estimation_method = EstimationMethod.Curves
 
+    log_level = logging.NOTSET
+    if logs:
+        log_level = logging.INFO
+    if logs_debug:
+        log_level = logging.DEBUG
+
     experiment = Experiment2D(name=name,
                               mrc=micrograph,
                               signal_length_by_percentage=signal_length_by_percentage,
@@ -97,6 +109,7 @@ def estimate(name,
                               particles_margin=particles_margin,
                               plot=plot,
                               save=save,
+                              log_level=log_level,
                               save_dir=save_dir)
     experiment.run()
 

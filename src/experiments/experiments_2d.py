@@ -199,30 +199,26 @@ np.random.seed(500)
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=2000,
-                               columns=2000,
-                               signal_length=120,
+    sim_data = DataSimulator2D(rows=1000,
+                               columns=1000,
+                               signal_length=60,
                                signal_power=1,
-                               signal_fraction=1 / 6,
+                               signal_fraction=1 / 7,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.disk,
-                               noise_std=10,
+                               noise_std=8,
                                noise_mean=0,
                                apply_ctf=False)
 
     Experiment2D(
         name=f"expy",
         simulator=sim_data,
-        estimation_method=EstimationMethod.VeryWellSeparated,
-        # signal_length_by_percentage=np.array([40, 60, 80, 100, 120]),
-        num_of_instances_range=(20, 100),
-        estimate_noise=True,
+        estimate_noise=False,
         estimate_locations_and_num_of_instances=False,
-        particles_margin=0.01,
-        filter_basis_size=5,
+        filter_basis_size=3,
         plot=True,
-        save=False,
+        save=True,
         log_level=logging.DEBUG
     ).run()
 
