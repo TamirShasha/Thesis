@@ -30,7 +30,8 @@ class LengthEstimator2DVeryWellSeparated:
                  log_level=logging.INFO,
                  plots=False,
                  save=False,
-                 experiment_dir=None):
+                 experiment_dir=None,
+                 experiment_attr=None):
         self._data = data
         self._signal_length_by_percentage = signal_length_by_percentage
         self._num_of_instances_range = num_of_instances_range
@@ -44,6 +45,7 @@ class LengthEstimator2DVeryWellSeparated:
         self._plots = plots
         self._save = save
         self._experiment_dir = experiment_dir
+        self._experiment_attr = experiment_attr
 
         self._data_size = self._data.shape[0]
 
@@ -75,6 +77,7 @@ class LengthEstimator2DVeryWellSeparated:
                                                  signal_margin=margin,
                                                  estimate_locations_and_num_of_instances=self._estimate_locations_and_num_of_instances,
                                                  experiment_dir=self._experiment_dir,
+                                                 experiment_attr=self._experiment_attr,
                                                  plots=self._plots,
                                                  log_level=self._log_level)
 

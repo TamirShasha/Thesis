@@ -22,6 +22,7 @@ class FilterEstimator2D:
                  signal_margin=0,
                  estimate_locations_and_num_of_instances=False,
                  experiment_dir=None,
+                 experiment_attr=None,
                  plots=False,
                  log_level=logging.INFO):
         """
@@ -40,12 +41,15 @@ class FilterEstimator2D:
         self.particle_margin = signal_margin
         self.estimate_locations_and_num_of_instances = estimate_locations_and_num_of_instances
         self.experiment_dir = experiment_dir
+        self.experiment_attr = experiment_attr
         self.plots = plots
 
         logger.setLevel(log_level)
 
-        if estimate_locations_and_num_of_instances and experiment_dir is None:
-            raise Exception('Must provide experiment_dir for saving location')
+        if estimate_locations_and_num_of_instances:
+            assert experiment_dir, 'Must provide experiment_dir for saving location'
+            if experiment_attr is None:
+                self.experiment_attr = {}
 
         if estimate_noise_parameters:
             noise_mean = np.nanmean(unnormalized_data)
@@ -254,32 +258,56 @@ class FilterEstimator2D:
         likelihood, optimal_model_parameters = self.optimize_parameters()
 
         optimal_filter_coeffs, optimal_noise_mean = optimal_model_parameters[:-1], optimal_model_parameters[-1]
-        optimal_coeffs = optimal_filter_coeffs * self.noise_std / self.basis_norms
+        noise_std = np.nanstd(self.unnormalized_data)
+        optimal_coeffs = optimal_filter_coeffs * noise_std / self.basis_norms
 
         if self.estimate_locations_and_num_of_instances:
-            convolved_filter = self.calc_convolved_filter(optimal_filter_coeffs)
-            k = self.estimate_most_likely_num_of_instances(optimal_coeffs, optimal_noise_mean, convolved_filter)
-            logger.info(f'For size {self.signal_size} most likely k is {k}')
-            self.find_optimal_signals_locations(convolved_filter, k)
-
-            plt.imshow(self.filter_basis.T.dot(optimal_coeffs), cmap='gray')
-            plt.colorbar()
-            fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_matched_filter.png')
-            plt.savefig(fname=fig_path)
-            plt.close()
+            self.save_statistics(optimal_filter_coeffs, optimal_coeffs, optimal_noise_mean)
 
         return likelihood, optimal_coeffs
 
-    def estimate_most_likely_num_of_instances(self, filter_coeffs, noise_mean, convolved_filter):
-        mapping = self.calc_mapping(convolved_filter)
-        term_two = self.term_three_const * np.inner(filter_coeffs, filter_coeffs)
-        term_three = mapping[0, self.min_possible_instances:]
-        likelihoods = self.term_one + term_two + term_three
+    def save_statistics(self, optimal_filter_coeffs, optimal_coeffs, optimal_noise_mean):
+        convolved_filter = self.calc_convolved_filter(optimal_filter_coeffs)
+        k = self.estimate_most_likely_num_of_instances(optimal_filter_coeffs, optimal_noise_mean, convolved_filter)
+        logger.info(f'For size {self.signal_size} most likely k is {k}')
+        # self.find_optimal_signals_locations(convolved_filter, k)
 
-        most_likely_num_of_instances = np.nanargmax(likelihoods) + self.min_possible_instances
+        fig, axs = plt.subplots(nrows=1, ncols=3)
+
+        matched_filter = self.filter_basis.T.dot(optimal_coeffs)
+        pcm = axs[0].imshow(matched_filter, cmap='gray')
+        axs[0].title.set_text('Matched Filter')
+        plt.colorbar(pcm, ax=axs[0])
+
+        center = matched_filter.shape[0] // 2
+        filter_power_1d = np.square(matched_filter[center:-self.particle_margin, center])
+        cum_filter_power_1d = np.nancumsum(filter_power_1d)
+        relative_power_fraction = 1 - cum_filter_power_1d / cum_filter_power_1d[-1]
+        gradient_cum_filter_power_1d = np.gradient(cum_filter_power_1d)
+        xs = np.arange(0, filter_power_1d.shape[0]) * 2
+        axs[1].plot(xs, relative_power_fraction)
+        axs[1].title.set_text('Cumulative Power')
+        axs[2].plot(xs[:-1], np.diff(relative_power_fraction))
+        axs[2].title.set_text('Cumulative Power Gradient')
+        fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_matched_filter.png')
+        plt.savefig(fname=fig_path)
+        plt.close()
+
+    def estimate_most_likely_num_of_instances(self, filter_coeffs, noise_mean, convolved_filter):
+
+        mapping = self.calc_mapping(convolved_filter)
+        group_size_term = self.term_one
+        filter_norm_const_term = -1 / (self.noise_std ** 2) * np.inner(filter_coeffs, filter_coeffs)
+        noise_filter_const_term = -noise_mean / (self.noise_std ** 2) * np.inner(filter_coeffs, self.summed_filters)
+        log_term = mapping[0, self.possible_instances]
+        k_margin_term = group_size_term + \
+                        self.possible_instances * (filter_norm_const_term + noise_filter_const_term) + \
+                        log_term
+
+        most_likely_num_of_instances = self.possible_instances[np.nanargmax(k_margin_term)]
 
         plt.title(f'Most likely number of instances for size {self.signal_size} is {most_likely_num_of_instances}')
-        plt.plot(np.arange(self.min_possible_instances, self.max_possible_instances + 1), likelihoods)
+        plt.plot(self.possible_instances, k_margin_term)
         fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_instances_likelihoods.png')
         plt.savefig(fname=fig_path)
         plt.close()
@@ -347,7 +375,10 @@ class FilterEstimator2D:
         fig, ax = plt.subplots()
 
         # Display the image
-        ax.imshow(self.data, cmap='gray')
+        if self.experiment_attr['clean_data'] is None:
+            ax.imshow(self.data, cmap='gray')
+        else:
+            ax.imshow(self.experiment_attr['clean_data'], cmap='gray')
 
         # Create a Rectangle patch
         for loc in locations:

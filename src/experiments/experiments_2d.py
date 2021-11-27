@@ -33,7 +33,7 @@ class Experiment2D:
                  signal_length_by_percentage=None,
                  filter_basis_size=20,
                  down_sample_size=1000,
-                 num_of_instances_range=(1, 100),
+                 num_of_instances_range=(20, 100),
                  particles_margin=0.01,
                  estimation_method: EstimationMethod = EstimationMethod.VeryWellSeparated,
                  estimate_noise=False,
@@ -77,6 +77,10 @@ class Experiment2D:
 
             self._signal_length = simulator.signal_length
             self._applied_ctf = simulator.apply_ctf
+
+            self.experiment_attr = {
+                'clean_data': simulator.clean_data
+            }
         else:
             logger.info(f'Loading given micrograph from {mrc.name}')
             self._data = mrc.get_micrograph()
@@ -121,7 +125,8 @@ class Experiment2D:
                                                                         log_level=self._log_level,
                                                                         plots=self._plot,
                                                                         save=self._save,
-                                                                        experiment_dir=self.experiment_dir)
+                                                                        experiment_dir=self.experiment_dir,
+                                                                        experiment_attr=self.experiment_attr)
 
     def run(self):
         start_time = time.time()
@@ -173,7 +178,8 @@ class Experiment2D:
         fig.suptitle(title)
 
         mrc_fig.imshow(self._data, cmap='gray')
-        est_particle_fig.imshow(self._results['estimated_signal'], cmap='gray')
+        pcm = est_particle_fig.imshow(self._results['estimated_signal'], cmap='gray')
+        plt.colorbar(pcm, ax=est_particle_fig)
 
         most_likely_coeffs = self._results['optimal_coeffs'][most_likely_index]
         est_basis_coeffs_fig.bar(np.arange(len(most_likely_coeffs)), most_likely_coeffs)
@@ -183,7 +189,8 @@ class Experiment2D:
         likelihoods_fig.set_ylabel('Likelihood')
 
         if self._data_simulator:
-            particle_fig.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
+            pcm = particle_fig.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
+            plt.colorbar(pcm, ax=particle_fig)
 
         if self._save:
             # curr_time = str(datetime.now().strftime("%H-%M-%S"))
@@ -207,15 +214,15 @@ def __main__():
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.disk,
-                               noise_std=8,
+                               noise_std=3,
                                noise_mean=0,
                                apply_ctf=False)
 
     Experiment2D(
         name=f"expy",
         simulator=sim_data,
-        estimate_noise=False,
-        estimate_locations_and_num_of_instances=False,
+        estimate_noise=True,
+        estimate_locations_and_num_of_instances=True,
         filter_basis_size=3,
         plot=True,
         save=True,
