@@ -4,7 +4,7 @@ from skimage.draw import disk
 import matplotlib.pyplot as plt
 import os
 import logging
-from scipy.optimize import leastsq, least_squares
+from scipy.optimize import least_squares
 
 from src.utils.logger import logger
 from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, log_prob_all_is_noise, gram_schmidt
