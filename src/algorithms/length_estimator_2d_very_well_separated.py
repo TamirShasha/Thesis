@@ -24,7 +24,7 @@ class LengthEstimator2DVeryWellSeparated:
                  estimate_noise_parameters=True,
                  filter_basis_size=20,
                  particles_margin=0.01,
-                 estimate_locations_and_num_of_instances=False,
+                 save_statistics=False,
                  log_level=logging.INFO,
                  plots=False,
                  save=False,
@@ -39,7 +39,7 @@ class LengthEstimator2DVeryWellSeparated:
         self._estimate_noise_parameters = estimate_noise_parameters
         self._filter_basis_size = filter_basis_size
         self._particles_margin = particles_margin
-        self._estimate_locations_and_num_of_instances = estimate_locations_and_num_of_instances
+        self._save_statistics = save_statistics
         self._log_level = log_level
         self._plots = plots
         self._save = save
@@ -75,7 +75,7 @@ class LengthEstimator2DVeryWellSeparated:
                                                  noise_mean=self._noise_mean,
                                                  estimate_noise_parameters=self._estimate_noise_parameters,
                                                  signal_margin=margin,
-                                                 estimate_locations_and_num_of_instances=self._estimate_locations_and_num_of_instances,
+                                                 save_statistics=self._save_statistics,
                                                  experiment_dir=self._experiment_dir,
                                                  experiment_attr=self._experiment_attr,
                                                  plots=self._plots,

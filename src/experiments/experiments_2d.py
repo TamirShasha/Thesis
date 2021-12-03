@@ -38,7 +38,7 @@ class Experiment2D:
                  particles_margin=0.01,
                  estimation_method: EstimationMethod = EstimationMethod.VeryWellSeparated,
                  estimate_noise=False,
-                 estimate_locations_and_num_of_instances=False,
+                 save_statistics=False,
                  plot=True,
                  save=True,
                  save_dir=os.path.join(ROOT_DIR, f'src/experiments/plots/'),
@@ -53,7 +53,7 @@ class Experiment2D:
         self._down_sample_size = down_sample_size
         self._estimate_noise = estimate_noise
         self._particles_margin = particles_margin
-        self._estimate_locations_and_num_of_instances = estimate_locations_and_num_of_instances
+        self._save_statistics = save_statistics
 
         self._plot = plot
         self._save = save
@@ -123,7 +123,7 @@ class Experiment2D:
                                                                         estimate_noise_parameters=self._estimate_noise,
                                                                         filter_basis_size=self._filter_basis_size,
                                                                         particles_margin=self._particles_margin,
-                                                                        estimate_locations_and_num_of_instances=self._estimate_locations_and_num_of_instances,
+                                                                        save_statistics=self._save_statistics,
                                                                         log_level=self._log_level,
                                                                         plots=self._plot,
                                                                         save=self._save,
@@ -227,8 +227,8 @@ def __main__():
         signal_length_by_percentage=[1, 1.5, 3, 5, 7],
         num_of_instances_range=(50, 150),
         estimate_noise=True,
-        estimate_locations_and_num_of_instances=True,
         filter_basis_size=7,
+        save_statistics=True,
         plot=False,
         save=True,
         log_level=logging.DEBUG

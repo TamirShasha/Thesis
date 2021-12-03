@@ -36,7 +36,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             filter_basis_size=20,
             num_of_instances_range=(20, 100),
             estimate_noise=False,
-            estimate_locations_and_num_of_instances=True,
+            save_statistics=True,
             particles_margin=0.01,
             plot=False,
             save=True,
