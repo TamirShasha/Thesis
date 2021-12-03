@@ -21,6 +21,7 @@ class LengthEstimator2DVeryWellSeparated:
                  data,
                  signal_length_by_percentage=None,
                  num_of_instances_range=(1, 100),
+                 prior_filter=None,
                  noise_mean=0,
                  noise_std=1,
                  estimate_noise_parameters=True,
@@ -35,6 +36,7 @@ class LengthEstimator2DVeryWellSeparated:
         self._data = data
         self._signal_length_by_percentage = signal_length_by_percentage
         self._num_of_instances_range = num_of_instances_range
+        self._prior_filter = prior_filter
         self._noise_mean = noise_mean
         self._noise_std = noise_std
         self._estimate_noise_parameters = estimate_noise_parameters
@@ -71,6 +73,7 @@ class LengthEstimator2DVeryWellSeparated:
             filter_estimator = FilterEstimator2D(unnormalized_data=self._data,
                                                  unnormalized_filter_basis=filter_basis,
                                                  num_of_instances_range=self._num_of_instances_range,
+                                                 prior_filter=self._prior_filter,
                                                  noise_std=self._noise_std,
                                                  noise_mean=self._noise_mean,
                                                  estimate_noise_parameters=self._estimate_noise_parameters,

@@ -4,6 +4,7 @@ from skimage.draw import disk
 import matplotlib.pyplot as plt
 import os
 import logging
+from scipy.optimize import leastsq, least_squares
 
 from src.utils.logger import logger
 from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, log_prob_all_is_noise, gram_schmidt
@@ -16,6 +17,7 @@ class FilterEstimator2D:
                  unnormalized_data: np.ndarray,
                  unnormalized_filter_basis: np.ndarray,
                  num_of_instances_range: (int, int),
+                 prior_filter=None,
                  noise_std=1.,
                  noise_mean=0.,
                  estimate_noise_parameters=True,
@@ -37,6 +39,7 @@ class FilterEstimator2D:
         self.unnormalized_data = unnormalized_data
         self.unnormalized_filter_basis = unnormalized_filter_basis
         self.num_of_instances_range = num_of_instances_range
+        self.prior_filter = prior_filter
         self.estimate_noise_parameters = estimate_noise_parameters
         self.particle_margin = signal_margin
         self.estimate_locations_and_num_of_instances = estimate_locations_and_num_of_instances
@@ -69,6 +72,7 @@ class FilterEstimator2D:
         # apply signal margin on filter basis
         self.filter_basis, self.signal_support = self.margin_filter_basis()
         self.summed_filters = np.nansum(self.filter_basis, axis=(1, 2))
+        self.find_initial_filter_coeffs()
 
         # find max possible instances for given filter size
         self.max_possible_instances = min(
@@ -107,6 +111,25 @@ class FilterEstimator2D:
              for x in self.unmarginized_filter_basis])
         signal_support = filter_basis[0].shape[0]
         return filter_basis, signal_support
+
+    def find_initial_filter_coeffs(self):
+        """
+        If prior filter is given, finds optimal coeffs to match this filter
+        If no prior filter was given, returns zero coeffs but first coeffs which is equal to noise_std
+        """
+
+        if self.prior_filter is None:
+            initial_filter_params = np.zeros(self.filter_basis_size)
+            initial_filter_params[0] = self.noise_std
+            return initial_filter_params
+
+        def to_minimize(params):
+            return self.filter_basis.T.dot(params).flatten() - self.prior_filter
+
+        initial_filter_params = least_squares(to_minimize, x0=np.zeros(self.filter_basis_size)).x
+
+        logger.info(f'Optimal coeffs for prior filter are {initial_filter_params}')
+        return initial_filter_params
 
     def calc_log_size_s(self, k):
         return log_size_S_2d_1axis(self.data.shape[0], k, self.signal_support)
@@ -225,6 +248,7 @@ class FilterEstimator2D:
     def optimize_parameters(self):
 
         curr_model_parameters, step_size, threshold, max_iter = np.zeros(self.filter_basis_size + 1), 0.1, 1e-4, 100
+        curr_model_parameters[:self.filter_basis_size] = self.find_initial_filter_coeffs()
 
         curr_iter, diff = 0, np.inf
         curr_likelihood, curr_gradient, k_max = self.calc_likelihood_and_gradient(curr_model_parameters)
@@ -270,9 +294,9 @@ class FilterEstimator2D:
         convolved_filter = self.calc_convolved_filter(optimal_filter_coeffs)
         k = self.estimate_most_likely_num_of_instances(optimal_filter_coeffs, optimal_noise_mean, convolved_filter)
         logger.info(f'For size {self.signal_size} most likely k is {k}')
-        # self.find_optimal_signals_locations(convolved_filter, k)
+        self.find_optimal_signals_locations(convolved_filter, k)
 
-        fig, axs = plt.subplots(nrows=1, ncols=3)
+        fig, axs = plt.subplots(nrows=1, ncols=2)
 
         matched_filter = self.filter_basis.T.dot(optimal_coeffs)
         pcm = axs[0].imshow(matched_filter, cmap='gray')
@@ -283,12 +307,9 @@ class FilterEstimator2D:
         filter_power_1d = np.square(matched_filter[center:-self.particle_margin, center])
         cum_filter_power_1d = np.nancumsum(filter_power_1d)
         relative_power_fraction = 1 - cum_filter_power_1d / cum_filter_power_1d[-1]
-        gradient_cum_filter_power_1d = np.gradient(cum_filter_power_1d)
         xs = np.arange(0, filter_power_1d.shape[0]) * 2
         axs[1].plot(xs, relative_power_fraction)
         axs[1].title.set_text('Cumulative Power')
-        axs[2].plot(xs[:-1], np.diff(relative_power_fraction))
-        axs[2].title.set_text('Cumulative Power Gradient')
         fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_matched_filter.png')
         plt.savefig(fname=fig_path)
         plt.close()
@@ -375,7 +396,7 @@ class FilterEstimator2D:
         fig, ax = plt.subplots()
 
         # Display the image
-        if self.experiment_attr['clean_data'] is None:
+        if 'clean_data' not in self.experiment_attr:
             ax.imshow(self.data, cmap='gray')
         else:
             ax.imshow(self.experiment_attr['clean_data'], cmap='gray')

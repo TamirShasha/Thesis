@@ -34,6 +34,7 @@ class Experiment2D:
                  filter_basis_size=20,
                  down_sample_size=1000,
                  num_of_instances_range=(20, 100),
+                 prior_filter=None,
                  particles_margin=0.01,
                  estimation_method: EstimationMethod = EstimationMethod.VeryWellSeparated,
                  estimate_noise=False,
@@ -48,6 +49,7 @@ class Experiment2D:
         self._mrc = mrc
         self._filter_basis_size = filter_basis_size
         self._num_of_instances_range = num_of_instances_range
+        self._prior_filter = prior_filter
         self._down_sample_size = down_sample_size
         self._estimate_noise = estimate_noise
         self._particles_margin = particles_margin
@@ -58,6 +60,7 @@ class Experiment2D:
         self._save_dir = save_dir
         self._log_level = log_level
         self._results = {}
+        self.experiment_attr = {}
 
         curr_date = str(datetime.now().strftime("%d-%m-%Y"))
         curr_time = str(datetime.now().strftime("%H-%M-%S"))
@@ -78,12 +81,10 @@ class Experiment2D:
             self._signal_length = simulator.signal_length
             self._applied_ctf = simulator.apply_ctf
 
-            self.experiment_attr = {
-                'clean_data': simulator.clean_data
-            }
+            self.experiment_attr['clean_data'] = simulator.clean_data
         else:
             logger.info(f'Loading given micrograph from {mrc.name}')
-            self._data = mrc.get_micrograph()
+            self._data = -mrc.get_micrograph()
             # self._data = self._data[:min(self._data.shape), :min(self._data.shape)]
             self._noise_std = mrc.noise_std
             self._noise_mean = mrc.noise_mean
@@ -116,6 +117,7 @@ class Experiment2D:
             self._length_estimator = LengthEstimator2DVeryWellSeparated(data=self._data,
                                                                         signal_length_by_percentage=self._signal_length_by_percentage,
                                                                         num_of_instances_range=self._num_of_instances_range,
+                                                                        prior_filter=self._prior_filter,
                                                                         noise_mean=self._noise_mean,
                                                                         noise_std=self._noise_std,
                                                                         estimate_noise_parameters=self._estimate_noise,
@@ -220,11 +222,14 @@ def __main__():
 
     Experiment2D(
         name=f"expy",
+        # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat'),
         simulator=sim_data,
+        signal_length_by_percentage=[1, 1.5, 3, 5, 7],
+        num_of_instances_range=(50, 150),
         estimate_noise=True,
         estimate_locations_and_num_of_instances=True,
-        filter_basis_size=3,
-        plot=True,
+        filter_basis_size=7,
+        plot=False,
         save=True,
         log_level=logging.DEBUG
     ).run()
