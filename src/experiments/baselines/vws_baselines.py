@@ -29,7 +29,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             name=f"{shape_name}_{signal_size}",
             simulator=data,
             estimation_method=EstimationMethod.VeryWellSeparated,
-            length_options=LENGTH_OPTIONS,
+            signal_length_by_percentage=LENGTH_OPTIONS,
             plot=False,
             save=True,
             save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/vws_baselines/')

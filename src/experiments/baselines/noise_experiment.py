@@ -30,7 +30,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             simulator=data,
             estimation_method=EstimationMethod.VeryWellSeparated,
             estimate_noise=True,
-            length_options=LENGTH_OPTIONS,
+            signal_length_by_percentage=LENGTH_OPTIONS,
             plot=False,
             save=True,
             save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/noise_experiments/')

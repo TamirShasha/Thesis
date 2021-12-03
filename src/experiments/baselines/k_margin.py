@@ -31,7 +31,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
         Experiment2D(
             name=f"{shape_name}_{signal_size}",
             simulator=data_simulator,
-            length_options=LENGTH_OPTIONS,
+            signal_length_by_percentage=LENGTH_OPTIONS,
             estimation_method=EstimationMethod.VeryWellSeparated,
             filter_basis_size=20,
             num_of_instances_range=(20, 100),

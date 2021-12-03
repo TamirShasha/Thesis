@@ -30,7 +30,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             simulator=data_simulator,
             estimation_method=EstimationMethod.VeryWellSeparated,
             estimate_noise=True,
-            length_options=LENGTH_OPTIONS,
+            signal_length_by_percentage=LENGTH_OPTIONS,
             num_of_instances_range=int(0.8 * data_simulator.occurrences),
             plot=False,
             save=True,

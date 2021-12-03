@@ -42,7 +42,7 @@ class NoiseNormalizationMethod(Enum):
 class Micrograph:
     def __init__(self,
                  file_path,
-                 downsample=None,
+                 downsample=1000,
                  noise_normalization_method=NoiseNormalizationMethod.Simple,
                  noise_std=1,
                  noise_mean=0,
@@ -53,6 +53,7 @@ class Micrograph:
         self.noise_normalization_method = noise_normalization_method
         self.noise_std = noise_std
         self.noise_mean = noise_mean
+        self.img = None
 
         if load_micrograph:
             self.img = self.load_micrograph()

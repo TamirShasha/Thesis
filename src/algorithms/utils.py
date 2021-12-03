@@ -313,43 +313,6 @@ def _calc_mapping_2d_after_precompute(n, k, d, constants):
     return mapping
 
 
-def estimate_locations_2d(n, k, d, row_constants):
-    max_k_in_row = min(n // d, k)
-    # mapping_per_row = _calc_mapping_1d_many(n, max_k_in_row, d, row_constants)[:, 0, 1:]
-
-    row_mapping = np.full((n + 1, k + 1, row_constants.shape[-1]), -np.inf)
-    row_mapping[:, 0] = 0
-    row_mapping_locs = np.zeros((row_constants.shape[-1], n + 1, k + 1, n))
-
-    # Filling values one by one, skipping irrelevant values
-    # We already filled values when k=0 (=0) and when i>n-k*d
-    for curr_k in range(1, k + 1):
-        for i in range(n - curr_k * d, -1, -1):
-            row_mapping[i, curr_k] = np.maximum(row_constants[i] + row_mapping[i + d, curr_k - 1],
-                                                row_mapping[i + 1, curr_k])
-            is_bigger = (row_constants[i] + row_mapping[i + d, curr_k - 1] > row_mapping[i + 1, curr_k])[:, np.newaxis]
-            option1 = row_mapping_locs[:, i + d, curr_k - 1]
-            option1[:, i] = 1
-            option2 = row_mapping_locs[:, i + 1, curr_k]
-            row_mapping_locs[:, i, curr_k] = is_bigger * option1 + (1 - is_bigger) * option2
-
-    row_mapping = row_mapping.transpose((2, 0, 1)).copy()
-    row_mapping_locs = row_mapping_locs[:, 0]
-
-    mapping = np.full((n + 1, k + 1), -np.inf)
-    mapping[:, 0] = 0
-    mapping_locs = np.zeros(row_constants.shape[-1], k + 1)
-
-    # Filling values one by one, skipping irrelevant values
-    for curr_k in range(1, k + 1):
-        max_k = min(curr_k, max_k_in_row)
-        for i in range(n - d, -1, -1):
-            mapping[i, curr_k] = logsumexp_simple(mapping[i + d, curr_k - max_k:curr_k] + constants[i, -max_k:])
-            mapping[i, curr_k] = np.logaddexp(mapping[i, curr_k], mapping[i + 1, curr_k])
-
-    return _calc_mapping_2d_after_precompute(n, k, d, mapping_per_row)
-
-
 # Utils for optimization
 def _calc_constants(data, signal_filter, filter_coeff, noise_std):
     flipped_signal_filter = np.flip(signal_filter)  # Flipping to cross-correlate
@@ -492,7 +455,10 @@ def _gradient_descent(F_F_derivative, initial_x, t=0.1, epsilon=1e-10, max_iter=
             break
         t = np.abs(np.linalg.norm(x_current - x_prev) / np.linalg.norm(F_tag_prev - F_tag_current))
         x_prev, F_prev, F_tag_prev = x_current, F_current, F_tag_current
-    # print(x_current, F_current, F_tag_current, t)
+        print(x_current)
+        print(F_tag_current)
+        print(t)
+
     return F_current, x_current
 
 

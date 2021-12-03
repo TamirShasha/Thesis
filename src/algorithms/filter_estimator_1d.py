@@ -4,7 +4,6 @@ from time import time
 
 from src.algorithms.utils import log_size_S_1d, calc_mapping_1d, _calc_term_two_derivative_1d, \
     log_prob_all_is_noise, _gradient_descent, _calc_mapping_1d_many, gram_schmidt
-from src.experimental.dev3 import heuristic_dp
 
 
 class FilterEstimator1D:
@@ -240,33 +239,33 @@ class FilterEstimator1D:
         optimal_coeffs = normalized_optimal_coeffs * self.noise_std / self.basis_norms
         return likelihood, optimal_coeffs
 
-    def estimate_max(self):
-
-        _p = np.zeros(self.filter_basis_size)
-        likelihoods_pos = []
-        likelihoods_neg = []
-        p_pos = []
-        p_neg = []
-        for i in range(self.num_of_data_samples):
-            print(i)
-            c = self.convolved_basis[i].T
-            likelihood_pos, locations_pos = heuristic_dp(self.sample_length, self.filter_length, self.num_of_instances,
-                                                         c)
-            likelihood_neg, locations_neg = heuristic_dp(self.sample_length, self.filter_length, self.num_of_instances,
-                                                         -c)
-
-            p_pos.append(np.sum(c[locations_pos], 0) / (2 * self.term_three_const))
-            p_neg.append(np.sum(-c[locations_neg], 0) / (2 * self.term_three_const))
-            likelihoods_pos.append(likelihood_pos)
-            likelihoods_neg.append(likelihood_neg)
-
-        if likelihood_pos > likelihood_neg:
-            p = np.nanmean(p_pos, 0)
-        else:
-            p = np.nanmean(p_neg, 0)
-
-        optimal_coeffs = p * self.noise_std / self.basis_norms
-        return 0, optimal_coeffs
+    # def estimate_max(self):
+    #
+    #     _p = np.zeros(self.filter_basis_size)
+    #     likelihoods_pos = []
+    #     likelihoods_neg = []
+    #     p_pos = []
+    #     p_neg = []
+    #     for i in range(self.num_of_data_samples):
+    #         print(i)
+    #         c = self.convolved_basis[i].T
+    #         likelihood_pos, locations_pos = heuristic_dp(self.sample_length, self.filter_length, self.num_of_instances,
+    #                                                      c)
+    #         likelihood_neg, locations_neg = heuristic_dp(self.sample_length, self.filter_length, self.num_of_instances,
+    #                                                      -c)
+    #
+    #         p_pos.append(np.sum(c[locations_pos], 0) / (2 * self.term_three_const))
+    #         p_neg.append(np.sum(-c[locations_neg], 0) / (2 * self.term_three_const))
+    #         likelihoods_pos.append(likelihood_pos)
+    #         likelihoods_neg.append(likelihood_neg)
+    #
+    #     if likelihood_pos > likelihood_neg:
+    #         p = np.nanmean(p_pos, 0)
+    #     else:
+    #         p = np.nanmean(p_neg, 0)
+    #
+    #     optimal_coeffs = p * self.noise_std / self.basis_norms
+    #     return 0, optimal_coeffs
 
 
 def create_filter_basis(filter_length, basis_size, basis_type='chebyshev'):

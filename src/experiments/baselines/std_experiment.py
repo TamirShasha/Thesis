@@ -27,7 +27,7 @@ for i, signal_shape in enumerate(SIGNAL_SHAPES):
             name=f"baseline_disk",
             simulator=data,
             estimation_method=EstimationMethod.VeryWellSeparated,
-            length_options=LENGTH_OPTIONS,
+            signal_length_by_percentage=LENGTH_OPTIONS,
             plot=False,
             save=True
         ).run()
