@@ -1,12 +1,9 @@
 import numpy as np
 from enum import Enum
-import matplotlib.pyplot as plt
-import os
 import logging
 
-import src.algorithms.utils as utils
-from src.algorithms.utils import cryo_downsample
-from src.algorithms.filter_estimator_2d import FilterEstimator2D, create_filter_basis
+from src.algorithms.filter_estimator_2d import FilterEstimator2D
+from src.utils.common_filter_basis import create_filter_basis
 from src.algorithms.signal_power_estimator import SignalPowerEstimator as SPE
 from src.utils.logger import logger
 

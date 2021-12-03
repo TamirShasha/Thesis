@@ -7,7 +7,7 @@ import logging
 from scipy.optimize import least_squares
 
 from src.utils.logger import logger
-from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, log_prob_all_is_noise, gram_schmidt
+from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, log_prob_all_is_noise
 from src.utils.logsumexp import logsumexp_simple
 
 
@@ -119,12 +119,13 @@ class FilterEstimator2D:
         """
 
         if self.prior_filter is None:
-            initial_filter_params = np.zeros(self.filter_basis_size)
-            initial_filter_params[0] = self.noise_std
-            return initial_filter_params
+            self.prior_filter = np.zeros_like(self.filter_basis[0])
+            center = (self.signal_support // 2, self.signal_support // 2)
+            rr, cc = disk(center, self.signal_size // 2, shape=self.filter_basis[0].shape)
+            self.prior_filter[rr, cc] = self.noise_std
 
         def to_minimize(params):
-            return self.filter_basis.T.dot(params).flatten() - self.prior_filter
+            return self.filter_basis.T.dot(params).flatten() - self.prior_filter.flatten()
 
         initial_filter_params = least_squares(to_minimize, x0=np.zeros(self.filter_basis_size)).x
 
@@ -414,64 +415,3 @@ class FilterEstimator2D:
         plt.close()
 
         return locations
-
-
-def create_filter_basis(filter_length, basis_size, basis_type='chebyshev'):
-    """
-    creates basis for symmetric signals of given size
-    the higher the size, the finer the basis
-    :param filter_length: size of each basis element
-    :param basis_size: num of elements in returned basis
-    :param basis_type: basis type, can be 'chebyshev', 'classic' or 'classic_symmetric'
-    :return: returns array of shape (basis_size, filter_length, filter_length) contains basis elements
-    """
-    if basis_type == 'chebyshev':
-        return _create_chebyshev_basis(filter_length, basis_size)
-    if basis_type == 'rings':
-        return _create_rings_basis(filter_length, basis_size)
-
-    raise Exception('Unsupported basis type was provided.')
-
-
-def _create_rings_basis(filter_length, basis_size):
-    """
-    this basis contains 'basis_size' rings that cover circle of diamiter 'filter_length'
-    :param filter_length: each element length
-    :param basis_size: num of elements in returned basis
-    """
-    ring_width = filter_length // (basis_size * 2)
-    basis = np.zeros(shape=(basis_size, filter_length, filter_length))
-    temp_map = np.zeros(shape=(filter_length, filter_length))
-
-    radius = filter_length // 2
-    center = (radius, radius)
-    for i in range(basis_size):
-        rr, cc = disk(center, radius - i * ring_width)
-        temp_map[rr, cc] = i + 1
-
-    for i in range(basis_size):
-        basis[i] = temp_map * (temp_map == i + 1) / (i + 1)
-
-    return basis
-
-
-def _create_chebyshev_basis(filter_length, basis_size):
-    """
-    creates basis contains even chebyshev terms for symmetric signals
-    :param filter_length: each element length
-    :param basis_size: num of elements in returned basis
-    """
-    basis = np.zeros(shape=(basis_size, filter_length, filter_length))
-    center = (int(filter_length / 2), int(filter_length / 2))
-    radius = min(center[0], center[1], filter_length - center[0], filter_length - center[1])
-
-    Y, X = np.ogrid[:filter_length, :filter_length]
-    dist_from_center = np.sqrt((X - center[0]) ** 2 + (Y - center[1]) ** 2)
-    mask = dist_from_center > radius
-    for i in range(basis_size):
-        chebyshev_basis_element = np.polynomial.chebyshev.Chebyshev.basis(2 * i, [-radius, radius])
-        basis_element = chebyshev_basis_element(dist_from_center)
-        basis_element[mask] = 0
-        basis[i] = basis_element
-    gs_basis = gram_schmidt(basis.reshape(basis_size, -1)).reshape(basis_size, filter_length, filter_length)
-    return gs_basis
