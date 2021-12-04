@@ -261,15 +261,17 @@ class FilterEstimator2D:
 
         curr_iter, diff = 0, np.inf
         curr_likelihood, curr_gradient, k_expectation = self._calc_likelihood_and_gradient(curr_model_parameters)
+
+        if self.save_statistics:
+            self.statistics['likelihoods'].append(curr_likelihood)
+            self.statistics['noise_mean'].append(curr_model_parameters[-1])
+
         while curr_iter < max_iter and diff > threshold:
 
             logger.debug(
                 f'Current model parameters: {np.round(curr_model_parameters, 3)}, '
                 f'likelihood is {np.round(curr_likelihood, 4)}, '
                 f'k expectation = {k_expectation}')
-
-            if self.save_statistics:
-                self.statistics['likelihoods'].append(curr_likelihood)
 
             next_model_parameters = curr_model_parameters + step_size * curr_gradient
             filter_coeffs = next_model_parameters[:-1]
@@ -287,6 +289,10 @@ class FilterEstimator2D:
             curr_model_parameters, curr_likelihood, curr_gradient = next_model_parameters, next_likelihood, next_gradient
             curr_iter += 1
 
+            if self.save_statistics:
+                self.statistics['likelihoods'].append(curr_likelihood)
+                self.statistics['noise_mean'].append(curr_model_parameters[-1])
+
         return curr_likelihood, curr_model_parameters
 
     def _generate_and_save_statistics(self, optimal_filter_coeffs, optimal_coeffs, optimal_noise_mean):
@@ -295,6 +301,13 @@ class FilterEstimator2D:
         plt.title('Likelihood per optimization (GD) iteration')
         plt.plot(self.statistics['likelihoods'][len(self.statistics['likelihoods']) // 2:])
         fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_gd_likelihoods.png')
+        plt.savefig(fname=fig_path)
+        plt.close()
+
+        # Save evolving noise mean graph
+        plt.title('Noise Mean per optimization (GD) iteration')
+        plt.plot(self.statistics['noise_mean'])
+        fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_gd_noise_mean.png')
         plt.savefig(fname=fig_path)
         plt.close()
 
