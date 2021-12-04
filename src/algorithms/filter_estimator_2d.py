@@ -2,12 +2,13 @@ import numpy as np
 from scipy.signal import convolve
 from skimage.draw import disk
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 import os
 import logging
 from scipy.optimize import least_squares
 
 from src.utils.logger import logger
-from src.algorithms.utils import log_size_S_2d_1axis, calc_mapping_2d, log_prob_all_is_noise
+from src.algorithms.utils import log_size_S_2d_1axis_multiple, calc_mapping_2d, log_prob_all_is_noise
 from src.utils.logsumexp import logsumexp_simple
 
 
@@ -86,7 +87,7 @@ class FilterEstimator2D:
 
         self.convolved_basis = self._convolve_basis()
 
-        self.term_one = np.array([-self._calc_log_size_s(k) for k in self.possible_instances])
+        self.term_one = -self._calc_log_size_s(self.possible_instances)
         self.term_three_const = self._calc_term_three_const()
 
     def _normalize_basis(self):
@@ -134,8 +135,9 @@ class FilterEstimator2D:
         logger.info(f'Optimal coeffs for prior filter are {np.round(initial_filter_params, 3)}')
         return initial_filter_params
 
-    def _calc_log_size_s(self, k):
-        return log_size_S_2d_1axis(self.data.shape[0], k, self.signal_support)
+    def _calc_log_size_s(self, possible_instances):
+        max_k = possible_instances[-1]
+        return log_size_S_2d_1axis_multiple(self.data.shape[0], max_k, self.signal_support)[possible_instances]
 
     def _calc_term_two(self, noise_mean):
         return log_prob_all_is_noise(self.data - noise_mean, self.noise_std)
@@ -198,7 +200,7 @@ class FilterEstimator2D:
         Calculates the likelihood of given model parameters
         """
 
-        noise_term = log_prob_all_is_noise(self.data - noise_mean, 1)
+        noise_term = log_prob_all_is_noise(self.data - noise_mean, self.noise_std)
 
         group_size_term = self.term_one
         filter_norm_const_term = -1 / (self.noise_std ** 2) * np.inner(filter_coeffs, filter_coeffs)
@@ -210,8 +212,12 @@ class FilterEstimator2D:
 
         likelihood = noise_term + logsumexp_simple(k_margin_term)
 
-        k_max = self.possible_instances[np.nanargmax(k_margin_term)]
-        return likelihood, k_max
+        # Calculate k expectation
+        k_expectation = np.rint(np.exp(
+            logsumexp_simple(np.log(self.possible_instances) + k_margin_term) -
+            logsumexp_simple(k_margin_term))).astype(int)
+
+        return likelihood, k_expectation
 
     def _calc_gradient_discrete(self, filter_coeffs, noise_mean, likelihood):
         """
@@ -229,7 +235,7 @@ class FilterEstimator2D:
             filter_coeffs_eps = filter_coeffs + np.eye(1, self.filter_basis_size, i)[0] * eps
             convolved_filter = self._calc_convolved_filter(filter_coeffs_eps)
             mapping = self._calc_mapping(convolved_filter)
-            likelihood_eps, k_max = self._calc_likelihood(mapping, filter_coeffs_eps, noise_mean)
+            likelihood_eps, k_expectation = self._calc_likelihood(mapping, filter_coeffs_eps, noise_mean)
             gradient[i] = (likelihood_eps - likelihood) / eps
 
         return gradient
@@ -243,10 +249,10 @@ class FilterEstimator2D:
 
         convolved_filter = self._calc_convolved_filter(filter_coeffs)
         mapping = self._calc_mapping(convolved_filter)
-        likelihood, k_max = self._calc_likelihood(mapping, filter_coeffs, noise_mean)
+        likelihood, k_expectation = self._calc_likelihood(mapping, filter_coeffs, noise_mean)
         gradient = self._calc_gradient_discrete(filter_coeffs, noise_mean, likelihood)
 
-        return likelihood, gradient, k_max
+        return likelihood, gradient, k_expectation
 
     def _optimize_parameters(self):
 
@@ -254,13 +260,13 @@ class FilterEstimator2D:
         curr_model_parameters[:self.filter_basis_size] = self._find_initial_filter_coeffs()
 
         curr_iter, diff = 0, np.inf
-        curr_likelihood, curr_gradient, k_max = self._calc_likelihood_and_gradient(curr_model_parameters)
+        curr_likelihood, curr_gradient, k_expectation = self._calc_likelihood_and_gradient(curr_model_parameters)
         while curr_iter < max_iter and diff > threshold:
 
             logger.debug(
                 f'Current model parameters: {np.round(curr_model_parameters, 3)}, '
                 f'likelihood is {np.round(curr_likelihood, 4)}, '
-                f'k_max = {k_max}')
+                f'k expectation = {k_expectation}')
 
             if self.save_statistics:
                 self.statistics['likelihoods'].append(curr_likelihood)
@@ -270,10 +276,10 @@ class FilterEstimator2D:
 
             if self.estimate_noise_parameters:
                 next_model_parameters[-1] = (np.nansum(self.data) -
-                                             k_max * np.inner(filter_coeffs, self.summed_filters)) \
+                                             k_expectation * np.inner(filter_coeffs, self.summed_filters)) \
                                             / (self.data_size ** 2)
 
-            next_likelihood, next_gradient, k_max = self._calc_likelihood_and_gradient(next_model_parameters)
+            next_likelihood, next_gradient, k_expectation = self._calc_likelihood_and_gradient(next_model_parameters)
             diff = np.abs(next_likelihood - curr_likelihood)
 
             step_size = np.abs(np.linalg.norm(next_model_parameters - curr_model_parameters)
@@ -393,9 +399,6 @@ class FilterEstimator2D:
                 idx = np.flatnonzero(np.diff(x[:n - num * d + 1]))[0]
                 locations.append((pivot_idx + idx, row))
                 pivot_idx += idx + d
-
-        import matplotlib.pyplot as plt
-        import matplotlib.patches as patches
 
         # Create figure and axes
         fig, ax = plt.subplots()

@@ -212,7 +212,7 @@ def __main__():
                                columns=1000,
                                signal_length=60,
                                signal_power=1,
-                               signal_fraction=1 / 7,
+                               signal_fraction=1 / 5,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.disk,

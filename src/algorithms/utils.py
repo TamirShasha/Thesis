@@ -165,6 +165,23 @@ def log_size_S_2d_1axis(n, k, d):
     return mapping[0, k]
 
 
+# utils for 2d vws, private, names
+def log_size_S_2d_1axis_multiple(n, k, d):
+    """
+    Compute log(|S|), where |S| is the number of ways to insert k signals of size (d x d) in (n x n) spaces in such they are
+    very well separated on rows.
+    """
+    if k * d ** 2 > n ** 2:
+        return -np.inf
+    max_k_in_row = min(n // d, k)
+    log_size_S_per_row_per_k = np.zeros((n - d + 1, max_k_in_row))
+    for k_in_row in range(1, max_k_in_row + 1):
+        log_size_S_per_row_per_k[:, k_in_row - 1] = log_size_S_1d(n, k_in_row, d)
+
+    mapping = _calc_mapping_2d_after_precompute(n, k, d, log_size_S_per_row_per_k)
+    return mapping[0, :]
+
+
 def log_probability_filter_on_each_pixel(mgraph, filt, noise_std):
     """
     For each pixel i in the mgraph compute -1/2std^2 * \sum_{j is filter pixel} x_j^2 - 2x_jy_{i+j}
