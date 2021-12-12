@@ -222,12 +222,12 @@ def __main__():
 
     Experiment2D(
         name=f"expy",
-        mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat'),
-        # simulator=sim_data,
+        # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat'),
+        simulator=sim_data,
         signal_length_by_percentage=[1, 1.5, 3, 5, 7],
         num_of_instances_range=(50, 150),
         estimate_noise=True,
-        filter_basis_size=7,
+        filter_basis_size=3,
         save_statistics=True,
         plot=True,
         save=True,

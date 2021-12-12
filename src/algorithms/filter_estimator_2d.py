@@ -228,7 +228,7 @@ class FilterEstimator2D:
 
         # Calculate number of instances expectation
         k_probabilities = np.exp(k_margin_term - logsumexp_simple(k_margin_term))
-        k_expectation = self.possible_instances * k_probabilities
+        k_expectation = np.nansum(self.possible_instances * k_probabilities)
 
         return likelihood, k_expectation
 
