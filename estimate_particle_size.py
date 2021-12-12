@@ -115,10 +115,10 @@ def estimate(mrc_path,
 
 
 if __name__ == "__main__":
-    estimate(['--name', 'Tamir',
-              '--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\001_automatic_normalized.mrc',
-              # '--length_options', '20', '30', '10',
-              '--estimate_locations_and_num_of_instances',
-              '--num_of_instances_range', '50', '150',
-              '--plot'])
-    # estimate()
+    # estimate(['--name', 'Tamir',
+    #           '--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\001_automatic_normalized.mrc',
+    #           # '--length_options', '20', '30', '10',
+    #           '--estimate_locations_and_num_of_instances',
+    #           '--num_of_instances_range', '50', '150',
+    #           '--plot'])
+    estimate()

@@ -55,7 +55,8 @@ class FilterEstimator2D:
             if experiment_attr is None:
                 self.experiment_attr = {}
             self.statistics = {
-                "likelihoods": []
+                "likelihoods": [],
+                "noise_mean": []
             }
 
         if estimate_noise_parameters:
@@ -184,38 +185,50 @@ class FilterEstimator2D:
         convolved_filter = np.inner(self.convolved_basis.T, filter_coeffs).T
         return convolved_filter
 
-    def _calc_mapping(self, convolved_filter):
+    def _calc_mapping(self, convolved_filter, axis=0):
         """
         :param convolved_filter: dot product between data sample and a filter
+        :param if axis=0, will calculate very well separation over rows, if axis=1 will calculate over columns
         :return: likelihood mapping
         """
 
-        return calc_mapping_2d(self.data.shape[0],
-                               self.max_possible_instances,
-                               self.signal_support,
-                               convolved_filter)
+        if axis == 0:
+            return calc_mapping_2d(self.data.shape[0],
+                                   self.max_possible_instances,
+                                   self.signal_support,
+                                   convolved_filter)
+        elif axis == 1:
+            return calc_mapping_2d(self.data.shape[0],
+                                   self.max_possible_instances,
+                                   self.signal_support,
+                                   convolved_filter.T)
+        else:
+            raise Exception('Invalid axis')
 
-    def _calc_likelihood(self, mapping, filter_coeffs, noise_mean):
+    def _calc_likelihood(self, filter_coeffs, noise_mean):
         """
         Calculates the likelihood of given model parameters
         """
 
+        convolved_filter = self._calc_convolved_filter(filter_coeffs)
+        log_term_rows = self._calc_mapping(convolved_filter, axis=0)[0, self.possible_instances]  # vws on rows
+        log_term_columns = self._calc_mapping(convolved_filter, axis=1)[0, self.possible_instances]  # vws on columns
+
         noise_term = log_prob_all_is_noise(self.data - noise_mean, self.noise_std)
 
-        group_size_term = self.term_one
+        group_size_term = self.term_one + np.log(2)
         filter_norm_const_term = -1 / (self.noise_std ** 2) * np.inner(filter_coeffs, filter_coeffs)
         noise_filter_const_term = -noise_mean / (self.noise_std ** 2) * np.inner(filter_coeffs, self.summed_filters)
-        log_term = mapping[0, self.possible_instances]
+        log_term = np.logaddexp(log_term_rows, log_term_columns)
         k_margin_term = group_size_term + \
                         self.possible_instances * (filter_norm_const_term + noise_filter_const_term) + \
                         log_term
 
         likelihood = noise_term + logsumexp_simple(k_margin_term)
 
-        # Calculate k expectation
-        k_expectation = np.rint(np.exp(
-            logsumexp_simple(np.log(self.possible_instances) + k_margin_term) -
-            logsumexp_simple(k_margin_term))).astype(int)
+        # Calculate number of instances expectation
+        k_probabilities = np.exp(k_margin_term - logsumexp_simple(k_margin_term))
+        k_expectation = self.possible_instances * k_probabilities
 
         return likelihood, k_expectation
 
@@ -233,9 +246,7 @@ class FilterEstimator2D:
 
         for i in range(self.filter_basis_size):
             filter_coeffs_eps = filter_coeffs + np.eye(1, self.filter_basis_size, i)[0] * eps
-            convolved_filter = self._calc_convolved_filter(filter_coeffs_eps)
-            mapping = self._calc_mapping(convolved_filter)
-            likelihood_eps, k_expectation = self._calc_likelihood(mapping, filter_coeffs_eps, noise_mean)
+            likelihood_eps, k_expectation = self._calc_likelihood(filter_coeffs_eps, noise_mean)
             gradient[i] = (likelihood_eps - likelihood) / eps
 
         return gradient
@@ -247,9 +258,7 @@ class FilterEstimator2D:
 
         filter_coeffs, noise_mean = model_parameters[:-1], model_parameters[-1]
 
-        convolved_filter = self._calc_convolved_filter(filter_coeffs)
-        mapping = self._calc_mapping(convolved_filter)
-        likelihood, k_expectation = self._calc_likelihood(mapping, filter_coeffs, noise_mean)
+        likelihood, k_expectation = self._calc_likelihood(filter_coeffs, noise_mean)
         gradient = self._calc_gradient_discrete(filter_coeffs, noise_mean, likelihood)
 
         return likelihood, gradient, k_expectation
@@ -262,11 +271,11 @@ class FilterEstimator2D:
         curr_iter, diff = 0, np.inf
         curr_likelihood, curr_gradient, k_expectation = self._calc_likelihood_and_gradient(curr_model_parameters)
 
-        if self.save_statistics:
-            self.statistics['likelihoods'].append(curr_likelihood)
-            self.statistics['noise_mean'].append(curr_model_parameters[-1])
-
         while curr_iter < max_iter and diff > threshold:
+
+            if self.save_statistics:
+                self.statistics['likelihoods'].append(curr_likelihood)
+                self.statistics['noise_mean'].append(curr_model_parameters[-1])
 
             logger.debug(
                 f'Current model parameters: {np.round(curr_model_parameters, 3)}, '
@@ -275,8 +284,11 @@ class FilterEstimator2D:
 
             next_model_parameters = curr_model_parameters + step_size * curr_gradient
             filter_coeffs = next_model_parameters[:-1]
+            noise_mean = next_model_parameters[-1]
 
             if self.estimate_noise_parameters:
+                likelihood, k_expectation = self._calc_likelihood(filter_coeffs, noise_mean)
+
                 next_model_parameters[-1] = (np.nansum(self.data) -
                                              k_expectation * np.inner(filter_coeffs, self.summed_filters)) \
                                             / (self.data_size ** 2)
@@ -288,10 +300,6 @@ class FilterEstimator2D:
                                / np.linalg.norm(next_gradient - curr_gradient))
             curr_model_parameters, curr_likelihood, curr_gradient = next_model_parameters, next_likelihood, next_gradient
             curr_iter += 1
-
-            if self.save_statistics:
-                self.statistics['likelihoods'].append(curr_likelihood)
-                self.statistics['noise_mean'].append(curr_model_parameters[-1])
 
         return curr_likelihood, curr_model_parameters
 
