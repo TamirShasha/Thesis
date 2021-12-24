@@ -31,9 +31,9 @@ def simple_cli(debug, verbosity):
 @click.option('--noise_mean', type=int, default=0)
 @click.option('--noise_std', type=int, default=1)
 @click.option('--down_sample_size', type=int, default=-1)
-@click.option('--filter_basis_size', type=int, default=20)
+@click.option('--filter_basis_size', type=int, default=10)
 @click.option('--particles_margin', type=float, default=0.01)
-@click.option('--estimate_locations_and_num_of_instances', is_flag=True)
+@click.option('--save_statistics', is_flag=True)
 @click.option('--plot', is_flag=True)
 @click.option('--save', is_flag=True)
 @click.option('--save_dir', type=str, default=os.path.join(ROOT_DIR, f'src/experiments/plots/'))
@@ -51,7 +51,7 @@ def estimate(mrc_path,
              down_sample_size,
              filter_basis_size,
              particles_margin,
-             estimate_locations_and_num_of_instances,
+             save_statistics,
              plot,
              save,
              save_dir,
@@ -83,7 +83,7 @@ def estimate(mrc_path,
         start, end, step = signal_length_by_percentage
         signal_length_by_percentage = np.arange(start, end + 1, step)
     else:
-        signal_length_by_percentage = [3, 4, 5, 6, 8, 10]
+        signal_length_by_percentage = [4, 6, 8, 10, 12, 14]
 
     # estimation method
     estimation_method = estimation_method.lower()
@@ -105,7 +105,7 @@ def estimate(mrc_path,
                               down_sample_size=down_sample_size,
                               num_of_instances_range=num_of_instances_range,
                               estimation_method=estimation_method,
-                              save_statistics=estimate_locations_and_num_of_instances,
+                              save_statistics=save_statistics,
                               particles_margin=particles_margin,
                               plot=plot,
                               save=save,
@@ -117,8 +117,6 @@ def estimate(mrc_path,
 if __name__ == "__main__":
     # estimate(['--name', 'Tamir',
     #           '--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\001_automatic_normalized.mrc',
-    #           # '--length_options', '20', '30', '10',
-    #           '--estimate_locations_and_num_of_instances',
-    #           '--num_of_instances_range', '50', '150',
+    #           '--save_statistics',
     #           '--plot'])
     estimate()

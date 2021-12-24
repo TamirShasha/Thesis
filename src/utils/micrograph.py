@@ -100,6 +100,7 @@ class Micrograph:
 
     def normalize_noise(self, mrc):
         logger.info('Normalizing noise ..')
+        old_mean, old_std = np.nanmean(mrc), np.nanstd(mrc)
         if self.noise_normalization_method == NoiseNormalizationMethod.NoNormalization:
             mrc -= self.noise_mean
             mrc /= self.noise_std
@@ -109,7 +110,9 @@ class Micrograph:
         else:
             raise Exception('Whitening is unsupported at the moment')
 
-        logger.info(f'MRC mean/std is {np.nanmean(mrc)}/{np.nanstd(mrc)}')
+        curr_mean, curr_std = np.nanmean(mrc), np.nanstd(mrc)
+        logger.info(f'MRC mean/std is {format(curr_mean,".3f")}/{format(curr_std,".3f")} '
+                    f'(was {format(old_mean,".3f")}/{format(old_std,".3f")})')
         return mrc
 
     @staticmethod
