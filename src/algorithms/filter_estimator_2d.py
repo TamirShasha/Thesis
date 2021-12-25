@@ -62,6 +62,9 @@ class FilterEstimator2D:
             }
 
     def _initialize(self):
+        """
+        perform initialization of all relevant pre-computed and constant variables
+        """
 
         noise_mean = self.noise_mean_param if self.noise_mean_param is not None else np.nanmean(self.unnormalized_data)
         noise_std = self.noise_std_param if self.noise_std_param is not None else np.nanstd(self.unnormalized_data)
