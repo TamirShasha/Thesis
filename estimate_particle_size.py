@@ -33,7 +33,7 @@ def simple_cli(debug, verbosity):
 @click.option('--save_statistics', is_flag=True)
 @click.option('--plot', is_flag=True)
 @click.option('--save', is_flag=True)
-@click.option('--save_dir', type=str, default=os.path.join(ROOT_DIR, f'src/experiments/plots/'))
+@click.option('--save_dir', type=str, default=None)
 @click.option('--logs', is_flag=True)
 @click.option('--logs-debug', is_flag=False)
 @click.option('--random_seed', type=int, default=500)
@@ -57,6 +57,10 @@ def estimate(mrc_path,
 
     if name is None:
         name = os.path.basename(mrc_path)
+        if '.' in name:
+            name = name.split('.')[0]
+    if save_dir is None:
+        save_dir = os.path.join(ROOT_DIR, f'src/experiments/plots/{name}/')
 
     micrograph = Micrograph(mrc_path,
                             downsample=down_sample_size,
@@ -105,9 +109,8 @@ def estimate(mrc_path,
 
 
 if __name__ == "__main__":
-    # estimate(['--name', 'Tamir',
-    #           '--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\001.mrc',
-    #           '--noise_params', '0', '1',
-    #           '--save_statistics',
-    #           '--plot'])
-    estimate()
+    estimate(['--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\001.mrc',
+              '--noise_params', '0', '1',
+              '--save_statistics',
+              '--plot'])
+    # estimate()
