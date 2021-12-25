@@ -109,6 +109,7 @@ def estimate(mrc_path,
 
 
 if __name__ == "__main__":
-    # estimate(['--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\001.mrc',
+    # estimate(['--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\stack_0001_2x_SumCorr.mrc',
+    #           '--down_sample_size', '1000',
     #           '--plot'])
     estimate()

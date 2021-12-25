@@ -99,6 +99,19 @@ class Micrograph:
             downsample_factor = (original_size / self.downsample)
             self.noise_std = self.noise_std / downsample_factor
 
+        # import matplotlib.pyplot as plt
+        # from scipy.signal import convolve
+        # flipped_signal_filter = np.ones((30, 30))  # Flipping to cross-correlate
+        # conv = convolve(mrc, flipped_signal_filter, mode='valid')
+        # plt.imshow(conv, cmap='gray')
+        # plt.show()
+        #
+        # plt.plot(np.nansum(np.abs(mrc), axis=1), '.')
+        # plt.show()
+        #
+        # plt.plot(np.nanstd(np.abs(mrc), axis=1), '.')
+        # plt.show()
+
         return mrc
 
     def normalize_noise(self, mrc):
@@ -119,20 +132,20 @@ class Micrograph:
 
     @staticmethod
     def clip_outliers(mrc: np.ndarray):
-        low, high = 25, 75
+        low, high, c = 25, 75, 1.5
         mrc_iqr = iqr(mrc, rng=(low, high))
-        low_ths = np.percentile(mrc, low) - 1.5 * mrc_iqr
-        high_ths = np.percentile(mrc, high) + 1.5 * mrc_iqr
+        low_ths = np.percentile(mrc, low) - c * mrc_iqr
+        high_ths = np.percentile(mrc, high) + c * mrc_iqr
 
         # import matplotlib.pyplot as plt
-        # plt.title('Histogram of gray values in 001.mrc')
+        # plt.title('Histogram of gray values in HCN1apo_0002_2xaligned.mrc')
         # plt.hist(mrc.flatten(), bins=100)
         # plt.axvline(x=low_ths, color='r', linestyle='-')
         # plt.axvline(x=high_ths, color='r', linestyle='-')
         # plt.show()
 
-        total_clipped_low_perc = np.round((np.nansum(mrc < low_ths) / np.prod(mrc.shape)) * 100, 3)
-        total_clipped_high_perc = np.round((np.nansum(mrc > high_ths) / np.prod(mrc.shape)) * 100, 3)
+        total_clipped_low_perc = np.round((np.nansum(mrc < low_ths) / np.nanprod(mrc.shape)) * 100, 3)
+        total_clipped_high_perc = np.round((np.nansum(mrc > high_ths) / np.nanprod(mrc.shape)) * 100, 3)
         clipped_mrc = mrc.clip(low_ths, high_ths)
 
         logger.info(f'Clipping outliers by IQR method, using ranges ({low}, {high}), '

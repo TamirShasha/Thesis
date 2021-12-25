@@ -109,8 +109,8 @@ def cryo_downsample(x, out_shape):
     in_shape = np.array(x.shape)
     out_shape = np.array([s if 0 < s < in_shape[i] else in_shape[i] for i, s in enumerate(out_shape)])
     fourier_dims = np.array([i for i, s in enumerate(out_shape) if 0 < s < in_shape[i]])
-    size_in = np.prod(in_shape[fourier_dims])
-    size_out = np.prod(out_shape[fourier_dims])
+    size_in = np.nanprod(in_shape[fourier_dims])
+    size_out = np.nanprod(out_shape[fourier_dims])
 
     fx = crop(np.fft.fftshift(np.fft.fft2(x, axes=fourier_dims), axes=fourier_dims), out_shape)
     out = np.fft.ifft2(np.fft.ifftshift(fx, axes=fourier_dims), axes=fourier_dims) * (size_out / size_in)
