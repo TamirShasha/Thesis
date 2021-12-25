@@ -455,6 +455,8 @@ class FilterEstimator2D:
         :return: likelihood value and optimal unnormalized filter coefficient (can be used on user basis)
         """
 
+        self._initialize()
+
         likelihood, optimal_model_parameters = self._optimize_parameters()
 
         optimal_filter_coeffs, optimal_noise_mean = optimal_model_parameters[:-1], optimal_model_parameters[-1]
