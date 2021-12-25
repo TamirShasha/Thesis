@@ -47,7 +47,7 @@ class Micrograph:
                  downsample=1000,
                  noise_std=None,
                  noise_mean=None,
-                 clip_outliers=False,
+                 clip_outliers=True,
                  load_micrograph=False):
         self.file_path = file_path
         self.name = os.path.basename(self.file_path)
