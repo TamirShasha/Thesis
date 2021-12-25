@@ -7,6 +7,7 @@ import logging
 from src.constants import ROOT_DIR
 from src.experiments.experiments_2d import Experiment2D, EstimationMethod
 from src.utils.micrograph import Micrograph, NoiseNormalizationMethod
+from multiprocessing import Process
 
 warnings.filterwarnings('ignore')
 
@@ -28,8 +29,8 @@ def simple_cli(debug, verbosity):
 @click.option('--num_of_instances_range', type=(int, int), default=(50, 150))
 @click.option('--noise_params', type=(float, float), default=(None, None))
 @click.option('--down_sample_size', type=int, default=-1)
-@click.option('--filter_basis_size', type=int, default=10)
-@click.option('--particles_margin', type=float, default=0.01)
+@click.option('--filter_basis_size', type=int, default=20)
+@click.option('--particles_margin', type=float, default=0.02)
 @click.option('--save_statistics', is_flag=True)
 @click.option('--plot', is_flag=True)
 @click.option('--save', is_flag=True)
@@ -55,25 +56,12 @@ def estimate(mrc_path,
              random_seed):
     np.random.seed(random_seed)
 
-    if name is None:
-        name = os.path.basename(mrc_path)
-        if '.' in name:
-            name = name.split('.')[0]
-    if save_dir is None:
-        save_dir = os.path.join(ROOT_DIR, f'src/experiments/plots/{name}/')
-
-    micrograph = Micrograph(mrc_path,
-                            downsample=down_sample_size,
-                            load_micrograph=True,
-                            noise_mean=noise_params[0],
-                            noise_std=noise_params[1])
-
     # build length options
     if signal_length_by_percentage is not None:
         start, end, step = signal_length_by_percentage
         signal_length_by_percentage = np.arange(start, end + 1, step)
     else:
-        signal_length_by_percentage = [2, 4, 6, 8, 10]
+        signal_length_by_percentage = [1.5, 2, 3, 4, 6, 8, 10]
 
     # estimation method
     estimation_method = estimation_method.lower()
@@ -91,25 +79,50 @@ def estimate(mrc_path,
     if logs_debug:
         log_level = logging.DEBUG
 
-    experiment = Experiment2D(name=name,
-                              mrc=micrograph,
-                              signal_length_by_percentage=signal_length_by_percentage,
-                              filter_basis_size=filter_basis_size,
-                              down_sample_size=down_sample_size,
-                              num_of_instances_range=num_of_instances_range,
-                              estimation_method=estimation_method,
-                              estimate_noise=estimate_noise_parameters,
-                              save_statistics=save_statistics,
-                              particles_margin=particles_margin,
-                              plot=plot,
-                              save=save,
-                              log_level=log_level,
-                              save_dir=save_dir)
-    experiment.run()
+    file_name, file_ext = os.path.splitext(mrc_path)
+    if file_ext == '.txt':
+        file = open(mrc_path, 'r')
+        paths = [path.rstrip() for path in file.readlines()]
+    else:
+        paths = [mrc_path]
+
+    for path in paths:
+        if path == '':
+            continue
+
+        if name is None:
+            name = os.path.basename(path)
+            if '.' in name:
+                name = name.split('.')[0]
+        if save_dir is None:
+            save_dir = os.path.join(ROOT_DIR, f'src/experiments/plots/{name}/')
+
+        micrograph = Micrograph(path,
+                                downsample=down_sample_size,
+                                load_micrograph=True,
+                                noise_mean=noise_params[0],
+                                noise_std=noise_params[1])
+
+        experiment = Experiment2D(name=name,
+                                  mrc=micrograph,
+                                  signal_length_by_percentage=signal_length_by_percentage,
+                                  filter_basis_size=filter_basis_size,
+                                  down_sample_size=down_sample_size,
+                                  num_of_instances_range=num_of_instances_range,
+                                  estimation_method=estimation_method,
+                                  estimate_noise=estimate_noise_parameters,
+                                  save_statistics=save_statistics,
+                                  particles_margin=particles_margin,
+                                  plot=plot,
+                                  save=save,
+                                  log_level=log_level,
+                                  save_dir=save_dir)
+        # experiment.run()
+        Process(target=experiment.run).start()
 
 
 if __name__ == "__main__":
-    # estimate(['--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\stack_0001_2x_SumCorr.mrc',
+    # estimate(['--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\paths.txt',
     #           '--down_sample_size', '1000',
     #           '--plot'])
     estimate()
