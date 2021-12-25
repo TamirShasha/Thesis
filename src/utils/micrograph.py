@@ -45,18 +45,19 @@ class Micrograph:
     def __init__(self,
                  file_path,
                  downsample=1000,
-                 noise_normalization_method=NoiseNormalizationMethod.Simple,
-                 noise_std=1,
-                 noise_mean=0,
+                 noise_std=None,
+                 noise_mean=None,
                  clip_outliers=True,
                  load_micrograph=False):
         self.file_path = file_path
         self.name = os.path.basename(self.file_path)
         self.downsample = downsample
-        self.noise_normalization_method = noise_normalization_method
-        self.noise_std = noise_std
-        self.noise_mean = noise_mean
+        self.noise_std_param = noise_std
+        self.noise_mean_param = noise_mean
         self.clip_outliers = clip_outliers
+
+        self.noise_mean = None
+        self.noise_std = None
         self.img = None
 
         if load_micrograph:
@@ -82,7 +83,9 @@ class Micrograph:
         else:
             raise Exception('Unsupported File Extension!')
 
+        # Flipping for positive signal power, cutting for square dimension
         mrc = mrc[:min(mrc.shape), :min(mrc.shape)]
+        mrc = -mrc
 
         if self.clip_outliers:
             mrc = Micrograph.clip_outliers(mrc)
@@ -90,7 +93,7 @@ class Micrograph:
         mrc = self.normalize_noise(mrc)
 
         if self.downsample > 0:
-            logger.info(f'Downsample to size ({self.downsample, self.downsample})')
+            logger.info(f'Downsample to size ({self.downsample}, {self.downsample})')
             original_size = mrc.shape[0]
             mrc = cryo_downsample(mrc, (self.downsample, self.downsample))
             downsample_factor = (original_size / self.downsample)
@@ -101,18 +104,17 @@ class Micrograph:
     def normalize_noise(self, mrc):
         logger.info('Normalizing noise ..')
         old_mean, old_std = np.nanmean(mrc), np.nanstd(mrc)
-        if self.noise_normalization_method == NoiseNormalizationMethod.NoNormalization:
-            mrc -= self.noise_mean
-            mrc /= self.noise_std
-        elif self.noise_normalization_method == NoiseNormalizationMethod.Simple:
-            mrc -= np.nanmean(mrc)
-            mrc /= np.nanstd(mrc)
-        else:
-            raise Exception('Whitening is unsupported at the moment')
 
-        curr_mean, curr_std = np.nanmean(mrc), np.nanstd(mrc)
-        logger.info(f'MRC mean/std is {format(curr_mean,".3f")}/{format(curr_std,".3f")} '
-                    f'(was {format(old_mean,".3f")}/{format(old_std,".3f")})')
+        noise_mean = self.noise_mean_param if self.noise_mean_param is not None else np.nanmean(mrc)
+        noise_std = self.noise_std_param if self.noise_std_param is not None else np.nanstd(mrc)
+
+        mrc -= noise_mean
+        mrc /= noise_std
+
+        self.noise_mean = 0
+        self.noise_std = 1
+
+        logger.info(f'Normalized MRC mean/std to (0,1) from ({format(old_mean, ".3f")}/{format(old_std, ".3f")})')
         return mrc
 
     @staticmethod

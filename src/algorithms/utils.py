@@ -114,7 +114,7 @@ def cryo_downsample(x, out_shape):
 
     fx = crop(np.fft.fftshift(np.fft.fft2(x, axes=fourier_dims), axes=fourier_dims), out_shape)
     out = np.fft.ifft2(np.fft.ifftshift(fx, axes=fourier_dims), axes=fourier_dims) * (size_out / size_in)
-    return out.astype(dtype_in)
+    return out.real.astype(dtype_in)
 
 
 # utils

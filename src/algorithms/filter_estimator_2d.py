@@ -19,10 +19,10 @@ class FilterEstimator2D:
                  unnormalized_filter_basis: np.ndarray,
                  num_of_instances_range: (int, int),
                  prior_filter=None,
-                 noise_std=1.,
-                 noise_mean=0.,
+                 noise_std_param=None,
+                 noise_mean_param=None,
                  estimate_noise_parameters=True,
-                 signal_margin=0,
+                 signal_margin=0.01,
                  save_statistics=False,
                  experiment_dir=None,
                  experiment_attr=None,
@@ -41,6 +41,8 @@ class FilterEstimator2D:
         self.unnormalized_filter_basis = unnormalized_filter_basis
         self.num_of_instances_range = num_of_instances_range
         self.prior_filter = prior_filter
+        self.noise_mean_param = noise_mean_param
+        self.noise_std_param = noise_std_param
         self.estimate_noise_parameters = estimate_noise_parameters
         self.particle_margin = signal_margin
         self.save_statistics = save_statistics
@@ -61,13 +63,12 @@ class FilterEstimator2D:
 
     def _initialize(self):
 
+        noise_mean = self.noise_mean_param if self.noise_mean_param is not None else np.nanmean(self.unnormalized_data)
+        noise_std = self.noise_std_param if self.noise_std_param is not None else np.nanstd(self.unnormalized_data)
         if self.estimate_noise_parameters:
-            noise_mean = np.nanmean(self.unnormalized_data)
-            noise_std = np.nanstd(self.unnormalized_data)
             logger.info(f'Will estimate white noise parameters. '
                         f'Initial values are mean / std of entire data: '
-                        f'({np.round(noise_mean, 3)} / {np.round(noise_std, 3)})')
-
+                        f'({format(noise_mean, ".3f")} / {format(noise_std, ".3f")})')
         self.data = (self.unnormalized_data - noise_mean) / noise_std
         self.noise_std = 1  # We assume noise std is close to 1 after normalization
         self.data_size = self.data.shape[0]

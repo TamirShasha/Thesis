@@ -84,7 +84,7 @@ class Experiment2D:
             self.experiment_attr['clean_data'] = simulator.clean_data
         else:
             logger.info(f'Loading given micrograph from {mrc.name}')
-            self._data = -mrc.get_micrograph()
+            self._data = mrc.get_micrograph()
             # self._data = self._data[:min(self._data.shape), :min(self._data.shape)]
             self._noise_std = mrc.noise_std
             self._noise_mean = mrc.noise_mean
@@ -223,14 +223,15 @@ def __main__():
     Experiment2D(
         name=f"expy",
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat'),
-        simulator=sim_data,
+        mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\001.mrc'),
+        # simulator=sim_data,
         signal_length_by_percentage=[1, 1.5, 3, 5, 7],
         num_of_instances_range=(50, 150),
         estimate_noise=True,
         filter_basis_size=3,
         save_statistics=True,
         plot=True,
-        save=True,
+        save=False,
         log_level=logging.DEBUG
     ).run()
 
