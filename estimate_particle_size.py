@@ -110,7 +110,5 @@ def estimate(mrc_path,
 
 if __name__ == "__main__":
     # estimate(['--mrc_path', r'C:\Users\tamir\Desktop\Thesis\data\001.mrc',
-    #           '--noise_params', '0', '1',
-    #           '--save_statistics',
     #           '--plot'])
     estimate()

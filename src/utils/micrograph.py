@@ -47,7 +47,7 @@ class Micrograph:
                  downsample=1000,
                  noise_std=None,
                  noise_mean=None,
-                 clip_outliers=True,
+                 clip_outliers=False,
                  load_micrograph=False):
         self.file_path = file_path
         self.name = os.path.basename(self.file_path)
@@ -121,8 +121,16 @@ class Micrograph:
     def clip_outliers(mrc: np.ndarray):
         low, high = 25, 75
         mrc_iqr = iqr(mrc, rng=(low, high))
-        low_ths = np.percentile(mrc, low) - mrc_iqr
-        high_ths = np.percentile(mrc, high) + mrc_iqr
+        low_ths = np.percentile(mrc, low) - 1.5 * mrc_iqr
+        high_ths = np.percentile(mrc, high) + 1.5 * mrc_iqr
+
+        # import matplotlib.pyplot as plt
+        # plt.title('Histogram of gray values in 001.mrc')
+        # plt.hist(mrc.flatten(), bins=100)
+        # plt.axvline(x=low_ths, color='r', linestyle='-')
+        # plt.axvline(x=high_ths, color='r', linestyle='-')
+        # plt.show()
+
         total_clipped_low_perc = np.round((np.nansum(mrc < low_ths) / np.prod(mrc.shape)) * 100, 3)
         total_clipped_high_perc = np.round((np.nansum(mrc > high_ths) / np.prod(mrc.shape)) * 100, 3)
         clipped_mrc = mrc.clip(low_ths, high_ths)
