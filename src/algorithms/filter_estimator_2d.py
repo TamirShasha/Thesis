@@ -59,18 +59,20 @@ class FilterEstimator2D:
                 "noise_mean": []
             }
 
-        if estimate_noise_parameters:
-            noise_mean = np.nanmean(unnormalized_data)
-            noise_std = np.nanstd(unnormalized_data)
+    def _initialize(self):
+
+        if self.estimate_noise_parameters:
+            noise_mean = np.nanmean(self.unnormalized_data)
+            noise_std = np.nanstd(self.unnormalized_data)
             logger.info(f'Will estimate white noise parameters. '
                         f'Initial values are mean / std of entire data: '
                         f'({np.round(noise_mean, 3)} / {np.round(noise_std, 3)})')
 
-        self.data = (unnormalized_data - noise_mean) / noise_std
+        self.data = (self.unnormalized_data - noise_mean) / noise_std
         self.noise_std = 1  # We assume noise std is close to 1 after normalization
         self.data_size = self.data.shape[0]
 
-        self.filter_basis_size = len(unnormalized_filter_basis)
+        self.filter_basis_size = len(self.unnormalized_filter_basis)
         self.unmarginized_filter_basis, self.basis_norms = self._normalize_basis()
         self.signal_size = self.unmarginized_filter_basis[0].shape[0]
 
@@ -264,6 +266,9 @@ class FilterEstimator2D:
         return likelihood, gradient, k_expectation
 
     def _optimize_parameters(self):
+
+        if self.possible_instances.size == 0:
+            return -np.inf, np.zeros_like(self.filter_basis_size)
 
         curr_model_parameters, step_size, threshold, max_iter = np.zeros(self.filter_basis_size + 1), 0.1, 1e-4, 100
         curr_model_parameters[:self.filter_basis_size] = self._find_initial_filter_coeffs()
