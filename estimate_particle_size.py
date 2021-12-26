@@ -23,7 +23,6 @@ def simple_cli(debug, verbosity):
 
 @simple_cli.command('estimate_particle_size', short_help='Estimates particle size')
 @click.option('--mrc_path', type=str)
-@click.option('--name', type=str, default=None)
 @click.option('--signal_length_by_percentage', nargs=3, type=int, default=None)
 @click.option('--estimation_method', type=click.Choice(['vws', 'curves'], case_sensitive=False), default='vws')
 @click.option('--num_of_instances_range', type=(int, int), default=(50, 150))
@@ -34,12 +33,11 @@ def simple_cli(debug, verbosity):
 @click.option('--save_statistics', is_flag=True)
 @click.option('--plot', is_flag=True)
 @click.option('--save', is_flag=True)
-@click.option('--save_dir', type=str, default=None)
+@click.option('--save_dir', type=str, default=os.path.join(ROOT_DIR, f'src/experiments/plots/'))
 @click.option('--logs', is_flag=True)
 @click.option('--logs-debug', is_flag=False)
 @click.option('--random_seed', type=int, default=500)
 def estimate(mrc_path,
-             name,
              signal_length_by_percentage,
              estimation_method,
              num_of_instances_range,
@@ -90,12 +88,10 @@ def estimate(mrc_path,
         if path == '':
             continue
 
-        if name is None:
-            name = os.path.basename(path)
-            if '.' in name:
-                name = name.split('.')[0]
-        if save_dir is None:
-            save_dir = os.path.join(ROOT_DIR, f'src/experiments/plots/{name}/')
+        name = os.path.basename(path)
+        if '.' in name:
+            name = name.split('.')[0]
+        mrc_save_dir = os.path.join(save_dir, name)
 
         micrograph = Micrograph(path,
                                 downsample=down_sample_size,
@@ -116,7 +112,7 @@ def estimate(mrc_path,
                                   plot=plot,
                                   save=save,
                                   log_level=log_level,
-                                  save_dir=save_dir)
+                                  save_dir=mrc_save_dir)
         # experiment.run()
         Process(target=experiment.run).start()
 
