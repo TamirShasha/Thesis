@@ -29,7 +29,7 @@ def simple_cli(debug, verbosity):
 @click.option('--noise_params', type=(float, float), default=(None, None))
 @click.option('--down_sample_size', type=int, default=-1)
 @click.option('--filter_basis_size', type=int, default=20)
-@click.option('--particles_margin', type=float, default=0.02)
+@click.option('--particles_margin', type=float, default=0.015)
 @click.option('--save_statistics', is_flag=True)
 @click.option('--plot', is_flag=True)
 @click.option('--save', is_flag=True)

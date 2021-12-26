@@ -441,7 +441,10 @@ class FilterEstimator2D:
 
         # Create a Rectangle patch
         for loc in locations:
-            rect = patches.Rectangle(loc, d, d, linewidth=1, edgecolor='r', facecolor='none')
+            rect = patches.Rectangle(loc, self.signal_size, self.signal_size,
+                                     linewidth=1,
+                                     edgecolor='r',
+                                     facecolor='none')
             # Add the patch to the Axes
             ax.add_patch(rect)
 
