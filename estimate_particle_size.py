@@ -59,7 +59,7 @@ def estimate(mrc_path,
         start, end, step = signal_length_by_percentage
         signal_length_by_percentage = np.arange(start, end + 1, step)
     else:
-        signal_length_by_percentage = [1.5, 2, 3, 4, 6, 8, 10]
+        signal_length_by_percentage = [1.5, 2, 3, 4, 6, 8]
 
     # estimation method
     estimation_method = estimation_method.lower()
