@@ -225,13 +225,15 @@ def __main__():
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat'),
         mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\001.mrc'),
         # simulator=sim_data,
-        signal_length_by_percentage=[1, 1.5, 3, 5, 7],
-        num_of_instances_range=(50, 150),
+        signal_length_by_percentage=[1.5, 3, 5, 7],
+        num_of_instances_range=(50, 100),
         estimate_noise=True,
-        filter_basis_size=3,
+        filter_basis_size=5,
         save_statistics=True,
+        particles_margin=0.03,
+        down_sample_size=1000,
         plot=True,
-        save=False,
+        save=True,
         log_level=logging.DEBUG
     ).run()
 

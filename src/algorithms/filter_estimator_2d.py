@@ -22,7 +22,7 @@ class FilterEstimator2D:
                  noise_std_param=None,
                  noise_mean_param=None,
                  estimate_noise_parameters=True,
-                 signal_margin=0.01,
+                 signal_margin=0,
                  save_statistics=False,
                  experiment_dir=None,
                  experiment_attr=None,
@@ -440,8 +440,8 @@ class FilterEstimator2D:
             ax.imshow(self.experiment_attr['clean_data'], cmap='gray')
 
         # Create a Rectangle patch
-        for loc in locations:
-            rect = patches.Rectangle(loc, self.signal_size, self.signal_size,
+        for loc in np.array(locations):
+            rect = patches.Rectangle(loc + self.particle_margin, self.signal_size, self.signal_size,
                                      linewidth=1,
                                      edgecolor='r',
                                      facecolor='none')
