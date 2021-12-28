@@ -9,7 +9,7 @@ from src.experiments.experiments_2d import Experiment2D, EstimationMethod
 
 NOISE_MEAN = 0
 NOISE_STD = 8
-N = 2000
+N = 4000
 LENGTH_OPTIONS_PERC = np.array([2, 4, 6, 8, 10, 12, 14, 16])
 SIGNAL_SHAPES = [(Shapes2D.disk, 'disk'),
                  (Shapes2D.sphere, 'sphere'),
@@ -39,7 +39,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             signal_length_by_percentage=LENGTH_OPTIONS_PERC,
             num_of_instances_range=(50, 150),
             estimate_noise=True,
-            filter_basis_size=7,
+            filter_basis_size=12,
             particles_margin=0.02,
             save_statistics=True,
             plot=False,

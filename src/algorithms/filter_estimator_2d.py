@@ -30,8 +30,6 @@ class FilterEstimator2D:
                  log_level=logging.INFO):
         """
         initialize the filter estimator
-        :param unnormalized_data: 1d data
-        :param unnormalized_filter_basis: list of orthonormal basis
         """
 
         if len(unnormalized_filter_basis) == 0:
@@ -61,11 +59,6 @@ class FilterEstimator2D:
                 "noise_mean": []
             }
 
-    def _initialize(self):
-        """
-        perform initialization of all relevant pre-computed and constant variables
-        """
-
         noise_mean = self.noise_mean_param if self.noise_mean_param is not None else np.nanmean(self.unnormalized_data)
         noise_std = self.noise_std_param if self.noise_std_param is not None else np.nanstd(self.unnormalized_data)
         if self.estimate_noise_parameters:
@@ -90,12 +83,12 @@ class FilterEstimator2D:
             (self.data.shape[0] // self.signal_support) * (self.data.shape[1] // self.signal_support))
         logger.info(f'Maximum possible instances for size={self.signal_size} is {self.max_possible_instances}')
         self.min_possible_instances = self.num_of_instances_range[0]
+
         self.possible_instances = np.arange(self.min_possible_instances, self.max_possible_instances + 1)
 
-        self.convolved_basis = self._convolve_basis()
-
-        self.term_one = -self._calc_log_size_s(self.possible_instances)
-        self.term_three_const = self._calc_term_three_const()
+        self.convolved_basis = None
+        self.term_one = None
+        self.term_three_const = None
 
     def _normalize_basis(self):
         """
@@ -270,9 +263,6 @@ class FilterEstimator2D:
         return likelihood, gradient, k_expectation
 
     def _optimize_parameters(self):
-
-        if self.possible_instances.size == 0:
-            return -np.inf, np.zeros_like(self.filter_basis_size)
 
         curr_model_parameters, step_size, threshold, max_iter = np.zeros(self.filter_basis_size + 1), 0.1, 1e-4, 100
         curr_model_parameters[:self.filter_basis_size] = self._find_initial_filter_coeffs()
@@ -462,7 +452,15 @@ class FilterEstimator2D:
         :return: likelihood value and optimal unnormalized filter coefficient (can be used on user basis)
         """
 
-        self._initialize()
+        if self.min_possible_instances > self.max_possible_instances:
+            logger.info(f'Minimum possible instances is larger than maximum possible instances, '
+                        f'will set likelihood to -np.inf')
+            return -np.inf, np.zeros_like(self.filter_basis_size)
+
+        self.convolved_basis = self._convolve_basis()
+
+        self.term_one = -self._calc_log_size_s(self.possible_instances)
+        self.term_three_const = self._calc_term_three_const()
 
         likelihood, optimal_model_parameters = self._optimize_parameters()
 
