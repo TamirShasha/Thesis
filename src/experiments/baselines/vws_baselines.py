@@ -44,6 +44,6 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             plot=False,
             save=True,
             save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/vws_baselines/{now_str}/')
-        ).run()
+        )
 
-        # Process(target=experiment.run).start()
+        Process(target=experiment.run).start()
