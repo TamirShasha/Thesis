@@ -31,8 +31,9 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
                                noise_mean=NOISE_MEAN,
                                apply_ctf=False)
 
+        name = f"{shape_name}_{int(signal_size)}"
         experiment = Experiment2D(
-            name=f"{shape_name}_{int(signal_size)}",
+            name=name,
             simulator=data,
             estimation_method=EstimationMethod.VeryWellSeparated,
             signal_length_by_percentage=LENGTH_OPTIONS_PERC,
@@ -43,7 +44,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             save_statistics=True,
             plot=False,
             save=True,
-            save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/vws_baselines/{now_str}/')
+            save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/vws_baselines/{now_str}/{name}/')
         )
 
         Process(target=experiment.run).start()
