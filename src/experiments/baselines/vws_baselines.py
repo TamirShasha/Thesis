@@ -23,7 +23,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
     for signal_size in sizes:
         data = DataSimulator2D(rows=N,
                                columns=N,
-                               signal_length=signal_size,
+                               signal_length=int(signal_size),
                                signal_power=1,
                                signal_fraction=1 / 6,
                                signal_gen=signal_shape,
@@ -32,7 +32,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
                                apply_ctf=False)
 
         experiment = Experiment2D(
-            name=f"{shape_name}_{signal_size}",
+            name=f"{shape_name}_{int(signal_size)}",
             simulator=data,
             estimation_method=EstimationMethod.VeryWellSeparated,
             signal_length_by_percentage=LENGTH_OPTIONS_PERC,
@@ -44,6 +44,6 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             plot=False,
             save=True,
             save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/vws_baselines/{now_str}/')
-        )
+        ).run()
 
-        Process(target=experiment.run).start()
+        # Process(target=experiment.run).start()
