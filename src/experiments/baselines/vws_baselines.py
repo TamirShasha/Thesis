@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 import numpy as np
+from multiprocessing import Process
 
 from src.constants import ROOT_DIR
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
@@ -30,7 +31,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
                                noise_mean=NOISE_MEAN,
                                apply_ctf=False)
 
-        Experiment2D(
+        experiment = Experiment2D(
             name=f"{shape_name}_{signal_size}",
             simulator=data,
             estimation_method=EstimationMethod.VeryWellSeparated,
@@ -43,4 +44,6 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             plot=False,
             save=True,
             save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/vws_baselines/{now_str}/')
-        ).run()
+        )
+
+        Process(target=experiment.run).start()
