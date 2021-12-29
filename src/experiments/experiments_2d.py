@@ -208,9 +208,9 @@ np.random.seed(500)
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=2000,
-                               columns=2000,
-                               signal_length=120,
+    sim_data = DataSimulator2D(rows=1000,
+                               columns=1000,
+                               signal_length=80,
                                signal_power=1,
                                signal_fraction=1 / 5,
                                # signal_gen=Shapes2D.sphere,
@@ -225,7 +225,7 @@ def __main__():
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat'),
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\001.mrc'),
         simulator=sim_data,
-        signal_length_by_percentage=np.array([2, 4, 6, 8, 10, 12]),
+        signal_length_by_percentage=np.array([4, 6, 8, 10]),
         num_of_instances_range=(50, 150),
         estimate_noise=True,
         filter_basis_size=7,

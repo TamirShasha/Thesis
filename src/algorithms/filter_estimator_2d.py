@@ -264,12 +264,14 @@ class FilterEstimator2D:
 
     def _optimize_parameters(self):
 
-        curr_model_parameters, step_size, threshold, max_iter = np.zeros(self.filter_basis_size + 1), 0.1, 1e-4, 100
+        curr_model_parameters, step_size, threshold, max_iter = np.zeros(self.filter_basis_size + 1), 0.1, 1e-3, 100
         curr_model_parameters[:self.filter_basis_size] = self._find_initial_filter_coeffs()
 
         curr_iter, diff = 0, np.inf
         curr_likelihood, curr_gradient, k_expectation = self._calc_likelihood_and_gradient(curr_model_parameters)
 
+        update_filter_coeffs = True
+        stall_noise_mean_update = 3  # iterations
         while curr_iter < max_iter and diff > threshold:
 
             if self.save_statistics:
@@ -277,20 +279,28 @@ class FilterEstimator2D:
                 self.statistics['noise_mean'].append(curr_model_parameters[-1])
 
             logger.debug(
+                f'(#{curr_iter + 1}) '
                 f'Current model parameters: {np.round(curr_model_parameters, 3)}, '
                 f'likelihood is {np.round(curr_likelihood, 4)}, '
                 f'k expectation = {k_expectation}')
 
-            next_model_parameters = curr_model_parameters + step_size * curr_gradient
-            filter_coeffs = next_model_parameters[:-1]
-            noise_mean = next_model_parameters[-1]
-
-            if self.estimate_noise_parameters:
-                likelihood, k_expectation = self._calc_likelihood(filter_coeffs, noise_mean)
-
+            if update_filter_coeffs:
+                logger.debug(f'Updates filter coefficients')
+                next_model_parameters = curr_model_parameters + step_size * curr_gradient
+                if self.estimate_noise_parameters:
+                    if stall_noise_mean_update == 0:
+                        update_filter_coeffs = not update_filter_coeffs
+                    else:
+                        logger.debug(f'# iterations until noise update: {stall_noise_mean_update}')
+                        stall_noise_mean_update -= 1
+            else:
+                logger.debug(f'Updates noise mean')
+                filter_coeffs = curr_model_parameters[:-1]
+                next_model_parameters = curr_model_parameters.copy()
                 next_model_parameters[-1] = (np.nansum(self.data) -
                                              k_expectation * np.inner(filter_coeffs, self.summed_filters)) \
                                             / (self.data_size ** 2)
+                update_filter_coeffs = not update_filter_coeffs
 
             next_likelihood, next_gradient, k_expectation = self._calc_likelihood_and_gradient(next_model_parameters)
             diff = np.abs(next_likelihood - curr_likelihood)
@@ -299,6 +309,12 @@ class FilterEstimator2D:
                                / np.linalg.norm(next_gradient - curr_gradient))
             curr_model_parameters, curr_likelihood, curr_gradient = next_model_parameters, next_likelihood, next_gradient
             curr_iter += 1
+
+        logger.debug(
+            f'(FINISH) '
+            f'Current model parameters: {np.round(curr_model_parameters, 3)}, '
+            f'likelihood is {np.round(curr_likelihood, 4)}, '
+            f'k expectation = {k_expectation}')
 
         return curr_likelihood, curr_model_parameters
 
