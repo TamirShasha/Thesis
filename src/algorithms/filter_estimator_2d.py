@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import os
 import logging
-from scipy.optimize import least_squares
+from scipy.optimize import least_squares, minimize
 
 from src.utils.logger import logger
-from src.algorithms.utils import log_size_S_2d_1axis_multiple, calc_mapping_2d, log_prob_all_is_noise
+from src.algorithms.utils import log_size_S_2d_1axis_multiple, calc_mapping_2d, log_prob_all_is_noise, \
+    _calc_mapping_1d_many
 from src.utils.logsumexp import logsumexp_simple
 
 
@@ -215,11 +216,10 @@ class FilterEstimator2D:
 
         noise_term = log_prob_all_is_noise(self.data - noise_mean, self.noise_std)
 
-        group_size_term = self.term_one + np.log(2)
         filter_norm_const_term = -1 / (self.noise_std ** 2) * np.inner(filter_coeffs, filter_coeffs)
         noise_filter_const_term = -noise_mean / (self.noise_std ** 2) * np.inner(filter_coeffs, self.summed_filters)
         log_term = np.logaddexp(log_term_rows, log_term_columns)
-        k_margin_term = group_size_term + \
+        k_margin_term = self.term_one + \
                         self.possible_instances * (filter_norm_const_term + noise_filter_const_term) + \
                         log_term
 
@@ -261,6 +261,36 @@ class FilterEstimator2D:
         gradient = self._calc_gradient_discrete(filter_coeffs, noise_mean, likelihood)
 
         return likelihood, gradient, k_expectation
+
+    def _optimize_params(self):
+        init_model_parameters, step_size, threshold, max_iter = np.zeros(self.filter_basis_size + 1), 0.1, 1e-3, 100
+        init_model_parameters[:self.filter_basis_size] = self._find_initial_filter_coeffs()
+
+        def func(model_parameters):
+            likelihood, k_expectation = self._calc_likelihood(model_parameters[:-1], model_parameters[-1])
+            logger.debug(
+                f'Current model parameters: {np.round(model_parameters, 3)}, '
+                f'likelihood is {np.round(likelihood, 4)}, '
+                f'k expectation = {k_expectation}')
+            return -likelihood
+
+        def callback(model_parameters, current_state):
+            likelihood = -current_state.fun
+
+            logger.debug(
+                f'Current model parameters: {np.round(model_parameters, 3)}, '
+                f'likelihood is {np.round(likelihood, 4)}')
+            # f'k expectation = {k_expectation}')
+            # print(x)
+
+        result = minimize(func, init_model_parameters,
+                          tol=5e-2,
+                          method='BFGS',
+                          # callback=callback,
+                          options={'disp': True})
+        # print(result)
+        # return -result.fun, np.array(list(result.x) + [0])
+        return -result.fun, result.x
 
     def _optimize_parameters(self):
 
@@ -475,10 +505,11 @@ class FilterEstimator2D:
 
         self.convolved_basis = self._convolve_basis()
 
-        self.term_one = -self._calc_log_size_s(self.possible_instances)
+        self.term_one = -self._calc_log_size_s(self.possible_instances) + np.log(2)
         self.term_three_const = self._calc_term_three_const()
 
-        likelihood, optimal_model_parameters = self._optimize_parameters()
+        likelihood, optimal_model_parameters = self._optimize_params()
+        # likelihood, optimal_model_parameters = self._optimize_parameters()
 
         optimal_filter_coeffs, optimal_noise_mean = optimal_model_parameters[:-1], optimal_model_parameters[-1]
         noise_std = np.nanstd(self.unnormalized_data)
