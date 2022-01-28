@@ -264,33 +264,64 @@ class FilterEstimator2D:
 
     def _optimize_params(self):
         init_model_parameters, step_size, threshold, max_iter = np.zeros(self.filter_basis_size + 1), 0.1, 1e-3, 100
-        init_model_parameters[:self.filter_basis_size] = self._find_initial_filter_coeffs()
+        filter_coeffs = self._find_initial_filter_coeffs()
+        noise_mean = 0
+        # init_model_parameters[:self.filter_basis_size] = self._find_initial_filter_coeffs()
 
-        def func(model_parameters):
-            likelihood, k_expectation = self._calc_likelihood(model_parameters[:-1], model_parameters[-1])
+        alternate_iteration = 5
+        max_alternate_iterations = 10
+        tol = 1e-1
+
+        def func(_filter_coeffs):
+            _likelihood, _k_expectation = self._calc_likelihood(_filter_coeffs, noise_mean)
             logger.debug(
-                f'Current model parameters: {np.round(model_parameters, 3)}, '
-                f'likelihood is {np.round(likelihood, 4)}, '
-                f'k expectation = {k_expectation}')
-            return -likelihood
+                f'Current model parameters: {np.round(_filter_coeffs, 3)}, noise mean: {np.round(noise_mean, 3)}, '
+                f'likelihood is {np.round(_likelihood, 4)}, '
+                f'k expectation = {_k_expectation}')
+            return -_likelihood
 
-        def callback(model_parameters, current_state):
-            likelihood = -current_state.fun
+        # def callback(model_parameters, current_state):
+        #     likelihood = -current_state.fun
+        #
+        #     logger.debug(
+        #         f'Current model parameters: {np.round(model_parameters, 3)}, '
+        #         f'likelihood is {np.round(likelihood, 4)}')
+        #     # f'k expectation = {k_expectation}')
+        #     # print(x)
 
-            logger.debug(
-                f'Current model parameters: {np.round(model_parameters, 3)}, '
-                f'likelihood is {np.round(likelihood, 4)}')
-            # f'k expectation = {k_expectation}')
-            # print(x)
+        logger.info(
+            f'Optimizing model parameters for maximum of {max_alternate_iterations}x{alternate_iteration} iterations '
+            f'and tolerance of {tol}.')
+        for i in range(max_alternate_iterations):
+            # Update filter coefficients
+            result = minimize(func, filter_coeffs,
+                              tol=1e-1,
+                              # tol=5e-2,
+                              method='BFGS',
+                              # callback=callback,
+                              options={
+                                  'disp': True,
+                                  'maxiter': alternate_iteration
+                              })
 
-        result = minimize(func, init_model_parameters,
-                          tol=5e-2,
-                          method='BFGS',
-                          # callback=callback,
-                          options={'disp': True})
-        # print(result)
-        # return -result.fun, np.array(list(result.x) + [0])
-        return -result.fun, result.x
+            filter_coeffs = result.x
+            # Update noise mean
+            likelihood, k_expectation = self._calc_likelihood(filter_coeffs, noise_mean)
+            noise_mean = (np.nansum(self.data) -
+                          k_expectation * np.inner(filter_coeffs, self.summed_filters)) \
+                         / (self.data_size ** 2)
+
+            if result.success:
+                logger.info('SUCCESS. Optimizing model parameters reached its tolerance.')
+                break
+            elif i == max_alternate_iterations:
+                logger.info('Failed to reach tolerance while optimizing model parameters.')
+
+        model_parameters = np.concatenate([result.x, [noise_mean]])
+
+        logger.debug(f'Optimized model parameters: {np.round(model_parameters, 3)}')
+
+        return -result.fun, model_parameters
 
     def _optimize_parameters(self):
 

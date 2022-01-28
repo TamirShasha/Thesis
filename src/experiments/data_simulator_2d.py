@@ -114,13 +114,16 @@ class DataSimulator2D:
             data = self._simulate_signal_vws()
         else:
             raise ValueError('method = {} is not supported, try bf or vws'.format(self.method))
-        logger.info(f'Total signal area fraction is {np.count_nonzero(data) / np.prod(data.shape)}\n')
+        logger.info(f'Total signal area fraction is {np.count_nonzero(data) / np.nanprod(data.shape)}\n')
 
         # add noise
         noise = self._random_gaussian_noise()
 
         self.clean_data = data.copy()
         simulated_data = data + noise
+
+        logger.info(f'Average signal power is {np.nansum(self.clean_data) / np.nanprod(self.clean_data.shape)}')
+        logger.info(f'Average data power is {np.nansum(simulated_data) / np.nanprod(self.clean_data.shape)}')
 
         return simulated_data
 

@@ -215,7 +215,7 @@ def __main__():
                                signal_fraction=1 / 5,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
-                               signal_gen=Shapes2D.disk,
+                               signal_gen=Shapes2D.sphere,
                                noise_std=8,
                                noise_mean=0,
                                apply_ctf=False)
@@ -225,15 +225,15 @@ def __main__():
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat'),
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\001.mrc'),
         simulator=sim_data,
-        signal_length_by_percentage=np.array([4, 6, 8, 10]),
-        num_of_instances_range=(20, 50),
+        # signal_length_by_percentage=np.array([4, 6, 8, 10]),
+        num_of_instances_range=(20, 21),
         estimate_noise=True,
         filter_basis_size=3,
         save_statistics=True,
         particles_margin=0.02,
         plot=True,
         save=True,
-        log_level=logging.DEBUG
+        log_level=logging.INFO
     ).run()
 
 
