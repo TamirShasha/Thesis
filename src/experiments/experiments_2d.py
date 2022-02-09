@@ -204,19 +204,19 @@ class Experiment2D:
         plt.close()
 
 
-np.random.seed(500)
+# np.random.seed(502)
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=1000,
-                               columns=1000,
-                               signal_length=80,
+    sim_data = DataSimulator2D(rows=700,
+                               columns=700,
+                               signal_length=42,
                                signal_power=1,
                                signal_fraction=1 / 5,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
-                               signal_gen=Shapes2D.sphere,
-                               noise_std=8,
+                               signal_gen=Shapes2D.disk,
+                               noise_std=5,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -225,10 +225,10 @@ def __main__():
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat'),
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\001.mrc'),
         simulator=sim_data,
-        # signal_length_by_percentage=np.array([4, 6, 8, 10]),
-        num_of_instances_range=(20, 21),
+        signal_length_by_percentage=[6],
+        num_of_instances_range=(20, 20),
         estimate_noise=True,
-        filter_basis_size=3,
+        filter_basis_size=1,
         save_statistics=True,
         particles_margin=0.02,
         plot=True,
