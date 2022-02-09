@@ -13,6 +13,7 @@ from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCu
 from src.algorithms.length_estimator_2d_very_well_separated import LengthEstimator2DVeryWellSeparated
 from src.utils.micrograph import Micrograph
 from src.utils.logger import logger
+from src.algorithms.utils import remove_outliers_by_iqr
 
 # np.random.seed(501)
 logger.setLevel(logging.INFO)
@@ -179,7 +180,7 @@ class Experiment2D:
                  f"Took {int(self._results['total_time'])} seconds"
         fig.suptitle(title)
 
-        mrc_fig.imshow(self._data, cmap='gray')
+        mrc_fig.imshow(remove_outliers_by_iqr(self._data), cmap='gray')
         pcm = est_particle_fig.imshow(self._results['estimated_signal'], cmap='gray')
         plt.colorbar(pcm, ax=est_particle_fig)
 
@@ -216,7 +217,7 @@ def __main__():
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.disk,
-                               noise_std=5,
+                               noise_std=0.001,
                                noise_mean=0,
                                apply_ctf=False)
 

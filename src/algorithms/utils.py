@@ -2,6 +2,7 @@ import numpy as np
 from scipy.signal import convolve
 import numba as nb
 from src.utils.logsumexp import logsumexp_simple
+from scipy.stats import iqr
 
 
 def relative_error(estimated_signal, true_signal):
@@ -592,3 +593,16 @@ def _calc_f_f_derivative_2d(curr_power, data, signal_filter, k, noise_std):
     log_f = np.logaddexp(log_f_rows, log_f_columns)
     f_derivative = np.exp(np.logaddexp(tmp1, tmp2) - log_f) - k * r
     return log_f, f_derivative
+
+
+def remove_outliers_by_iqr(data):
+    low, high, c = 25, 75, 1.5
+    mrc_iqr = iqr(data)
+    low_ths = np.percentile(data, low) - c * mrc_iqr
+    high_ths = np.percentile(data, high) + c * mrc_iqr
+
+    total_clipped_low_perc = np.round((np.nansum(data < low_ths) / np.nanprod(data.shape)) * 100, 3)
+    total_clipped_high_perc = np.round((np.nansum(data > high_ths) / np.nanprod(data.shape)) * 100, 3)
+    clipped_mrc = data.clip(low_ths, high_ths)
+
+    return clipped_mrc
