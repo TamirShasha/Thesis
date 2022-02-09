@@ -112,10 +112,9 @@ def estimate(mrc_path,
                                   plot=plot,
                                   save=save,
                                   log_level=log_level,
-                                  save_dir=mrc_save_dir).run()
-        print()
+                                  save_dir=mrc_save_dir)
         # experiment.run()
-        # Process(target=experiment.run).start()
+        Process(target=experiment.run).start()
 
 
 if __name__ == "__main__":
