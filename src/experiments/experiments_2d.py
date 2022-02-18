@@ -13,7 +13,6 @@ from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCu
 from src.algorithms.length_estimator_2d_very_well_separated import LengthEstimator2DVeryWellSeparated
 from src.utils.micrograph import Micrograph
 from src.utils.logger import logger
-from src.algorithms.utils import remove_outliers_by_iqr
 
 # np.random.seed(501)
 logger.setLevel(logging.INFO)
@@ -39,6 +38,7 @@ class Experiment2D:
                  particles_margin=0.01,
                  estimation_method: EstimationMethod = EstimationMethod.VeryWellSeparated,
                  estimate_noise=False,
+                 use_noise_params=True,
                  save_statistics=False,
                  plot=True,
                  save=True,
@@ -53,6 +53,7 @@ class Experiment2D:
         self._prior_filter = prior_filter
         self._down_sample_size = down_sample_size
         self._estimate_noise = estimate_noise
+        self._use_noise_params = use_noise_params
         self._particles_margin = particles_margin
         self._save_statistics = save_statistics
 
@@ -122,6 +123,7 @@ class Experiment2D:
                                                                         noise_mean=self._noise_mean,
                                                                         noise_std=self._noise_std,
                                                                         estimate_noise_parameters=self._estimate_noise,
+                                                                        use_noise_params=self._use_noise_params,
                                                                         filter_basis_size=self._filter_basis_size,
                                                                         particles_margin=self._particles_margin,
                                                                         save_statistics=self._save_statistics,
@@ -180,7 +182,7 @@ class Experiment2D:
                  f"Took {int(self._results['total_time'])} seconds"
         fig.suptitle(title)
 
-        mrc_fig.imshow(remove_outliers_by_iqr(self._data), cmap='gray')
+        mrc_fig.imshow(self._data, cmap='gray')
         pcm = est_particle_fig.imshow(self._results['estimated_signal'], cmap='gray')
         plt.colorbar(pcm, ax=est_particle_fig)
 
@@ -209,15 +211,15 @@ class Experiment2D:
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=700,
-                               columns=700,
-                               signal_length=42,
+    sim_data = DataSimulator2D(rows=4000,
+                               columns=4000,
+                               signal_length=240,
                                signal_power=1,
                                signal_fraction=1 / 5,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
-                               signal_gen=Shapes2D.disk,
-                               noise_std=0.001,
+                               signal_gen=Shapes2D.sphere,
+                               noise_std=8,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -226,14 +228,16 @@ def __main__():
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat'),
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\001.mrc'),
         simulator=sim_data,
-        signal_length_by_percentage=[6],
+        # signal_length_by_percentage=[6, 10],
         num_of_instances_range=(20, 20),
-        estimate_noise=True,
-        filter_basis_size=1,
+        down_sample_size=1000,
+        use_noise_params=True,
+        estimate_noise=False,
+        filter_basis_size=2,
         save_statistics=True,
         particles_margin=0.02,
-        plot=True,
-        save=True,
+        plot=False,
+        save=False,
         log_level=logging.INFO
     ).run()
 

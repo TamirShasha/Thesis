@@ -22,6 +22,7 @@ class LengthEstimator2DVeryWellSeparated:
                  noise_mean=None,
                  noise_std=None,
                  estimate_noise_parameters=True,
+                 use_noise_params=True,
                  filter_basis_size=20,
                  particles_margin=0.01,
                  save_statistics=False,
@@ -34,9 +35,10 @@ class LengthEstimator2DVeryWellSeparated:
         self._signal_length_by_percentage = signal_length_by_percentage
         self._num_of_instances_range = num_of_instances_range
         self._prior_filter = prior_filter
-        self._noise_mean = noise_mean
-        self._noise_std = noise_std
+        self._noise_mean = None
+        self._noise_std = None
         self._estimate_noise_parameters = estimate_noise_parameters
+        self._use_noise_params = use_noise_params
         self._filter_basis_size = filter_basis_size
         self._particles_margin = particles_margin
         self._save_statistics = save_statistics
@@ -47,6 +49,10 @@ class LengthEstimator2DVeryWellSeparated:
         self._experiment_attr = experiment_attr
 
         self._data_size = self._data.shape[0]
+
+        if self._use_noise_params:
+            self._noise_mean = noise_mean
+            self._noise_std = noise_std
 
         if self._signal_length_by_percentage is None:
             self._signal_length_by_percentage = [4, 6, 8, 10, 12]

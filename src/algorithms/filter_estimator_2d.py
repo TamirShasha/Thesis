@@ -60,13 +60,11 @@ class FilterEstimator2D:
                 "noise_mean": []
             }
 
-        noise_mean = self.noise_mean_param if self.noise_mean_param is not None else np.nanmean(self.unnormalized_data)
-        noise_std = self.noise_std_param if self.noise_std_param is not None else np.nanstd(self.unnormalized_data)
-        if self.estimate_noise_parameters:
-            logger.info(f'Will estimate white noise parameters. '
-                        f'Initial values are mean / std of entire data: '
-                        f'({format(noise_mean, ".3f")} / {format(noise_std, ".3f")})')
+        noise_mean = noise_mean_param if noise_mean_param is not None else np.nanmean(self.unnormalized_data)
+        noise_std = noise_std_param if noise_std_param is not None else np.nanstd(self.unnormalized_data)
+
         self.data = (self.unnormalized_data - noise_mean) / noise_std
+        self.noise_mean = 0  # We assume noise mean is close to 0 after normalization
         self.noise_std = 1  # We assume noise std is close to 1 after normalization
         self.data_size = self.data.shape[0]
 
@@ -264,57 +262,11 @@ class FilterEstimator2D:
 
     def _optimize_params(self):
         filter_coeffs = self._find_initial_filter_coeffs()
-        noise_mean = 0
+        noise_mean = self.noise_mean
 
         alternate_iteration = 5
         max_alternate_iterations = 10
         tol = 1e-3
-
-        # _likelihood, _k_expectation = self._calc_likelihood(filter_coeffs, noise_mean)
-        # print(_likelihood)
-        # convolved_filter = self._calc_convolved_filter(filter_coeffs)
-        # convolved_patch = convolve(convolved_filter, np.ones((30, 30)) / (30 * 30), mode='valid')
-        # perc_5 = np.percentile(convolved_patch.ravel(), 5)
-        # idxs = np.argwhere(convolved_patch < perc_5)
-        # #
-        # max_iters = 100
-        # marks = np.zeros_like(convolved_patch)
-        # chosen_idxs = []
-        # chosen_idx = idxs[np.random.choice(np.arange(len(idxs)), 1)][0]
-        # marks[chosen_idx[0]: chosen_idx[0] + 30, chosen_idx[1]: chosen_idx[1] + 30] = 1
-        # chosen_idxs.append(chosen_idx)
-        # # plt.imshow(marks)
-        # # plt.show()
-        # for i in range(5):
-        #     chosen_idx = idxs[np.random.choice(np.arange(len(idxs)), 1)][0]
-        #     while np.any(marks[chosen_idx[0]: chosen_idx[0] + 30, chosen_idx[1]: chosen_idx[1] + 30]):
-        #         print('try again')
-        #         chosen_idx = idxs[np.random.choice(np.arange(len(idxs)), 1)][0]
-        #     marks[chosen_idx[0]: chosen_idx[0] + 30, chosen_idx[1]: chosen_idx[1] + 30] = 1
-        #     chosen_idxs.append(chosen_idx)
-        #     # plt.title(chosen_idx)
-        #     # plt.imshow(marks)
-        #     # plt.show()
-        # print(chosen_idxs)
-        #
-        # fig, axs = plt.subplots(1, 3)
-        # axs[0].imshow(convolved_filter)
-        # axs[1].imshow(convolved_patch)
-        # axs[2].imshow(convolved_patch < perc_5)
-        #
-        # for idx in chosen_idxs:
-        #     axs[2].scatter(idx[1], idx[0])
-        #
-        # for idx in chosen_idxs:
-        #     rect = patches.Rectangle(np.flip(idx), 30, 30)
-        #     axs[0].add_patch(rect)
-        # # axs[0].scatter(chosen_idx[:, 0], chosen_idx[:, 1])
-        # plt.show()
-
-        # likelihoods = np.array([self._calc_likelihood([p], 0)[0] for p in np.arange(1500, 4000, 200)])
-        # plt.title((int(filter_coeffs[0]), np.arange(1500, 4000, 200)[np.nanargmax(likelihoods)]))
-        # plt.plot(np.arange(1500, 4000, 200), likelihoods)
-        # plt.show()
 
         def func(_filter_coeffs):
             _likelihood, _k_expectation = self._calc_likelihood(_filter_coeffs, noise_mean)
@@ -324,76 +276,89 @@ class FilterEstimator2D:
                 f'k expectation = {_k_expectation}')
             return -_likelihood
 
-        logger.info(
-            f'Optimizing model parameters for maximum of {max_alternate_iterations}x{alternate_iteration} iterations '
-            f'and tolerance of {tol}.')
-        for i in range(max_alternate_iterations):
-            # Update filter coefficients
+        if not self.estimate_noise_parameters:
+            logger.info(
+                f'Optimizing model parameters for maximum of {max_alternate_iterations * alternate_iteration} iterations '
+                f'and tolerance of {tol}.')
+
             result = minimize(func, filter_coeffs,
                               tol=1e-2,
                               method='BFGS',
                               options={
                                   'disp': False,
-                                  'maxiter': alternate_iteration
+                                  'maxiter': alternate_iteration * max_alternate_iterations
                               })
+        else:
+            logger.info(
+                f'Optimizing model parameters for maximum of {max_alternate_iterations}x{alternate_iteration} iterations '
+                f'and tolerance of {tol}.')
+            for i in range(max_alternate_iterations):
+                # Update filter coefficients
+                result = minimize(func, filter_coeffs,
+                                  tol=1e-2,
+                                  method='BFGS',
+                                  options={
+                                      'disp': False,
+                                      'maxiter': alternate_iteration
+                                  })
 
-            filter_coeffs = result.x
+                filter_coeffs = result.x
 
-            convolved_filter = self._calc_convolved_filter(filter_coeffs)
-            convolved_patch = convolve(convolved_filter, np.ones((30, 30)) / (30 * 30), mode='valid')
-            perc_5 = np.percentile(convolved_patch.ravel(), 5)
-            idxs = np.argwhere(convolved_patch < perc_5)
+                kernel_size, percentile = 30, 3
+                convolved_filter = self._calc_convolved_filter(filter_coeffs)
+                convolved_patch = convolve(convolved_filter, np.ones((kernel_size, kernel_size)) / (kernel_size ** 2),
+                                           mode='valid')
+                perc = np.percentile(convolved_patch.ravel(), percentile)
+                idxs = np.argwhere(convolved_patch < perc)
 
-            max_iters = 20
-            marks = np.zeros_like(self.data)
-            chosen_idxs = []
-            chosen_idx = idxs[np.random.choice(np.arange(len(idxs)), 1)][0]
-            marks[chosen_idx[0]: chosen_idx[0] + 30, chosen_idx[1]: chosen_idx[1] + 30] = 1
-            chosen_idxs.append(chosen_idx)
-            for _ in range(10):
+                max_iters = 20
+                marks = np.zeros_like(self.data)
+                chosen_idxs = []
                 chosen_idx = idxs[np.random.choice(np.arange(len(idxs)), 1)][0]
-                it = 0
-                while np.any(
-                        marks[chosen_idx[0]: chosen_idx[0] + 30, chosen_idx[1]: chosen_idx[1] + 30]) and it < max_iters:
-                    chosen_idx = idxs[np.random.choice(np.arange(len(idxs)), 1)][0]
-                    it += 1
                 marks[chosen_idx[0]: chosen_idx[0] + 30, chosen_idx[1]: chosen_idx[1] + 30] = 1
                 chosen_idxs.append(chosen_idx)
-                # plt.title(chosen_idx)
-                # plt.imshow(marks)
-                # plt.show()
+                for _ in range(10):
+                    chosen_idx = idxs[np.random.choice(np.arange(len(idxs)), 1)][0]
+                    it = 0
+                    while np.any(
+                            marks[chosen_idx[0]: chosen_idx[0] + 30,
+                            chosen_idx[1]: chosen_idx[1] + 30]) and it < max_iters:
+                        chosen_idx = idxs[np.random.choice(np.arange(len(idxs)), 1)][0]
+                        it += 1
+                    marks[chosen_idx[0]: chosen_idx[0] + 30, chosen_idx[1]: chosen_idx[1] + 30] = 1
+                    chosen_idxs.append(chosen_idx)
 
-            # fig, axs = plt.subplots(2, 2)
-            # axs[0, 0].imshow(self.data)
-            # axs[0, 1].imshow(convolved_filter)
-            # axs[1, 0].imshow(convolved_patch)
-            # axs[1, 1].imshow(convolved_patch < perc_5)
-            #
-            # for idx in chosen_idxs:
-            #     axs[1, 1].scatter(idx[1], idx[0])
-            #
-            # for idx in chosen_idxs:
-            #     rect = patches.Rectangle(np.flip(idx)+30, 30, 30)
-            #     axs[0, 0].add_patch(rect)
-            #     # rect = patches.Rectangle(np.flip(idx)+30, 30, 30)
-            #     # axs[0, 1].add_patch(rect)
-            # # axs[0].scatter(chosen_idx[:, 0], chosen_idx[:, 1])
-            # plt.show()
+                noise_mean = np.nanmedian(self.data[marks.astype(bool)])
 
-            # Update noise mean
-            likelihood, k_expectation = self._calc_likelihood(filter_coeffs, noise_mean)
-            noise_mean = np.nanmedian(self.data[marks.astype(bool)])
-            # print(noise_mean)
-            # noise_mean = (np.nansum(self.data) -
-            #               k_expectation * np.inner(filter_coeffs, self.summed_filters)) \
-            #              / (self.data_size ** 2)
-            # print(noise_mean)
+                if self.save_statistics:
+                    fig, axs = plt.subplots(2, 2)
+                    axs[0, 0].set_title('Raw data')
+                    axs[0, 0].imshow(self.data, cmap='gray')
+                    axs[0, 1].set_title('Convolved Filter')
+                    axs[0, 1].imshow(convolved_filter, cmap='gray')
+                    axs[1, 0].set_title('Convolved Patch')
+                    axs[1, 0].imshow(convolved_patch, cmap='gray')
+                    axs[1, 1].set_title(f'Under percentile {percentile}')
+                    axs[1, 1].imshow(convolved_patch < perc)
 
-            if result.success:
-                logger.info('SUCCESS. Optimizing model parameters reached its tolerance.')
-                break
-            elif i == max_alternate_iterations:
-                logger.info('Failed to reach tolerance while optimizing model parameters.')
+                    for idx in chosen_idxs:
+                        axs[1, 1].scatter(idx[1], idx[0])
+
+                    for idx in chosen_idxs:
+                        rect = patches.Rectangle(np.flip(idx) + 30, 30, 30, color='red')
+                        axs[0, 0].add_patch(rect)
+                        # rect = patches.Rectangle(np.flip(idx)+30, 30, 30)
+                        # axs[0, 1].add_patch(rect)
+                    # axs[0].scatter(chosen_idx[:, 0], chosen_idx[:, 1])
+                    fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_noise_locations.png')
+                    plt.savefig(fname=fig_path)
+                    plt.close()
+
+                if result.success:
+                    logger.info('SUCCESS. Optimizing model parameters reached its tolerance.')
+                    break
+                elif i == max_alternate_iterations:
+                    logger.info('Failed to reach tolerance while optimizing model parameters.')
 
         model_parameters = np.concatenate([result.x, [noise_mean]])
 
