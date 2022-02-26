@@ -75,7 +75,7 @@ class Experiment2D:
                 simulator = DataSimulator2D()
             self._data = simulator.simulate()
 
-            logger.info(f'Simulating data, number of occurrences is {simulator.occurrences}')
+            logger.info(f'Simulating data, number of occurrences is {simulator.num_of_instances}')
 
             self._noise_std = simulator.noise_std
             self._noise_mean = simulator.noise_mean
@@ -167,7 +167,7 @@ class Experiment2D:
                 f"Noise\u007E\u2115({self._noise_mean}, {self._noise_std})\n"
 
         if self._mrc is None:
-            title += f"Total instances = {self._data_simulator.occurrences}, " \
+            title += f"Total instances = {self._data_simulator.num_of_instances}, " \
                      f"Num of instances range = {self._num_of_instances_range}, " \
                      f"Basis size = {self._filter_basis_size}\n" \
                      f"Noise estimation = {self._estimate_noise}, " \
@@ -211,15 +211,17 @@ class Experiment2D:
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=4000,
-                               columns=4000,
-                               signal_length=240,
+    sim_data = DataSimulator2D(rows=1000,
+                               columns=1000,
+                               signal_length=40,
                                signal_power=1,
                                signal_fraction=1 / 5,
+                               signal_margin=0.02,
+                               num_of_instances=np.random.randint(80, 120),
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.sphere,
-                               noise_std=8,
+                               noise_std=0.1,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -236,7 +238,7 @@ def __main__():
         filter_basis_size=2,
         save_statistics=True,
         particles_margin=0.02,
-        plot=False,
+        plot=True,
         save=False,
         log_level=logging.INFO
     ).run()

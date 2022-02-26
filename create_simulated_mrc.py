@@ -49,7 +49,7 @@ def create_simulated_mrc(name, size, signal_size, signal_power, signal_fraction,
                                 apply_ctf=apply_ctf)
 
     mrc = simulator.simulate()
-    file_name = f'{name}_{size}x{size}_{simulator.occurrences}occ_{signal_shape}_{signal_size}_N_{noise_mean}_{noise_std}'
+    file_name = f'{name}_{size}x{size}_{simulator.num_of_instances}occ_{signal_shape}_{signal_size}_N_{noise_mean}_{noise_std}'
     file_path = os.path.join(save_to, file_name)
     np.save(file_path, mrc)
 

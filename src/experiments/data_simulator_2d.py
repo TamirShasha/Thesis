@@ -83,16 +83,18 @@ class Shapes2D:
 
 class DataSimulator2D:
     def __init__(self, rows=2000, columns=2000, signal_length=100, signal_power=1, signal_fraction=1 / 6,
-                 signal_gen=lambda d, p: Shapes2D.disk(d, p), noise_std=3, noise_mean=0, method='BF',
-                 collision_threshold=100, apply_ctf=False):
+                 signal_margin=0.02, signal_gen=lambda d, p: Shapes2D.disk(d, p), noise_std=3, noise_mean=0,
+                 num_of_instances=None, method='BF', collision_threshold=100, apply_ctf=False):
         self.rows = rows
         self.columns = columns
         self.signal_fraction = signal_fraction
+        self.signal_margin = signal_margin
         self.signal_gen = signal_gen
         self.signal_length = signal_length
         self.signal_power = signal_power
         self.noise_std = noise_std
         self.noise_mean = noise_mean
+        self.num_of_instances = num_of_instances
         self.method = method
         self.collision_threshold = collision_threshold
         self.apply_ctf = apply_ctf
@@ -100,9 +102,19 @@ class DataSimulator2D:
         self.signal_area = np.count_nonzero(self.signal_gen(signal_length, signal_power))
         self.signal_shape = (signal_length, signal_length)
         self.mrc_area = self.rows * self.columns
-        self.occurrences = int(self.signal_fraction * self.mrc_area / self.signal_area)
+
+        if self.num_of_instances is None:
+            self.num_of_instances = int(self.signal_fraction * self.mrc_area / self.signal_area)
+
         self.snr, self.mrc_snr = self._calc_snr()
         self.clean_data = None
+
+        if self.signal_margin:
+            margin = int(self.signal_margin * max(self.rows, self.columns))
+            self.signal_gen = lambda d, p: np.pad(signal_gen(d, p), (
+                (margin, margin), (margin, margin)), 'constant', constant_values=((0, 0), (0, 0)))
+
+            self.signal_shape = (signal_length + 2 * margin, signal_length + 2 * margin)
 
         logger.info(f'SNR (MRC) is {self.snr}db ({self.mrc_snr}db)')
 
@@ -137,7 +149,7 @@ class DataSimulator2D:
         data = np.zeros((self.rows, self.columns))
 
         # add signals
-        for o in range(self.occurrences):
+        for o in range(self.num_of_instances):
             signal = self.create_signal_instance()
 
             for t in range(self.collision_threshold):  # trying to find clean location for new signal, max of threshold
@@ -148,9 +160,9 @@ class DataSimulator2D:
                     break
 
             if t == self.collision_threshold - 1:
-                logger.warning(f'Failed to simulate dataset with {self.occurrences} occurrences. '
+                logger.warning(f'Failed to simulate dataset with {self.num_of_instances} occurrences. '
                                f'Reduced to {o + 1}')
-                self.occurrences = o + 1
+                self.num_of_instances = o + 1
                 break
 
         return data
@@ -159,7 +171,7 @@ class DataSimulator2D:
         data = np.zeros((self.rows, self.columns))
         n = self.rows
         d = self.signal_shape[0]
-        k = self.occurrences
+        k = self.num_of_instances
 
         # Get number of signals per row
         max_k_in_row = n // d
@@ -234,7 +246,7 @@ class DataSimulator2D:
         avg_signal_power = np.nansum(np.square(signal * signal_support)) / np.nansum(signal_support)
         single_signal_snr = (avg_signal_power / np.square(self.noise_std))
 
-        fraction = self.occurrences * self.signal_area / self.mrc_area
+        fraction = self.num_of_instances * self.signal_area / self.mrc_area
         mrc_snr = single_signal_snr * fraction
 
         db = int(10 * np.log10(single_signal_snr))

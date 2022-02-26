@@ -10,12 +10,12 @@ from src.experiments.experiments_2d import Experiment2D, EstimationMethod
 NOISE_MEAN = 0
 NOISE_STD = 8
 N = 1000
-LENGTH_OPTIONS_PERC = np.array([2, 4, 6, 8, 10, 12, 14, 16])
+LENGTH_OPTIONS_PERC = np.array([2, 2.5, 3, 4, 5, 6, 8, 10])
 SIGNAL_SHAPES = [(Shapes2D.disk, 'disk'),
                  (Shapes2D.sphere, 'sphere'),
                  (lambda l, p: Shapes2D.ellipse(l, l // 1.7, p), 'ellipse'),
                  (lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0), 'ring')]
-sizes = np.array([4, 6, 8, 10, 12]) * N / 100
+sizes = np.array([2.5, 3, 4, 5, 6, 8]) * N / 100
 
 now_str = datetime.now().strftime("%H_%M_%Y_%m_%d")
 
@@ -25,7 +25,9 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
                                columns=N,
                                signal_length=int(signal_size),
                                signal_power=1,
-                               signal_fraction=1 / 6,
+                               signal_fraction=1 / 5,
+                               signal_margin=0.02,
+                               num_of_instances=np.random.randint(80, 120),
                                signal_gen=signal_shape,
                                noise_std=NOISE_STD,
                                noise_mean=NOISE_MEAN,
@@ -45,7 +47,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             save_statistics=True,
             plot=False,
             save=True,
-            save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/vws_baselines/{now_str}/{name}/')
+            save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/main_baselines/{now_str}/{name}/')
         )
 
         Process(target=experiment.run).start()
