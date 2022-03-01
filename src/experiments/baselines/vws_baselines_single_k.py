@@ -25,9 +25,9 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
                                columns=N,
                                signal_length=int(signal_size),
                                signal_power=1,
-                               signal_fraction=1 / 5,
+                               signal_fraction=1 / 8,
                                signal_margin=0.02,
-                               num_of_instances=np.random.randint(80, 120),
+                               # num_of_instances=np.random.randint(80, 120),
                                signal_gen=signal_shape,
                                noise_std=NOISE_STD,
                                noise_mean=NOISE_MEAN,
@@ -39,7 +39,7 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             simulator=data,
             estimation_method=EstimationMethod.VeryWellSeparated,
             signal_length_by_percentage=LENGTH_OPTIONS_PERC,
-            num_of_instances_range=(20, 20),
+            num_of_instances_range=(int(data.num_of_instances * 0.7), int(data.num_of_instances * 0.7)),
             estimate_noise=False,
             use_noise_params=True,
             filter_basis_size=7,
@@ -47,7 +47,8 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             save_statistics=True,
             plot=False,
             save=True,
-            save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/main_baselines/{now_str}/{name}/')
-        )
+            save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/given_k/{now_str}/{name}/')
+        ).run()
+        exit()
 
         Process(target=experiment.run).start()

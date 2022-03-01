@@ -120,9 +120,9 @@ class DataSimulator2D:
 
     def simulate(self):
 
-        if self.method == 'BF':
+        if self.method.lower() == 'bf':
             data = self._simulate_signal_bf()
-        elif self.method == 'VWS':
+        elif self.method.lower() == 'vws':
             data = self._simulate_signal_vws()
         else:
             raise ValueError('method = {} is not supported, try bf or vws'.format(self.method))
