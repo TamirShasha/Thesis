@@ -213,17 +213,17 @@ class Experiment2D:
 def __main__():
     sim_data = DataSimulator2D(rows=1000,
                                columns=1000,
-                               signal_length=40,
+                               signal_length=110,
                                signal_power=1,
-                               signal_fraction=1 / 5,
-                               # num_of_instances=20,
-                               method='vws',
-                               # signal_margin=0.02,
-                               num_of_instances=np.random.randint(40, 60),
+                               signal_fraction=1 / 3,
+                               # num_of_instances=30
+                               # method='vws',
+                               signal_margin=0,
+                               # num_of_instances=np.random.randint(40, 60),
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
-                               signal_gen=Shapes2D.sphere,
-                               noise_std=0.1,
+                               signal_gen=Shapes2D.disk,
+                               noise_std=8,
                                noise_mean=0,
                                apply_ctf=False)
 
@@ -232,16 +232,16 @@ def __main__():
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat'),
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\001.mrc'),
         simulator=sim_data,
-        # signal_length_by_percentage=[6, 10],
-        num_of_instances_range=(20, 20),
-        down_sample_size=1000,
+        signal_length_by_percentage=[6, 8, 11, 13, 15],
+        num_of_instances_range=(30, 30),
+        down_sample_size=-1,
         use_noise_params=True,
         estimate_noise=False,
-        filter_basis_size=2,
+        filter_basis_size=1,
         save_statistics=True,
-        particles_margin=0.02,
+        particles_margin=0,
         plot=True,
-        save=False,
+        save=True,
         log_level=logging.INFO
     ).run()
 

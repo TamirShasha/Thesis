@@ -167,11 +167,15 @@ def log_size_S_2d_1axis(n, k, d):
 
 
 # utils for 2d vws, private, names
-def log_size_S_2d_1axis_multiple(n, k, d):
+def log_size_S_2d_1axis_multiple(n, k, d, row_jump=None):
     """
     Compute log(|S|), where |S| is the number of ways to insert k signals of size (d x d) in (n x n) spaces in such they are
     very well separated on rows.
     """
+
+    if row_jump is None:
+        row_jump = d
+
     if k * d ** 2 > n ** 2:
         return -np.inf
     max_k_in_row = min(n // d, k)
@@ -179,7 +183,7 @@ def log_size_S_2d_1axis_multiple(n, k, d):
     for k_in_row in range(1, max_k_in_row + 1):
         log_size_S_per_row_per_k[:, k_in_row - 1] = log_size_S_1d(n, k_in_row, d)
 
-    mapping = _calc_mapping_2d_after_precompute(n, k, d, log_size_S_per_row_per_k)
+    mapping = _calc_mapping_2d_after_precompute(n, k, d, log_size_S_per_row_per_k, row_jump=row_jump)
     return mapping[0, :]
 
 
@@ -297,22 +301,29 @@ def _calc_mapping_1d_many(n, k, d, constants):
     return mapping
 
 
-def calc_mapping_2d(n, k, d, row_constants):
+def calc_mapping_2d(n, k, d, row_constants, row_jump=None):
     """
     creates the mapping of size (n+1 x k+1)
     first coordinate refers to the row, second refers to amount of signals left to insert
     """
+
+    if row_jump is None:
+        row_jump = d
+
     max_k_in_row = min(n // d, k)
     mapping_per_row = _calc_mapping_1d_many(n, max_k_in_row, d, row_constants)[:, 0, 1:]
 
-    return _calc_mapping_2d_after_precompute(n, k, d, mapping_per_row)
+    return _calc_mapping_2d_after_precompute(n, k, d, mapping_per_row, row_jump=row_jump)
 
 
 # @nb.jit
-def _calc_mapping_2d_after_precompute(n, k, d, constants):
+def _calc_mapping_2d_after_precompute(n, k, d, constants, row_jump=None):
     """
     computes 2d mapping with precomputed constants
     """
+    if row_jump is None:
+        row_jump = d
+
     max_k_in_row = min(n // d, k)
     constants = constants[:, ::-1].copy()
     # Allocating memory
@@ -325,7 +336,7 @@ def _calc_mapping_2d_after_precompute(n, k, d, constants):
     for curr_k in range(1, k + 1):
         max_k = min(curr_k, max_k_in_row)
         for i in range(n - d, -1, -1):
-            mapping[i, curr_k] = logsumexp_simple(mapping[i + d, curr_k - max_k:curr_k] + constants[i, -max_k:])
+            mapping[i, curr_k] = logsumexp_simple(mapping[i + row_jump, curr_k - max_k:curr_k] + constants[i, -max_k:])
             mapping[i, curr_k] = np.logaddexp(mapping[i, curr_k], mapping[i + 1, curr_k])
 
     return mapping
