@@ -44,7 +44,7 @@ class NoiseNormalizationMethod(Enum):
 class Micrograph:
     def __init__(self,
                  file_path,
-                 downsample=1000,
+                 downsample=-1,
                  noise_std=None,
                  noise_mean=None,
                  clip_outliers=False,
@@ -91,6 +91,10 @@ class Micrograph:
             mrc = Micrograph.clip_outliers(mrc)
 
         mrc = self.normalize_noise(mrc)
+
+        # crop
+        # n = mrc.shape[0]
+        # mrc = mrc[n // 3:, :2 * n // 3]
 
         if self.downsample > 0:
             logger.info(f'Downsample to size ({self.downsample}, {self.downsample})')

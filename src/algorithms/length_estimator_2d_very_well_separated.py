@@ -72,7 +72,7 @@ class LengthEstimator2DVeryWellSeparated:
         for i, length in enumerate(self._signal_size_options):
             logger.info(f'Estimating likelihood for size={length}')
 
-            filter_basis = create_filter_basis(length, self._filter_basis_size)
+            filter_basis = create_filter_basis(length, self._filter_basis_size, basis_type='chebyshev')
             filter_estimator = FilterEstimator2D(unnormalized_data=self._data,
                                                  unnormalized_filter_basis=filter_basis,
                                                  num_of_instances_range=self._num_of_instances_range,

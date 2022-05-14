@@ -11,7 +11,7 @@ from enum import Enum
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
 from src.algorithms.length_estimator_2d_very_well_separated import LengthEstimator2DVeryWellSeparated
-from src.utils.micrograph import Micrograph
+from src.utils.micrograph import Micrograph, cryo_downsample
 from src.utils.logger import logger
 
 # np.random.seed(501)
@@ -142,12 +142,13 @@ class Experiment2D:
             "likelihoods": likelihoods,
             "optimal_coeffs": optimal_coeffs,
             "estimated_signal": estimated_signal,
-            "total_time": end_time - start_time
+            "total_time": end_time - start_time,
+            "most_likely_size": self._sizes_options[np.nanargmax(likelihoods)]
         }
 
         self.save_and_plot()
 
-        return likelihoods
+        return self._results
 
     def save_and_plot(self):
 
@@ -166,11 +167,12 @@ class Experiment2D:
                 f"Signal length={self._signal_length}, " \
                 f"Noise\u007E\u2115({self._noise_mean}, {self._noise_std})\n"
 
+        noise_estimation = "Given" if self._use_noise_params else "Learn" if self._estimate_noise else "Estimate"
         if self._mrc is None:
             title += f"Total instances = {self._data_simulator.num_of_instances}, " \
                      f"Num of instances range = {self._num_of_instances_range}, " \
                      f"Basis size = {self._filter_basis_size}\n" \
-                     f"Noise estimation = {self._estimate_noise}, " \
+                     f"Noise estimation = {noise_estimation}, " \
                      f"Particles separation = {self._particles_margin}\n" \
                      f"SNR={self._data_simulator.snr}db (MRC-SNR={self._data_simulator.mrc_snr}db), "
         else:
@@ -213,31 +215,34 @@ class Experiment2D:
 def __main__():
     sim_data = DataSimulator2D(rows=1000,
                                columns=1000,
-                               signal_length=110,
+                               signal_length=50,
                                signal_power=1,
-                               signal_fraction=1 / 3,
-                               # num_of_instances=30
+                               # signal_fraction=0.05,
+                               # num_of_instances=
                                # method='vws',
                                signal_margin=0,
-                               # num_of_instances=np.random.randint(40, 60),
+                               num_of_instances=np.random.randint(20, 80),
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
-                               signal_gen=Shapes2D.disk,
-                               noise_std=8,
+                               signal_gen=Shapes2D.sphere,
+                               noise_std=.1,
                                noise_mean=0,
                                apply_ctf=False)
 
     Experiment2D(
         name=f"expy",
-        # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat'),
-        # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\001.mrc'),
+        # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat', downsample=1000, clip_outliers=True),
+        # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010_1000.mrc', clip_outliers=True),
+        # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\HCN1apo_0016_2xaligned.mrc', downsample=1000),
+        # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\002.mrc', downsample=1000),
         simulator=sim_data,
-        signal_length_by_percentage=[6, 8, 11, 13, 15],
-        num_of_instances_range=(30, 30),
-        down_sample_size=-1,
+        signal_length_by_percentage=[1.5, 2, 3, 5, 8, 10, 12],
+        num_of_instances_range=(20, 80),
+        # num_of_instances_range=(int(sim_data.num_of_instances * 0.7), int(sim_data.num_of_instances * 0.7)),
+        # down_sample_size=500,
         use_noise_params=True,
         estimate_noise=False,
-        filter_basis_size=1,
+        filter_basis_size=2,
         save_statistics=True,
         particles_margin=0,
         plot=True,

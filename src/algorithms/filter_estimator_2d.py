@@ -8,7 +8,10 @@ import logging
 from scipy.optimize import least_squares, minimize
 
 from src.utils.logger import logger
-from src.algorithms.utils import log_size_S_2d_1axis_multiple, calc_mapping_2d, log_prob_all_is_noise, \
+from src.algorithms.utils import log_size_S_2d_1axis_multiple, \
+    log_size_S_2d_1axis, \
+    calc_mapping_2d, \
+    log_prob_all_is_noise, \
     _calc_mapping_1d_many
 from src.utils.logsumexp import logsumexp_simple
 
@@ -90,6 +93,8 @@ class FilterEstimator2D:
         self.term_three_const = None
 
         self.row_jump = self.signal_support // 4
+        self.row_jump = min(self.signal_support, self.data_size // 20)
+        logger.info(f'Row jump is set to {self.row_jump}')
 
     def _normalize_basis(self):
         """
@@ -138,10 +143,17 @@ class FilterEstimator2D:
 
     def _calc_log_size_s(self, possible_instances):
         max_k = possible_instances[-1]
-        return log_size_S_2d_1axis_multiple(self.data.shape[0],
-                                            max_k,
-                                            self.signal_support,
-                                            row_jump=self.row_jump)[possible_instances]
+
+        if len(self.possible_instances) > 1:
+            return log_size_S_2d_1axis_multiple(self.data.shape[0],
+                                                max_k,
+                                                self.signal_support,
+                                                row_jump=self.row_jump)[possible_instances]
+        else:
+            return log_size_S_2d_1axis(self.data.shape[0],
+                                       max_k,
+                                       self.signal_support,
+                                       row_jump=self.row_jump)
 
     def _calc_term_two(self, noise_mean):
         return log_prob_all_is_noise(self.data - noise_mean, self.noise_std)
@@ -220,21 +232,28 @@ class FilterEstimator2D:
         # log_term_columns = self._calc_mapping(convolved_filter, axis=1)[0, self.possible_instances]  # vws on columns
 
         noise_term = log_prob_all_is_noise(self.data - noise_mean, self.noise_std)
+        noise_term = 0
 
         filter_norm_const_term = -1 / (self.noise_std ** 2) * np.inner(filter_coeffs, filter_coeffs)
         noise_filter_const_term = -noise_mean / (self.noise_std ** 2) * np.inner(filter_coeffs, self.summed_filters)
         # log_term = np.logaddexp(log_term_rows, log_term_columns)
-        k_margin_term = self.term_one + \
-                        self.possible_instances * (filter_norm_const_term + noise_filter_const_term) + \
-                        log_term
 
-        likelihood = noise_term + logsumexp_simple(k_margin_term)
+        if len(self.possible_instances) > 1:
+            k_margin_term = self.term_one + \
+                            self.possible_instances * (filter_norm_const_term + noise_filter_const_term) + \
+                            log_term
 
-        # Calculate number of instances expectation
-        k_probabilities = np.exp(k_margin_term - logsumexp_simple(k_margin_term))
-        k_expectation = np.nansum(self.possible_instances * k_probabilities)
+            likelihood = noise_term + logsumexp_simple(k_margin_term)
 
-        return likelihood, k_expectation
+            # Calculate number of instances expectation
+            k_probabilities = np.exp(k_margin_term - logsumexp_simple(k_margin_term))
+            k_expectation = np.nansum(self.possible_instances * k_probabilities)
+
+            return likelihood, k_expectation
+        else:
+            k = self.possible_instances[0]
+            likelihood = self.term_one + noise_term + k * (filter_norm_const_term + noise_filter_const_term) + log_term
+            return likelihood, k
 
     def _calc_gradient_discrete(self, filter_coeffs, noise_mean, likelihood):
         """
@@ -453,24 +472,27 @@ class FilterEstimator2D:
         # Save Smax locations as fig
         self._find_optimal_signals_locations(convolved_filter, k)
 
-        # fig, axs = plt.subplots(nrows=1, ncols=2)
-        #
-        # # Save matched filter and cumulative power as fig
-        # matched_filter = self.filter_basis.T.dot(optimal_coeffs)
-        # pcm = axs[0].imshow(matched_filter, cmap='gray')
-        # axs[0].title.set_text('Matched Filter')
-        # plt.colorbar(pcm, ax=axs[0])
-        #
-        # center = matched_filter.shape[0] // 2
-        # filter_power_1d = np.square(matched_filter[center:-self.particle_margin, center])
-        # cum_filter_power_1d = np.nancumsum(filter_power_1d)
-        # relative_power_fraction = 1 - cum_filter_power_1d / cum_filter_power_1d[-1]
-        # xs = np.arange(0, filter_power_1d.shape[0]) * 2
-        # axs[1].plot(xs, relative_power_fraction)
-        # axs[1].title.set_text('Cumulative Power')
-        # fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_matched_filter.png')
-        # plt.savefig(fname=fig_path)
-        # plt.close()
+        fig, axs = plt.subplots(nrows=1, ncols=2)
+
+        # Save matched filter and cumulative power as fig
+        matched_filter = self.filter_basis.T.dot(optimal_coeffs)
+        pcm = axs[0].imshow(matched_filter, cmap='gray')
+        axs[0].title.set_text('Matched Filter')
+        plt.colorbar(pcm, ax=axs[0])
+
+        center = matched_filter.shape[0] // 2
+        if self.particle_margin > 0:
+            filter_power_1d = np.square(matched_filter[center:-self.particle_margin, center])
+        else:
+            filter_power_1d = np.square(matched_filter[center:, center])
+        cum_filter_power_1d = np.nancumsum(filter_power_1d)
+        relative_power_fraction = 1 - cum_filter_power_1d / cum_filter_power_1d[-1]
+        xs = np.arange(0, filter_power_1d.shape[0]) * 2
+        axs[1].plot(xs, relative_power_fraction)
+        axs[1].title.set_text('Cumulative Power')
+        fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_matched_filter.png')
+        plt.savefig(fname=fig_path)
+        plt.close()
 
     def _estimate_most_likely_num_of_instances(self, filter_coeffs, noise_mean, convolved_filter):
 

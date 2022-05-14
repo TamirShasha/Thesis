@@ -150,7 +150,7 @@ def log_size_S_1d(n, k, d):
 
 
 # utils for 2d vws, private, names
-def log_size_S_2d_1axis(n, k, d):
+def log_size_S_2d_1axis(n, k, d, row_jump=None):
     """
     Compute log(|S|), where |S| is the number of ways to insert k signals of size (d x d) in (n x n) spaces in such they are
     very well separated on rows.
@@ -162,7 +162,7 @@ def log_size_S_2d_1axis(n, k, d):
     for k_in_row in range(1, max_k_in_row + 1):
         log_size_S_per_row_per_k[:, k_in_row - 1] = log_size_S_1d(n, k_in_row, d)
 
-    mapping = _calc_mapping_2d_after_precompute(n, k, d, log_size_S_per_row_per_k)
+    mapping = _calc_mapping_2d_after_precompute(n, k, d, log_size_S_per_row_per_k, row_jump=row_jump)
     return mapping[0, k]
 
 

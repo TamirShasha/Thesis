@@ -2,4 +2,9 @@
 __pycache__
 src/experiments/plots
 src/experiments/baselines/plots
+src/experiments/std*
+src/experiments/performance*
+src/experiments/to_save/*
+src/experiments/performence plots/*
+src/**/*.png
 simulated_data

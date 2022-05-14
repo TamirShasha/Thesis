@@ -15,7 +15,8 @@ SIGNAL_SHAPES = [(Shapes2D.disk, 'disk'),
                  (Shapes2D.sphere, 'sphere'),
                  (lambda l, p: Shapes2D.ellipse(l, l // 1.7, p), 'ellipse'),
                  (lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0), 'ring')]
-sizes = np.array([2.5, 3, 4, 5, 6, 8]) * N / 100
+sizes = np.array([3, 4, 5, 6, 8, 10
+                  ]) * N / 100
 
 now_str = datetime.now().strftime("%H_%M_%Y_%m_%d")
 
@@ -39,16 +40,16 @@ for i, (signal_shape, shape_name) in enumerate(SIGNAL_SHAPES):
             simulator=data,
             estimation_method=EstimationMethod.VeryWellSeparated,
             signal_length_by_percentage=LENGTH_OPTIONS_PERC,
-            num_of_instances_range=(int(data.num_of_instances * 0.7), int(data.num_of_instances * 0.7)),
+            num_of_instances_range=(30, 30),
             estimate_noise=False,
             use_noise_params=True,
-            filter_basis_size=7,
+            filter_basis_size=5,
             particles_margin=0,
             save_statistics=True,
             plot=False,
             save=True,
             save_dir=os.path.join(ROOT_DIR, f'src/experiments/baselines/plots/given_k/{now_str}/{name}/')
-        )
+        ).run()
         # exit()
 
-        Process(target=experiment.run).start()
+        # Process(target=experiment.run).start()
