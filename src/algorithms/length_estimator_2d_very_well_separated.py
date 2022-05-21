@@ -48,7 +48,7 @@ class LengthEstimator2DVeryWellSeparated:
         self._experiment_dir = experiment_dir
         self._experiment_attr = experiment_attr
 
-        self._data_size = self._data.shape[0]
+        self._data_size = self._data.shape[1]
 
         if self._use_noise_params:
             self._noise_mean = noise_mean
@@ -64,7 +64,7 @@ class LengthEstimator2DVeryWellSeparated:
         logger.setLevel(log_level)
 
     def estimate(self):
-        margin = int(self._particles_margin * self._data.shape[0]) // 2
+        margin = int(self._particles_margin * self._data_size) // 2
         logger.info(f'Particles margin is {margin * 2} pixels')
 
         likelihoods = np.zeros(len(self._signal_size_options))

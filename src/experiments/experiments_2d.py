@@ -64,12 +64,6 @@ class Experiment2D:
         self._results = {}
         self.experiment_attr = {}
 
-        curr_date = str(datetime.now().strftime("%d-%m-%Y"))
-        curr_time = str(datetime.now().strftime("%H-%M-%S"))
-        self.experiment_dir = os.path.join(self._save_dir, curr_date, curr_time)
-        if self._save:
-            pathlib.Path(self.experiment_dir).mkdir(parents=True, exist_ok=True)
-
         if mrc is None:
             if simulator is None:
                 simulator = DataSimulator2D()
@@ -93,18 +87,27 @@ class Experiment2D:
             self._signal_length = None
             self._applied_ctf = True
 
-        self._rows = self._data.shape[0]
-        self._columns = self._data.shape[1]
+        self._number_of_micrographs = self._data.shape[0]
+        self._rows = self._data.shape[1]
+        self._columns = self._data.shape[2]
 
         plt.rcParams["figure.figsize"] = (16, 9)
         if self._plot:
-            plt.imshow(self._data, cmap='gray')
+            fig, axs = plt.subplots(1, self._number_of_micrographs)
+            for i in range(self._number_of_micrographs):
+                axs[i].imshow(self._data[i], cmap='gray')
             plt.show()
 
         if signal_length_by_percentage is None:
             signal_length_by_percentage = [3, 4, 5, 6, 8, 10]
         self._signal_length_by_percentage = np.array(signal_length_by_percentage)
-        self._sizes_options = np.array(self._data.shape[0] * self._signal_length_by_percentage // 100, dtype=int)
+        self._sizes_options = np.array(self._rows * self._signal_length_by_percentage // 100, dtype=int)
+
+        curr_date = str(datetime.now().strftime("%d-%m-%Y"))
+        curr_time = str(datetime.now().strftime("%H-%M-%S"))
+        self.experiment_dir = os.path.join(self._save_dir, curr_date, curr_time) + f'_std_{self._noise_std}'
+        if self._save:
+            pathlib.Path(self.experiment_dir).mkdir(parents=True, exist_ok=True)
 
         if self._estimation_method == EstimationMethod.Curves:
             logger.info(f'Estimating signal length using Curves method')
@@ -184,7 +187,7 @@ class Experiment2D:
                  f"Took {int(self._results['total_time'])} seconds"
         fig.suptitle(title)
 
-        mrc_fig.imshow(self._data, cmap='gray')
+        mrc_fig.imshow(self._data[0], cmap='gray')
         pcm = est_particle_fig.imshow(self._results['estimated_signal'], cmap='gray')
         plt.colorbar(pcm, ax=est_particle_fig)
 
@@ -213,15 +216,16 @@ class Experiment2D:
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=1000,
-                               columns=1000,
-                               signal_length=50,
+    sim_data = DataSimulator2D(rows=200,
+                               columns=200,
+                               signal_length=10,
                                signal_power=1,
                                # signal_fraction=0.05,
                                # num_of_instances=
                                # method='vws',
                                signal_margin=0,
                                num_of_instances=np.random.randint(20, 80),
+                               number_of_micrographs=2,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
                                signal_gen=Shapes2D.sphere,
@@ -242,7 +246,7 @@ def __main__():
         # down_sample_size=500,
         use_noise_params=True,
         estimate_noise=False,
-        filter_basis_size=2,
+        filter_basis_size=1,
         save_statistics=True,
         particles_margin=0,
         plot=True,

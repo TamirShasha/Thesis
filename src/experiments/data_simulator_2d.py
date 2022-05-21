@@ -84,7 +84,7 @@ class Shapes2D:
 class DataSimulator2D:
     def __init__(self, rows=2000, columns=2000, signal_length=100, signal_power=1, signal_fraction=1 / 6,
                  signal_margin=0.02, signal_gen=lambda d, p: Shapes2D.disk(d, p), noise_std=3, noise_mean=0,
-                 num_of_instances=None, method='BF', collision_threshold=100, apply_ctf=False):
+                 number_of_micrographs=1, num_of_instances=None, method='BF', collision_threshold=100, apply_ctf=False):
         self.rows = rows
         self.columns = columns
         self.signal_fraction = signal_fraction
@@ -95,6 +95,7 @@ class DataSimulator2D:
         self.noise_std = noise_std
         self.noise_mean = noise_mean
         self.num_of_instances = num_of_instances
+        self.number_of_micrographs = number_of_micrographs
         self.method = method
         self.collision_threshold = collision_threshold
         self.apply_ctf = apply_ctf
@@ -120,22 +121,32 @@ class DataSimulator2D:
 
     def simulate(self):
 
-        if self.method.lower() == 'bf':
-            data = self._simulate_signal_bf()
-        elif self.method.lower() == 'vws':
-            data = self._simulate_signal_vws()
-        else:
-            raise ValueError('method = {} is not supported, try bf or vws'.format(self.method))
-        logger.info(f'Total signal area fraction is {np.count_nonzero(data) / np.nanprod(data.shape)}\n')
+        self.clean_data = []
+        simulated_data = []
 
-        # add noise
-        noise = self._random_gaussian_noise()
+        for i in range(self.number_of_micrographs):
 
-        self.clean_data = data.copy()
-        simulated_data = data + noise
+            if self.method.lower() == 'bf':
+                data = self._simulate_signal_bf()
+            elif self.method.lower() == 'vws':
+                data = self._simulate_signal_vws()
+            else:
+                raise ValueError('method = {} is not supported, try bf or vws'.format(self.method))
+            logger.info(f'(#{i + 1}) Total signal area fraction is {np.count_nonzero(data) / np.nanprod(data.shape)}')
 
-        logger.info(f'Average signal power is {np.nansum(self.clean_data) / np.nanprod(self.clean_data.shape)}')
-        logger.info(f'Average data power is {np.nansum(simulated_data) / np.nanprod(self.clean_data.shape)}')
+            # add noise
+            noise = self._random_gaussian_noise()
+
+            self.clean_data.append(data.copy())
+            simulated_data.append(data + noise)
+
+            logger.info(
+                f'(#{i + 1}) Average signal power is {np.nansum(self.clean_data[i]) / np.nanprod(self.clean_data[i].shape)}')
+            logger.info(
+                f'(#{i + 1}) Average data power is {np.nansum(simulated_data) / np.nanprod(self.clean_data[i].shape)}')
+
+        self.clean_data = np.array(self.clean_data)
+        simulated_data = np.array(simulated_data)
 
         return simulated_data
 

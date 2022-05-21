@@ -63,13 +63,22 @@ class FilterEstimator2D:
                 "noise_mean": []
             }
 
-        noise_mean = noise_mean_param if noise_mean_param is not None else np.nanmean(self.unnormalized_data)
-        noise_std = noise_std_param if noise_std_param is not None else np.nanstd(self.unnormalized_data)
+        # noise_mean = noise_mean_param if noise_mean_param is not None else np.nanmean(self.unnormalized_data)
+        # noise_std = noise_std_param if noise_std_param is not None else np.nanstd(self.unnormalized_data)
 
-        self.data = (self.unnormalized_data - noise_mean) / noise_std
+        noise_means = np.array([
+            noise_mean_param if noise_mean_param is not None else np.nanmean(data)
+            for data in self.unnormalized_data])
+        noise_stds = np.array([
+            noise_std_param if noise_std_param is not None else np.nanstd(data)
+            for data in self.unnormalized_data])
+
+        self.data = (self.unnormalized_data - noise_means[:, np.newaxis, np.newaxis]) / noise_stds[:, np.newaxis,
+                                                                                        np.newaxis]
         self.noise_mean = 0  # We assume noise mean is close to 0 after normalization
         self.noise_std = 1  # We assume noise std is close to 1 after normalization
-        self.data_size = self.data.shape[0]
+        self.number_of_micrographs = self.data.shape[0]
+        self.data_size = self.data.shape[1]
 
         self.filter_basis_size = len(self.unnormalized_filter_basis)
         self.unmarginized_filter_basis, self.basis_norms = self._normalize_basis()
@@ -82,7 +91,7 @@ class FilterEstimator2D:
         # find max possible instances for given filter size
         self.max_possible_instances = min(
             self.num_of_instances_range[1],
-            (self.data.shape[0] // self.signal_support) * (self.data.shape[1] // self.signal_support))
+            (self.data.shape[1] // self.signal_support) * (self.data.shape[2] // self.signal_support))
         logger.info(f'Maximum possible instances for size={self.signal_size} is {self.max_possible_instances}')
         self.min_possible_instances = self.num_of_instances_range[0]
 
@@ -145,12 +154,12 @@ class FilterEstimator2D:
         max_k = possible_instances[-1]
 
         if len(self.possible_instances) > 1:
-            return log_size_S_2d_1axis_multiple(self.data.shape[0],
+            return log_size_S_2d_1axis_multiple(self.data_size,
                                                 max_k,
                                                 self.signal_support,
                                                 row_jump=self.row_jump)[possible_instances]
         else:
-            return log_size_S_2d_1axis(self.data.shape[0],
+            return log_size_S_2d_1axis(self.data_size,
                                        max_k,
                                        self.signal_support,
                                        row_jump=self.row_jump)
@@ -170,26 +179,29 @@ class FilterEstimator2D:
         """
         return -np.arange(self.min_possible_instances, self.max_possible_instances + 1) / (2 * self.noise_std ** 2)
 
-    def _convolve_basis_element(self, filter_element):
+    def _convolve_basis_element(self, mrc: np.ndarray, filter_element):
         """
         convolve one basis element with data
+        :param mrc: micrograph
         :param filter_element: one element from filter basis
         :return: (n-d, m-d) while  n is data #rows, m is #columns
         """
         flipped_signal_filter = np.flip(filter_element)  # Flipping to cross-correlate
-        conv = convolve(self.data, flipped_signal_filter, mode='valid')
+        conv = convolve(mrc, flipped_signal_filter, mode='valid')
         return conv
 
     def _convolve_basis(self):
         """
         convolve each normalized basis element with data
-        :return: (T, n-d, m-d) array where T is basis size, n is #rows, m is #columns
+        :return: (M, T, n-d, m-d) array where M is number of micrographs, T is basis size, n is #rows, m is #columns
         """
-        constants = np.zeros(shape=(self.filter_basis_size,
-                                    self.data.shape[0] - self.signal_support + 1,
-                                    self.data.shape[1] - self.signal_support + 1))
-        for i, fil in enumerate(self.filter_basis):
-            constants[i] = self._convolve_basis_element(fil)
+        constants = np.zeros(shape=(self.number_of_micrographs,
+                                    self.filter_basis_size,
+                                    self.data_size - self.signal_support + 1,
+                                    self.data_size - self.signal_support + 1))
+        for i, mrc in enumerate(self.data):
+            for j, fil in enumerate(self.filter_basis):
+                constants[i][j] = self._convolve_basis_element(mrc, fil)
         return constants
 
     def _calc_convolved_filter(self, filter_coeffs):
@@ -197,7 +209,7 @@ class FilterEstimator2D:
         :param filter_coeffs: coefficients for the filter basis
         :return: the dot product between relevant data sample and filter
         """
-        convolved_filter = np.inner(self.convolved_basis.T, filter_coeffs).T
+        convolved_filter = np.inner(self.convolved_basis.transpose([0, 3, 2, 1]), filter_coeffs).transpose([0, 2, 1])
         return convolved_filter
 
     def _calc_mapping(self, convolved_filter, axis=0):
@@ -208,19 +220,21 @@ class FilterEstimator2D:
         """
 
         if axis == 0:
-            return calc_mapping_2d(self.data.shape[0],
-                                   self.max_possible_instances,
-                                   self.signal_support,
-                                   convolved_filter,
-                                   row_jump=self.row_jump)
+            mapping = calc_mapping_2d(self.data_size,
+                                      self.max_possible_instances,
+                                      self.signal_support,
+                                      convolved_filter,
+                                      row_jump=self.row_jump)
         elif axis == 1:
-            return calc_mapping_2d(self.data.shape[0],
-                                   self.max_possible_instances,
-                                   self.signal_support,
-                                   convolved_filter.T,
-                                   row_jump=self.row_jump)
+            mapping = calc_mapping_2d(self.data_size,
+                                      self.max_possible_instances,
+                                      self.signal_support,
+                                      convolved_filter.T,
+                                      row_jump=self.row_jump)
         else:
             raise Exception('Invalid axis')
+
+        return mapping
 
     def _calc_likelihood(self, filter_coeffs, noise_mean):
         """
@@ -228,11 +242,16 @@ class FilterEstimator2D:
         """
 
         convolved_filter = self._calc_convolved_filter(filter_coeffs)
-        log_term = self._calc_mapping(convolved_filter, axis=0)[0, self.possible_instances]  # vws on rows
+        log_terms = np.array(
+            [self._calc_mapping(convolved_filter[i], axis=0)
+             for i in range(self.number_of_micrographs)])[:, 0, self.possible_instances]  # vws on rows
         # log_term_columns = self._calc_mapping(convolved_filter, axis=1)[0, self.possible_instances]  # vws on columns
 
-        noise_term = log_prob_all_is_noise(self.data - noise_mean, self.noise_std)
-        noise_term = 0
+        noise_terms = np.array([
+            log_prob_all_is_noise(self.data[i] - noise_mean, self.noise_std) for i in range(self.number_of_micrographs)
+        ])
+
+        noise_terms = np.array([0 for _ in range(self.number_of_micrographs)])
 
         filter_norm_const_term = -1 / (self.noise_std ** 2) * np.inner(filter_coeffs, filter_coeffs)
         noise_filter_const_term = -noise_mean / (self.noise_std ** 2) * np.inner(filter_coeffs, self.summed_filters)
@@ -241,18 +260,19 @@ class FilterEstimator2D:
         if len(self.possible_instances) > 1:
             k_margin_term = self.term_one + \
                             self.possible_instances * (filter_norm_const_term + noise_filter_const_term) + \
-                            log_term
+                            log_terms
 
-            likelihood = noise_term + logsumexp_simple(k_margin_term)
+            likelihood = noise_terms + logsumexp_simple(k_margin_term)
 
             # Calculate number of instances expectation
             k_probabilities = np.exp(k_margin_term - logsumexp_simple(k_margin_term))
             k_expectation = np.nansum(self.possible_instances * k_probabilities)
 
-            return likelihood, k_expectation
+            return np.nanmean(likelihood, axis=0), k_expectation
         else:
             k = self.possible_instances[0]
-            likelihood = self.term_one + noise_term + k * (filter_norm_const_term + noise_filter_const_term) + log_term
+            likelihood = self.term_one + noise_terms + k * (
+                    filter_norm_const_term + noise_filter_const_term) + log_terms
             return likelihood, k
 
     def _calc_gradient_discrete(self, filter_coeffs, noise_mean, likelihood):
@@ -466,8 +486,11 @@ class FilterEstimator2D:
         #
         # # Save num of instances likelihoods graph as fig
         convolved_filter = self._calc_convolved_filter(optimal_filter_coeffs)
-        k = self._estimate_most_likely_num_of_instances(optimal_filter_coeffs, optimal_noise_mean, convolved_filter)
-        logger.info(f'For size {self.signal_size} most likely k is {k}')
+
+        for i, mrc in enumerate(self.data):
+            k = self._estimate_most_likely_num_of_instances(optimal_filter_coeffs, optimal_noise_mean,
+                                                            convolved_filter[i])
+            logger.info(f'MRC#{i + 1} For size {self.signal_size} most likely k is {k}')
 
         # Save Smax locations as fig
         self._find_optimal_signals_locations(convolved_filter, k)
@@ -475,7 +498,7 @@ class FilterEstimator2D:
         fig, axs = plt.subplots(nrows=1, ncols=2)
 
         # Save matched filter and cumulative power as fig
-        matched_filter = self.filter_basis.T.dot(optimal_coeffs)
+        matched_filter = self.filter_basis.T.dot(optimal_coeffs[0])
         pcm = axs[0].imshow(matched_filter, cmap='gray')
         axs[0].title.set_text('Matched Filter')
         plt.colorbar(pcm, ax=axs[0])
@@ -515,88 +538,92 @@ class FilterEstimator2D:
 
         return most_likely_num_of_instances
 
-    def _find_optimal_signals_locations(self, convolved_filter, num_of_instances):
+    def _find_optimal_signals_locations(self, convolved_filters, num_of_instances):
 
-        n, m, k, d = self.data.shape[0], convolved_filter.shape[0], num_of_instances, self.signal_support
-        max_k_in_row = min(n // d, k)
+        for mrc_idx, mrc in enumerate(self.data):
 
-        # maximum likelihood for each row
-        rows_best_loc_probs = np.full((m, n + 1, k + 1), -np.inf)
-        rows_best_loc_probs[:, :, 0] = 0
-        for row in range(m):
-            for curr_k in range(1, max_k_in_row + 1):
-                for i in range(n - curr_k * d, -1, -1):
-                    curr_prob = convolved_filter[row, i] + rows_best_loc_probs[row, i + d, curr_k - 1]
-                    prev_prob = rows_best_loc_probs[row, i + 1, curr_k]
-                    if curr_prob > prev_prob:
-                        rows_best_loc_probs[row, i, curr_k] = curr_prob
-                    else:
-                        rows_best_loc_probs[row, i, curr_k] = prev_prob
+            convolved_filter = convolved_filters[mrc_idx]
 
-        rows_head_best_loc_probs = rows_best_loc_probs[:, 0, :]
+            n, m, k, d = self.data_size, convolved_filter.shape[0], num_of_instances, self.signal_support
+            max_k_in_row = min(n // d, k)
 
-        best_loc_probs = np.full((n, k + 1), -np.inf)
-        best_loc_probs[m - 1] = rows_head_best_loc_probs[m - 1]
-        best_loc_probs[:, 0] = 0
-        best_ks = np.zeros(shape=(m, k + 1), dtype=int)
-        for row in np.arange(m - 2, -1, -1):
-            for curr_k in range(1, k + 1):
-                probs = [rows_head_best_loc_probs[row, k_tag] + best_loc_probs[row + self.row_jump, curr_k - k_tag]
-                         for k_tag in range(1, curr_k + 1)]
-                probs = [best_loc_probs[row + 1, curr_k]] + probs
-                best_k = np.nanargmax(probs)
-                best_ks[row, curr_k] = best_k
-                best_loc_probs[row, curr_k] = probs[best_k]
+            # maximum likelihood for each row
+            rows_best_loc_probs = np.full((m, n + 1, k + 1), -np.inf)
+            rows_best_loc_probs[:, :, 0] = 0
+            for row in range(m):
+                for curr_k in range(1, max_k_in_row + 1):
+                    for i in range(n - curr_k * d, -1, -1):
+                        curr_prob = convolved_filter[row, i] + rows_best_loc_probs[row, i + d, curr_k - 1]
+                        prev_prob = rows_best_loc_probs[row, i + 1, curr_k]
+                        if curr_prob > prev_prob:
+                            rows_best_loc_probs[row, i, curr_k] = curr_prob
+                        else:
+                            rows_best_loc_probs[row, i, curr_k] = prev_prob
 
-        rows_and_number_of_instances = []
-        left = k
-        i = 0
-        while i < m and left > 0:
-            k_in_row = best_ks[i][left]
-            if k_in_row > 0:
-                rows_and_number_of_instances.append((i, k_in_row))
-                left -= k_in_row
-                i += self.row_jump
-            else:
-                i += 1
+            rows_head_best_loc_probs = rows_best_loc_probs[:, 0, :]
 
-        locations = []
-        for (row, num) in rows_and_number_of_instances:
-            pivot_idx = 0
-            for j in np.arange(num, 0, -1):
-                x = np.copy(rows_best_loc_probs[row, pivot_idx:, j][:n - num * d + 1])
-                x[x == -np.inf] = 0
-                diffs = np.diff(x)
-                if np.all(diffs == 0):
-                    idx = len(diffs)
+            best_loc_probs = np.full((n, k + 1), -np.inf)
+            best_loc_probs[m - 1] = rows_head_best_loc_probs[m - 1]
+            best_loc_probs[:, 0] = 0
+            best_ks = np.zeros(shape=(m, k + 1), dtype=int)
+            for row in np.arange(m - 2, -1, -1):
+                for curr_k in range(1, k + 1):
+                    probs = [rows_head_best_loc_probs[row, k_tag] + best_loc_probs[row + self.row_jump, curr_k - k_tag]
+                             for k_tag in range(1, curr_k + 1)]
+                    probs = [best_loc_probs[row + 1, curr_k]] + probs
+                    best_k = np.nanargmax(probs)
+                    best_ks[row, curr_k] = best_k
+                    best_loc_probs[row, curr_k] = probs[best_k]
+
+            rows_and_number_of_instances = []
+            left = k
+            i = 0
+            while i < m and left > 0:
+                k_in_row = best_ks[i][left]
+                if k_in_row > 0:
+                    rows_and_number_of_instances.append((i, k_in_row))
+                    left -= k_in_row
+                    i += self.row_jump
                 else:
-                    idx = np.flatnonzero(diffs)[0]
-                locations.append((pivot_idx + idx, row))
-                pivot_idx += idx + d
+                    i += 1
 
-        # Create figure and axes
-        fig, ax = plt.subplots()
+            locations = []
+            for (row, num) in rows_and_number_of_instances:
+                pivot_idx = 0
+                for j in np.arange(num, 0, -1):
+                    x = np.copy(rows_best_loc_probs[row, pivot_idx:, j][:n - num * d + 1])
+                    x[x == -np.inf] = 0
+                    diffs = np.diff(x)
+                    if np.all(diffs == 0):
+                        idx = len(diffs)
+                    else:
+                        idx = np.flatnonzero(diffs)[0]
+                    locations.append((pivot_idx + idx, row))
+                    pivot_idx += idx + d
 
-        # Display the image
-        if 'clean_data' not in self.experiment_attr:
-            ax.imshow(self.data, cmap='gray')
-        else:
-            ax.imshow(self.experiment_attr['clean_data'], cmap='gray')
+            # Create figure and axes
+            fig, ax = plt.subplots()
 
-        # Create a Rectangle patch
-        for loc in np.array(locations):
-            rect = patches.Rectangle(loc + self.particle_margin, self.signal_size, self.signal_size,
-                                     linewidth=1,
-                                     edgecolor='r',
-                                     facecolor='none')
-            # Add the patch to the Axes
-            ax.add_patch(rect)
+            # Display the image
+            if 'clean_data' not in self.experiment_attr:
+                ax.imshow(mrc, cmap='gray')
+            else:
+                ax.imshow(self.experiment_attr['clean_data'][mrc_idx], cmap='gray')
 
-        fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_locations.png')
-        plt.title(f'Likely locations for size {self.signal_size}\n'
-                  f'Likely number of instances is {k}')
-        plt.savefig(fname=fig_path)
-        plt.close()
+            # Create a Rectangle patch
+            for loc in np.array(locations):
+                rect = patches.Rectangle(loc + self.particle_margin, self.signal_size, self.signal_size,
+                                         linewidth=1,
+                                         edgecolor='r',
+                                         facecolor='none')
+                # Add the patch to the Axes
+                ax.add_patch(rect)
+
+            fig_path = os.path.join(self.experiment_dir, f'mrc#{mrc_idx + 1}_{self.signal_size}_locations.png')
+            plt.title(f'Likely locations for size {self.signal_size}\n'
+                      f'Likely number of instances is {k}')
+            plt.savefig(fname=fig_path)
+            plt.close()
 
         return locations
 
@@ -621,10 +648,11 @@ class FilterEstimator2D:
         # likelihood, optimal_model_parameters = self._optimize_parameters()
 
         optimal_filter_coeffs, optimal_noise_mean = optimal_model_parameters[:-1], optimal_model_parameters[-1]
-        noise_std = np.nanstd(self.unnormalized_data)
-        optimal_coeffs = optimal_filter_coeffs * noise_std / self.basis_norms
+        noise_stds = np.nanstd(self.unnormalized_data, axis=(1, 2))
+        optimal_coeffs = np.array([optimal_filter_coeffs * noise_std / self.basis_norms for noise_std in noise_stds])
+        # optimal_coeffs = optimal_filter_coeffs * noise_std / self.basis_norms
 
         if self.save_statistics:
             self._generate_and_save_statistics(optimal_filter_coeffs, optimal_coeffs, optimal_noise_mean)
 
-        return likelihood, optimal_coeffs
+        return likelihood, optimal_coeffs[0]
