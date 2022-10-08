@@ -272,7 +272,7 @@ def calc_mapping_1d(n, k, d, constants):
     return mapping
 
 
-@nb.jit
+# @nb.jit
 def _calc_mapping_1d_many(n, k, d, constants):
     """
     Do the 1d dynamic programming for many constant vectors.
@@ -617,3 +617,13 @@ def remove_outliers_by_iqr(data):
     clipped_mrc = data.clip(low_ths, high_ths)
 
     return clipped_mrc
+
+
+import matplotlib.pyplot as plt
+
+x = np.zeros(shape=(200, 200))
+x[::5, ::5] = 1
+
+plt.figure(figsize=(16, 10))
+plt.imshow(x)
+plt.show()
