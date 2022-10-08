@@ -1,6 +1,7 @@
 import numpy as np
 from enum import Enum
 import logging
+import matplotlib.pyplot as plt
 
 from src.algorithms.filter_estimator_2d import FilterEstimator2D
 from src.utils.common_filter_basis import create_filter_basis
@@ -48,7 +49,7 @@ class LengthEstimator2DVeryWellSeparated:
         self._experiment_dir = experiment_dir
         self._experiment_attr = experiment_attr
 
-        self._data_size = self._data.shape[0]
+        self._data_size = self._data.shape[1]
 
         if self._use_noise_params:
             self._noise_mean = noise_mean
@@ -64,11 +65,14 @@ class LengthEstimator2DVeryWellSeparated:
         logger.setLevel(log_level)
 
     def estimate(self):
-        margin = int(self._particles_margin * self._data.shape[0]) // 2
+        margin = int(self._particles_margin * self._data_size) // 2
         logger.info(f'Particles margin is {margin * 2} pixels')
 
         likelihoods = np.zeros(len(self._signal_size_options))
         optimal_coeffs = np.zeros(shape=(len(self._signal_size_options), self._filter_basis_size))
+        correlations = []
+        power_distribution_scores = []
+        likelihood_of_top_locations = []
         for i, length in enumerate(self._signal_size_options):
             logger.info(f'Estimating likelihood for size={length}')
 
@@ -87,9 +91,33 @@ class LengthEstimator2DVeryWellSeparated:
                                                  plots=self._plots,
                                                  log_level=self._log_level)
 
-            likelihoods[i], optimal_coeffs[i] = filter_estimator.estimate()
+            if self._save_statistics:
+                likelihoods[i], optimal_coeffs[
+                    i], corrs, power_distribution_score, likelihood_of_locations = filter_estimator.estimate()
+                correlations.append(corrs)
+                power_distribution_scores.append(power_distribution_score)
+                likelihood_of_top_locations.append(likelihood_of_locations)
+            else:
+                likelihoods[i], optimal_coeffs[i] = filter_estimator.estimate()
+
             logger.info(
                 f'For length {self._signal_size_options[i]}, Likelihood={likelihoods[i]}')
+
+        # [plt.hist(cors, bins=20, alpha=0.5, label=self._signal_size_options[i]) for i, cors in enumerate(correlations)]
+        # plt.legend()
+        # plt.show()
+        #
+        # plt.title('Likelihood of top probability locations')
+        # plt.plot(self._signal_size_options, likelihood_of_top_locations)
+        # plt.show()
+        #
+        # power_distribution_scores = np.array(power_distribution_scores)
+        # plt.title('Means of outer filter patch')
+        # plt.plot(self._signal_size_options, power_distribution_scores[:, 0])
+        # plt.show()
+        # plt.title('STDs of outer filter patch')
+        # plt.plot(self._signal_size_options, power_distribution_scores[:, 1])
+        # plt.show()
 
         most_likely_index = np.nanargmax(likelihoods)
         filter_basis = create_filter_basis(self._signal_size_options[most_likely_index], self._filter_basis_size)

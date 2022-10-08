@@ -67,8 +67,6 @@ class Experiment2D:
         curr_date = str(datetime.now().strftime("%d-%m-%Y"))
         curr_time = str(datetime.now().strftime("%H-%M-%S"))
         self.experiment_dir = os.path.join(self._save_dir, curr_date, curr_time)
-        if self._save:
-            pathlib.Path(self.experiment_dir).mkdir(parents=True, exist_ok=True)
 
         if mrc is None:
             if simulator is None:
@@ -84,27 +82,47 @@ class Experiment2D:
             self._applied_ctf = simulator.apply_ctf
 
             self.experiment_attr['clean_data'] = simulator.clean_data
+            self.experiment_dir += f'_size_{simulator.signal_length}_std_{self._noise_std}'
         else:
             logger.info(f'Loading given micrograph from {mrc.name}')
-            self._data = mrc.get_micrograph()
+            mrc_data = mrc.get_micrograph()
             # self._data = self._data[:min(self._data.shape), :min(self._data.shape)]
+            self._data = np.array([mrc_data])
             self._noise_std = mrc.noise_std
             self._noise_mean = mrc.noise_mean
             self._signal_length = None
             self._applied_ctf = True
 
-        self._rows = self._data.shape[0]
-        self._columns = self._data.shape[1]
+            self.experiment_dir += f'_{mrc.name}'
+
+        self._number_of_micrographs = self._data.shape[0]
+        self._rows = self._data.shape[1]
+        self._columns = self._data.shape[2]
 
         plt.rcParams["figure.figsize"] = (16, 9)
         if self._plot:
-            plt.imshow(self._data, cmap='gray')
+            if self._number_of_micrographs > 1:
+                cols = 4
+                rows = np.ceil(self._number_of_micrographs / cols).astype(int)
+                fig, axs = plt.subplots(rows, cols)
+                for i in range(self._number_of_micrographs):
+                    row = i // cols
+                    col = i % cols
+                    if rows > 1:
+                        axs[row][col].imshow(self._data[i], cmap='gray')
+                    else:
+                        axs[col].imshow(self._data[i], cmap='gray')
+            else:
+                plt.imshow(self._data[0], cmap='gray')
             plt.show()
 
         if signal_length_by_percentage is None:
             signal_length_by_percentage = [3, 4, 5, 6, 8, 10]
         self._signal_length_by_percentage = np.array(signal_length_by_percentage)
-        self._sizes_options = np.array(self._data.shape[0] * self._signal_length_by_percentage // 100, dtype=int)
+        self._sizes_options = np.array(self._rows * self._signal_length_by_percentage // 100, dtype=int)
+
+        if self._save:
+            pathlib.Path(self.experiment_dir).mkdir(parents=True, exist_ok=True)
 
         if self._estimation_method == EstimationMethod.Curves:
             logger.info(f'Estimating signal length using Curves method')
@@ -184,7 +202,7 @@ class Experiment2D:
                  f"Took {int(self._results['total_time'])} seconds"
         fig.suptitle(title)
 
-        mrc_fig.imshow(self._data, cmap='gray')
+        mrc_fig.imshow(self._data[0], cmap='gray')
         pcm = est_particle_fig.imshow(self._results['estimated_signal'], cmap='gray')
         plt.colorbar(pcm, ax=est_particle_fig)
 
@@ -209,40 +227,63 @@ class Experiment2D:
         plt.close()
 
 
-# np.random.seed(502)
+np.random.seed(504)
 
 
 def __main__():
-    sim_data = DataSimulator2D(rows=1000,
-                               columns=1000,
-                               signal_length=50,
+    sim_data = DataSimulator2D(rows=500,
+                               columns=500,
+                               signal_length=30,
                                signal_power=1,
-                               # signal_fraction=0.05,
+                               # signal_fraction=np.random.randint(10, 20) / 100,
                                # num_of_instances=
                                # method='vws',
                                signal_margin=0,
-                               num_of_instances=np.random.randint(20, 80),
+                               num_of_instances=2,
+                               # num_of_instances=np.random.randint(40, 120),
+                               number_of_micrographs=1,
                                # signal_gen=Shapes2D.sphere,
                                # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
-                               signal_gen=Shapes2D.sphere,
-                               noise_std=.1,
+                               signal_gen=Shapes2D.disk,
+                               noise_std=0.0001,
                                noise_mean=0,
                                apply_ctf=False)
 
     Experiment2D(
         name=f"expy",
-        # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010.mat', downsample=1000, clip_outliers=True),
+        # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10128\002.mrc',
+        #                downsample=4000,
+        #                clip_outliers=True),
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010_1000.mrc', clip_outliers=True),
-        # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\HCN1apo_0016_2xaligned.mrc', downsample=1000),
+        mrc=Micrograph(
+            # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10049\stack_0250_2x_SumCorr - Copy.mrc',
+            # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10049\stack_0241_2x_SumCorr.mrc',
+            # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10049\stack_0199_2x_SumCorr.mrc',
+            file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10081\HCN1apo_0035_2xaligned.mrc',
+            # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0155_frames_sum.mrc',
+            # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10061\EMD-2984_1068.mrc',
+            # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0155_frames_sum.mrc',
+            # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0176_frames_sum.mrc',
+            # file_path=r'C:\Users\tamir\Desktop\Thesis\data\10028\001.mrc',
+            # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10061\EMD-2984_0061.mrc',
+            downsample=4000,
+            low_pass_filter=-1,
+            plot=False,
+            clip_outliers=True),
         # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\002.mrc', downsample=1000),
         simulator=sim_data,
-        signal_length_by_percentage=[1.5, 2, 3, 5, 8, 10, 12],
-        num_of_instances_range=(20, 80),
+        # signal_length_by_percentage=[5, 7, 8, 10],
+        signal_length_by_percentage=[2, 3, 4, 5, 6.5, 8],
+        # signal_length_by_percentage=[2, 6, 10],
+        # signal_length_by_percentage=[6],
+        # signal_length_by_percentage=[5, 8, 10, 12],
+        num_of_instances_range=(30, 30),
+        # num_of_instances_range=(2, 2),
         # num_of_instances_range=(int(sim_data.num_of_instances * 0.7), int(sim_data.num_of_instances * 0.7)),
         # down_sample_size=500,
-        use_noise_params=True,
+        use_noise_params=False,
         estimate_noise=False,
-        filter_basis_size=2,
+        filter_basis_size=5,
         save_statistics=True,
         particles_margin=0,
         plot=True,

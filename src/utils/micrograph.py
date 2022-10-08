@@ -3,8 +3,16 @@ from enum import Enum
 import numpy as np
 import mrcfile
 import os
+
+from PIL import Image
+from skimage.filters import gaussian
+from numpy.core.multiarray import ndarray
 from scipy.io import loadmat
 from scipy.stats import iqr
+import matplotlib.pyplot as plt
+from skimage.io import imread
+import scipy.fftpack as fp
+from scipy.ndimage import fourier_gaussian
 
 from src.utils.logger import logger
 from src.constants import ROOT_DIR
@@ -48,13 +56,17 @@ class Micrograph:
                  noise_std=None,
                  noise_mean=None,
                  clip_outliers=False,
-                 load_micrograph=False):
+                 load_micrograph=False,
+                 low_pass_filter=0,
+                 plot=False):
         self.file_path = file_path
         self.name = os.path.basename(self.file_path)
         self.downsample = downsample
         self.noise_std_param = noise_std
         self.noise_mean_param = noise_mean
         self.clip_outliers = clip_outliers
+        self.low_pass_filter = low_pass_filter
+        self.plot = plot
 
         self.noise_mean = None
         self.noise_std = None
@@ -84,41 +96,52 @@ class Micrograph:
             raise Exception('Unsupported File Extension!')
 
         # Flipping for positive signal power, cutting for square dimension
+        # plt.imshow(mrc, cmap='gray')
+        # plt.show()
         mrc = mrc[:min(mrc.shape), :min(mrc.shape)]
         mrc = -mrc
 
         if self.clip_outliers:
             mrc = Micrograph.clip_outliers(mrc)
 
+        sigma = 100
+        mrc_blurred = gaussian(mrc, sigma=sigma, mode='nearest', truncate=2.0)
+
+        mrc = mrc - mrc_blurred
+        mrc = mrc[2 * sigma: -2 * sigma, 2 * sigma: -2 * sigma]
+
         mrc = self.normalize_noise(mrc)
 
-        # crop
-        # n = mrc.shape[0]
-        # mrc = mrc[n // 3:, :2 * n // 3]
+        sigma = mrc.shape[0] // 300
+        logger.info(f'Applying gaussian averaging with sigma = {sigma}')
+        mrc = gaussian(mrc, sigma=sigma, mode='nearest', truncate=2.0)
 
-        if self.downsample > 0:
-            logger.info(f'Downsample to size ({self.downsample}, {self.downsample})')
+        if 0 < self.downsample < mrc.shape[0]:
+            logger.info(f'Downsample to size ({self.downsample}, {self.downsample}) from {mrc.shape}')
             original_size = mrc.shape[0]
             mrc = cryo_downsample(mrc, (self.downsample, self.downsample))
             downsample_factor = (original_size / self.downsample)
             self.noise_std = self.noise_std / downsample_factor
 
-        # import matplotlib.pyplot as plt
-        # from scipy.signal import convolve
-        # flipped_signal_filter = np.ones((30, 30))  # Flipping to cross-correlate
-        # conv = convolve(mrc, flipped_signal_filter, mode='valid')
-        # plt.imshow(conv, cmap='gray')
-        # plt.show()
-        #
-        # plt.plot(np.nansum(np.abs(mrc), axis=1), '.')
-        # plt.show()
-        #
-        # plt.plot(np.nanstd(np.abs(mrc), axis=1), '.')
-        # plt.show()
+        logger.info(f'Loaded Micrograph of size {mrc.shape}')
 
         return mrc
 
     def normalize_noise(self, mrc):
+
+        # sigma = 300
+        # blurred = np.fft.ifft2(fourier_gaussian(np.fft.fft2(mrc), sigma=sigma)).real
+        # mrc -= blurred
+        # mrc = mrc[sigma:-sigma, sigma:-sigma]
+        #
+        # blurred_2 = np.fft.ifft2(fourier_gaussian(np.fft.fft2(mrc), sigma=sigma)).real
+        #
+        # fig, axs = plt.subplots(1, 3, figsize=(16, 8))
+        # axs[0].imshow(mrc, cmap='gray')
+        # axs[1].imshow(blurred, cmap='gray')
+        # axs[2].imshow(blurred_2, cmap='gray')
+        # plt.show()
+
         logger.info('Normalizing noise ..')
         old_mean, old_std = np.nanmean(mrc), np.nanstd(mrc)
 
@@ -136,7 +159,7 @@ class Micrograph:
 
     @staticmethod
     def clip_outliers(mrc: np.ndarray):
-        low, high, c = 25, 75, 1.5
+        low, high, c = 25, 75, 2
         mrc_iqr = iqr(mrc, rng=(low, high))
         low_ths = np.percentile(mrc, low) - c * mrc_iqr
         high_ths = np.percentile(mrc, high) + c * mrc_iqr
@@ -159,3 +182,98 @@ class Micrograph:
 
 def _get_path(mrc_name):
     return os.path.join(ROOT_DIR, os.pardir, 'data', mrc_name)
+
+
+def apply_low_pass_filter(img, n_pass=5, plot=False):
+    F1 = fp.fft2((img.astype(float)))
+    F2 = fp.fftshift(F1)
+
+    if plot:
+        plt.figure(figsize=(10, 10))
+        plt.imshow((20 * np.log10(0.1 + F2)).astype(int), cmap='gray')
+        plt.show()
+
+    (w, h) = img.shape
+    half_w, half_h = int(w / 2), int(h / 2)
+
+    # high pass filter
+    F2[half_w - n_pass:half_w + n_pass + 1,
+    half_h - n_pass:half_h + n_pass + 1] = 0  # select all but the first 50x50 (low) frequencies
+    im1 = fp.ifft2(fp.ifftshift(F2)).real
+
+    if plot:
+        plt.figure(figsize=(10, 10))
+        plt.imshow((20 * np.log10(0.1 + F2)).astype(int))
+        plt.show()
+        plt.figure(figsize=(10, 10))
+        plt.imshow(im1, cmap='gray')
+        plt.axis('off')
+        plt.show()
+
+    return im1
+
+
+if __name__ == '__main__':
+    # mrc = Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\HCN1apo_0016_2xaligned.mrc',
+    mrc = Micrograph(
+        # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10049\stack_0250_2x_SumCorr - Copy.mrc',
+        file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10061\EMD-2984_0775.mrc',
+        # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10061\EMD-2984_1249.mrc',
+        # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0155_frames_sum.mrc',
+        # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10081\HCN1apo_0035_2xaligned.mrc',
+        downsample=-1,
+        clip_outliers=True,
+        load_micrograph=True)
+
+    plt.imshow(mrc.img, cmap='gray')
+    plt.show()
+
+    img_gaus_10 = gaussian(mrc.img, sigma=10, mode='nearest', truncate=2.0)
+    plt.imshow(img_gaus_10, cmap='gray')
+    plt.show()
+    img_gaus_5 = gaussian(mrc.img, sigma=5, mode='nearest', truncate=2.0)
+    plt.imshow(img_gaus_5, cmap='gray')
+    plt.show()
+    img_gaus_3 = gaussian(mrc.img, sigma=3, mode='nearest', truncate=2.0)
+    plt.imshow(img_gaus_3, cmap='gray')
+    plt.show()
+    # img__ = gaussian(mrc.img - img_, sigma=100, mode='nearest', truncate=2.0)
+    #
+    # fig, axs = plt.subplots(2, 2, figsize=(18, 12))
+    # axs[0, 0].imshow(mrc.img, cmap='gray')
+    # axs[0, 1].imshow(img_, cmap='gray')
+    # axs[1, 0].imshow(mrc.img - img_, cmap='gray')
+    # axs[1, 1].imshow(img__, cmap='gray')
+    # plt.show()
+
+    # img = apply_low_pass_filter(mrc.img, n_pass=10, plot=True)
+
+    # sigma = 300
+    # blurred = np.fft.ifft2(fourier_gaussian(np.fft.fft2(img), sigma=sigma)).real
+    #
+    # plt.imshow(img, cmap='gray')
+    # plt.colorbar()
+    # plt.show()
+    #
+    # plt.imshow(blurred, cmap='gray')
+    # plt.colorbar()
+    # plt.show()
+    #
+    # img = mrc.img
+    #
+    # sigma = 300
+    # blurred = np.fft.ifft2(fourier_gaussian(np.fft.fft2(img), sigma=sigma)).real
+    #
+    # plt.imshow(img, cmap='gray')
+    # plt.colorbar()
+    # plt.show()
+    #
+    # plt.imshow(blurred, cmap='gray')
+    # plt.colorbar()
+    # plt.show()
+    #
+    # plt.imshow(np.fft.ifft2(fourier_gaussian(np.fft.fft2(img - blurred), sigma=sigma)).real, cmap='gray')
+    # plt.colorbar()
+    # plt.show()
+
+    print()
