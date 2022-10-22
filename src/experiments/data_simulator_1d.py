@@ -77,8 +77,12 @@ class DataSimulator1D:
         return new_y
 
     def simulate(self):
-        positions = np.array(random_1d_ws_positions(self.size, self.num_of_instances, self.signal_padded_size),
-                             dtype=int)
+        # positions = np.array(random_1d_ws_positions(self.size, self.num_of_instances, self.signal_padded_size),
+        #                      dtype=int)
+        x = np.cumsum((np.random.dirichlet(np.ones(self.num_of_instances), size=1)[0] * (
+                    self.size - self.num_of_instances * self.signal_padded_size)).astype(int))
+        y = np.cumsum([self.signal_padded_size] * self.num_of_instances) - self.signal_padded_size
+        positions = x + y
 
         signal_instance = self.signal_gen(self.signal_size)
         self.clean_data = self._paste_signals(self.clean_data, signal_instance, positions)

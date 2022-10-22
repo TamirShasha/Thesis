@@ -16,7 +16,8 @@ class FilterEstimator1D:
                  num_of_instances: int,
                  noise_std=1.,
                  noise_mean=0.,
-                 optimize_filter=True):
+                 prior_filter=None,
+                 optimize_using_basis=False):
         """
         initialize the filter estimator
         :param unnormalized_data: 1d data
@@ -35,6 +36,10 @@ class FilterEstimator1D:
         self.num_of_instances = num_of_instances
         self.noise_std = noise_std if noise_std is not None else np.nanstd(unnormalized_data)
         self.noise_mean = noise_mean if noise_mean is not None else np.nanmean(unnormalized_data)
+        self.prior_filter = prior_filter
+        self.optimize_using_basis = optimize_using_basis
+        if optimize_using_basis:
+            assert len(unnormalized_filter_basis) == 1
 
         self.data = (unnormalized_data - self.noise_mean) / self.noise_std
         self.num_of_data_samples = unnormalized_data.shape[0]
@@ -93,6 +98,27 @@ class FilterEstimator1D:
         for i, fil in enumerate(self.filter_basis):
             constants[:, i, :] = self.convolve_basis_element(fil)
         return constants
+
+    def find_initial_filter_coeffs(self):
+        """
+        If prior filter is given, finds optimal coeffs to match this filter
+        If no prior filter was given, returns zero coeffs but first coeffs which is equal to noise_std
+        """
+
+        if self.prior_filter is None:
+            prior_filter = np.ones_like(self.filter_basis[0])
+        else:
+            prior_filter = self.prior_filter(self.filter_length)
+
+        prior_filter = (prior_filter - self.noise_mean) / self.noise_std  # Normalize Prior Filter
+
+        def to_minimize(params):
+            return self.filter_basis.T.dot(params).flatten() - prior_filter.flatten()
+
+        initial_filter_params = least_squares(to_minimize, x0=np.zeros(self.filter_basis_size)).x
+
+        logger.info(f'Optimal coeffs for prior filter are {np.round(initial_filter_params, 3)}')
+        return initial_filter_params
 
     def calc_convolved_filter(self, sample_index, filter_coeffs):
         """
@@ -243,7 +269,8 @@ class FilterEstimator1D:
         max_alternate_iterations = 10
         tol = .1
 
-        initial_coeffs = np.ones(self.filter_basis_size)
+        # initial_coeffs = np.ones(self.filter_basis_size)
+        initial_coeffs = self.find_initial_filter_coeffs()
 
         def func(_filter_coeffs):
             _likelihood = self.calc_likelihood(_filter_coeffs)
@@ -284,9 +311,14 @@ class FilterEstimator1D:
         # likelihood, normalized_optimal_coeffs = _gradient_descent(_calc_likelihood_and_gradient, initial_coeffs, t,
         #                                                           epsilon, max_iter, concave=True)
 
-        likelihood, normalized_optimal_coeffs = self.optimize_filter()
+        if self.optimize_using_basis:
+            likelihood, normalized_optimal_coeffs = self.optimize_filter()
+        else:
+            initial_coeffs = self.find_initial_filter_coeffs()
+            likelihood, normalized_optimal_coeffs = self.calc_likelihood(initial_coeffs), initial_coeffs
 
         optimal_coeffs = normalized_optimal_coeffs * self.noise_std / self.basis_norms
+        print(optimal_coeffs)
         return likelihood, optimal_coeffs
 
 # def create_filter_basis(filter_length, basis_size, basis_type='chebyshev'):

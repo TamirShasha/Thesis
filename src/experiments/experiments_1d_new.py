@@ -151,33 +151,33 @@ class Experiment1D:
         plt.close()
 
 
-np.random.seed(504)
+# np.random.seed(504)
 
 
 def __main__():
-    sim_data = DataSimulator1D(size=50000,
-                               signal_size=100,
-                               signal_fraction=0.1,
-                               signal_margin=0.001,
-                               # num_of_instances=30,
+    sim_data = DataSimulator1D(size=300000,
+                               signal_size=150,
+                               # signal_fraction=0.1,
+                               signal_margin=0.0001,
+                               num_of_instances=500,
                                signal_gen=lambda d: np.ones(d),
-                               noise_std=.5
-                               ,
+                               noise_std=12,
                                noise_mean=0)
 
     Experiment1D(
         name=f"expy",
         simulator=sim_data,
-        # signal_length_by_percentage=[0.5, 1, 2, 3, 4, 5],
-        signal_length_by_percentage=[.1, .2, .3],
-        num_of_instances=30,
+        signal_length_by_percentage=np.arange(0.1, 2.5, 0.1) * sim_data.signal_size / sim_data.size * 100,
+        # signal_length_by_percentage=np.array([0]) * sim_data.signal_size / sim_data.size * 100,
+        num_of_instances=sim_data.num_of_instances,
         use_noise_params=True,
         estimate_noise=False,
         filter_basis_size=1,
         save_statistics=False,
+        prior_filter=lambda d: np.ones(d),
         particles_margin=0,
         plot=True,
-        save=False,
+        save=True,
         log_level=logging.INFO
     ).run()
 

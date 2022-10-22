@@ -78,7 +78,8 @@ class SizeEstimator1D:
                                                  unnormalized_filter_basis=filter_basis,
                                                  num_of_instances=self._num_of_instances,
                                                  noise_std=self._noise_std,
-                                                 noise_mean=self._noise_mean)
+                                                 noise_mean=self._noise_mean,
+                                                 prior_filter=None)
 
             likelihoods[i], optimal_coeffs[i] = filter_estimator.estimate()
 
