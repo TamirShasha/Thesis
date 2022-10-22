@@ -1,9 +1,11 @@
 import numpy as np
 from scipy.signal import convolve
 from time import time
+from scipy.optimize import least_squares, minimize
 
 from src.algorithms.utils import log_size_S_1d, calc_mapping_1d, _calc_term_two_derivative_1d, \
     log_prob_all_is_noise, _gradient_descent, _calc_mapping_1d_many, gram_schmidt
+from src.utils.logger import logger
 
 
 class FilterEstimator1D:
@@ -13,7 +15,8 @@ class FilterEstimator1D:
                  unnormalized_filter_basis: np.ndarray,
                  num_of_instances: int,
                  noise_std=1.,
-                 noise_mean=0.):
+                 noise_mean=0.,
+                 optimize_filter=True):
         """
         initialize the filter estimator
         :param unnormalized_data: 1d data
@@ -30,9 +33,10 @@ class FilterEstimator1D:
         self.unnormalized_data = unnormalized_data
         self.unnormalized_filter_basis = unnormalized_filter_basis
         self.num_of_instances = num_of_instances
-        self.noise_std = noise_std
+        self.noise_std = noise_std if noise_std is not None else np.nanstd(unnormalized_data)
+        self.noise_mean = noise_mean if noise_mean is not None else np.nanmean(unnormalized_data)
 
-        self.data = (unnormalized_data - noise_mean) / noise_std
+        self.data = (unnormalized_data - self.noise_mean) / self.noise_std
         self.num_of_data_samples = unnormalized_data.shape[0]
         self.sample_length = unnormalized_data.shape[1]
         self.filter_basis_size = len(unnormalized_filter_basis)
@@ -168,6 +172,15 @@ class FilterEstimator1D:
 
         return gradient
 
+    def calc_likelihood(self, filter_coeffs):
+        convolved_filter = self.calc_convolved_filter(0, filter_coeffs)  # Currently works for 1 data sample
+        mapping = self.calc_mapping(convolved_filter)
+        likelihood = self.term_one + \
+                     self.term_two + \
+                     self.term_three_const * np.inner(filter_coeffs, filter_coeffs) + \
+                     mapping[0, self.num_of_instances]
+        return likelihood
+
     def calc_likelihood_and_gradient(self, filter_coeffs):
         """
         Calculates the likelihood function for given filter coefficients and its gradient
@@ -223,121 +236,129 @@ class FilterEstimator1D:
         print(f'all took {time() - t_start} seconds')
         return likelihoods.sum(axis=0), gradients.sum(axis=0)
 
+    def optimize_filter(self):
+        start_time = time()
+
+        alternate_iteration = 5
+        max_alternate_iterations = 10
+        tol = .1
+
+        initial_coeffs = np.ones(self.filter_basis_size)
+
+        def func(_filter_coeffs):
+            _likelihood = self.calc_likelihood(_filter_coeffs)
+            logger.debug(
+                f'Current model parameters: {np.round(_filter_coeffs, 3)}, '
+                f'likelihood is {np.round(_likelihood, 4)}, ')
+            return -_likelihood
+
+        logger.debug(
+            f'Optimizing model parameters for maximum of {max_alternate_iterations * alternate_iteration} iterations '
+            f'and tolerance of {tol}.')
+
+        result = minimize(func, initial_coeffs,
+                          tol=1e-2,
+                          method='BFGS',
+                          options={
+                              'disp': False,
+                              'maxiter': alternate_iteration * max_alternate_iterations
+                          })
+
+        optimal_coeffs = result.x
+
+        logger.info(f'Optimized filter coeffs: {np.round(optimal_coeffs, 3)}, '
+                    f'Total Time: {np.round(time() - start_time)} seconds')
+
+        return -result.fun, optimal_coeffs
+
     def estimate(self):
         """
         Estimate optimal the match filter using given data samples and with respect to given filter basis
         :return: likelihood value and optimal unnormalized filter coefficient (can be used on user basis)
         """
 
-        def _calc_likelihood_and_gradient(filter_coeffs):
-            return self.calc_likelihood_and_gradient(filter_coeffs)
+        # def _calc_likelihood_and_gradient(filter_coeffs):
+        #     return self.calc_likelihood_and_gradient(filter_coeffs)
+        #
+        # initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-4, 100
+        # likelihood, normalized_optimal_coeffs = _gradient_descent(_calc_likelihood_and_gradient, initial_coeffs, t,
+        #                                                           epsilon, max_iter, concave=True)
 
-        initial_coeffs, t, epsilon, max_iter = np.zeros(self.filter_basis_size), 0.1, 1e-4, 100
-        likelihood, normalized_optimal_coeffs = _gradient_descent(_calc_likelihood_and_gradient, initial_coeffs, t,
-                                                                  epsilon, max_iter, concave=True)
+        likelihood, normalized_optimal_coeffs = self.optimize_filter()
 
         optimal_coeffs = normalized_optimal_coeffs * self.noise_std / self.basis_norms
         return likelihood, optimal_coeffs
 
-    # def estimate_max(self):
-    #
-    #     _p = np.zeros(self.filter_basis_size)
-    #     likelihoods_pos = []
-    #     likelihoods_neg = []
-    #     p_pos = []
-    #     p_neg = []
-    #     for i in range(self.num_of_data_samples):
-    #         print(i)
-    #         c = self.convolved_basis[i].T
-    #         likelihood_pos, locations_pos = heuristic_dp(self.sample_length, self.filter_length, self.num_of_instances,
-    #                                                      c)
-    #         likelihood_neg, locations_neg = heuristic_dp(self.sample_length, self.filter_length, self.num_of_instances,
-    #                                                      -c)
-    #
-    #         p_pos.append(np.sum(c[locations_pos], 0) / (2 * self.term_three_const))
-    #         p_neg.append(np.sum(-c[locations_neg], 0) / (2 * self.term_three_const))
-    #         likelihoods_pos.append(likelihood_pos)
-    #         likelihoods_neg.append(likelihood_neg)
-    #
-    #     if likelihood_pos > likelihood_neg:
-    #         p = np.nanmean(p_pos, 0)
-    #     else:
-    #         p = np.nanmean(p_neg, 0)
-    #
-    #     optimal_coeffs = p * self.noise_std / self.basis_norms
-    #     return 0, optimal_coeffs
-
-
-def create_filter_basis(filter_length, basis_size, basis_type='chebyshev'):
-    """
-    creates basis for signals of given size
-    the higher the size, the finer the basis
-    :param filter_length: size of each basis element
-    :param basis_size: num of elements in returned basis
-    :param basis_type: basis type, can be 'chebyshev', 'classic' or 'classic_symmetric'
-    :return: returns array of shape (basis_size, filter_length) contains basis elements
-    """
-    if basis_type == 'chebyshev':
-        return _create_chebyshev_basis(filter_length, basis_size)
-    if basis_type == 'classic_symmetric':
-        return _create_classic_symmetric_basis(filter_length, basis_size)
-    if basis_size == 'classic':
-        return _create_classic_basis(filter_length, basis_size)
-
-    raise Exception('Unsupported basis type was provided.')
-
-
-def _create_classic_symmetric_basis(filter_length, basis_size):
-    """
-    creates basis for symmetric signals of given size
-    the higher the size, the finer the basis
-    :param filter_length: each element length
-    :param basis_size: num of elements in returned basis
-    """
-    step_width = filter_length // (basis_size * 2)
-    basis = np.zeros(shape=(basis_size, filter_length))
-
-    for i in range(basis_size):
-        pos = i * step_width
-        basis[i, pos: pos + step_width] = 1
-
-    basis += np.flip(basis, axis=1)
-    basis[basis_size - 1, basis_size * step_width:basis_size * step_width + filter_length % (basis_size * 2)] = 1
-
-    return basis
-
-
-def _create_classic_basis(filter_length, basis_size):
-    """
-    creates basis for discrete signals of given size
-    the higher the size, the finer the basis
-    :param filter_length: each element length
-    :param basis_size: num of elements in returned basis
-    """
-    step_width = filter_length // basis_size
-    basis = np.zeros(shape=(basis_size, filter_length))
-
-    end = 0
-    for i in range(basis_size):
-        start = end
-        end = start + step_width
-        if i < filter_length % basis_size:
-            end += 1
-        basis[i, start: end] = 1
-
-    return basis
-
-
-def _create_chebyshev_basis(filter_length, basis_size):
-    """
-    creates basis contains chebyshev terms
-    :param filter_length: each element length
-    :param basis_size: num of elements in returned basis
-    """
-    basis = np.zeros(shape=(basis_size, filter_length))
-    xs = np.linspace(-1, 1, filter_length)
-    for i in range(basis_size):
-        chebyshev_basis_element = np.polynomial.chebyshev.Chebyshev.basis(i)
-        basis[i] = chebyshev_basis_element(xs)
-    basis = gram_schmidt(basis)
-    return basis
+# def create_filter_basis(filter_length, basis_size, basis_type='chebyshev'):
+#     """
+#     creates basis for signals of given size
+#     the higher the size, the finer the basis
+#     :param filter_length: size of each basis element
+#     :param basis_size: num of elements in returned basis
+#     :param basis_type: basis type, can be 'chebyshev', 'classic' or 'classic_symmetric'
+#     :return: returns array of shape (basis_size, filter_length) contains basis elements
+#     """
+#     if basis_type == 'chebyshev':
+#         return _create_chebyshev_basis(filter_length, basis_size)
+#     if basis_type == 'classic_symmetric':
+#         return _create_classic_symmetric_basis(filter_length, basis_size)
+#     if basis_size == 'classic':
+#         return _create_classic_basis(filter_length, basis_size)
+#
+#     raise Exception('Unsupported basis type was provided.')
+#
+#
+# def _create_classic_symmetric_basis(filter_length, basis_size):
+#     """
+#     creates basis for symmetric signals of given size
+#     the higher the size, the finer the basis
+#     :param filter_length: each element length
+#     :param basis_size: num of elements in returned basis
+#     """
+#     step_width = filter_length // (basis_size * 2)
+#     basis = np.zeros(shape=(basis_size, filter_length))
+#
+#     for i in range(basis_size):
+#         pos = i * step_width
+#         basis[i, pos: pos + step_width] = 1
+#
+#     basis += np.flip(basis, axis=1)
+#     basis[basis_size - 1, basis_size * step_width:basis_size * step_width + filter_length % (basis_size * 2)] = 1
+#
+#     return basis
+#
+#
+# def _create_classic_basis(filter_length, basis_size):
+#     """
+#     creates basis for discrete signals of given size
+#     the higher the size, the finer the basis
+#     :param filter_length: each element length
+#     :param basis_size: num of elements in returned basis
+#     """
+#     step_width = filter_length // basis_size
+#     basis = np.zeros(shape=(basis_size, filter_length))
+#
+#     end = 0
+#     for i in range(basis_size):
+#         start = end
+#         end = start + step_width
+#         if i < filter_length % basis_size:
+#             end += 1
+#         basis[i, start: end] = 1
+#
+#     return basis
+#
+#
+# def _create_chebyshev_basis(filter_length, basis_size):
+#     """
+#     creates basis contains chebyshev terms
+#     :param filter_length: each element length
+#     :param basis_size: num of elements in returned basis
+#     """
+#     basis = np.zeros(shape=(basis_size, filter_length))
+#     xs = np.linspace(-1, 1, filter_length)
+#     for i in range(basis_size):
+#         chebyshev_basis_element = np.polynomial.chebyshev.Chebyshev.basis(i)
+#         basis[i] = chebyshev_basis_element(xs)
+#     basis = gram_schmidt(basis)
+#     return basis

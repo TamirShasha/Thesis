@@ -14,10 +14,13 @@ from src.algorithms.utils import log_size_S_2d_1axis_multiple, \
     calc_mapping_2d, \
     log_prob_all_is_noise, \
     _calc_mapping_1d_many
+
+from src.algorithms.utils import log_size_S_1d
+
 from src.utils.logsumexp import logsumexp_simple
 
 
-class FilterEstimator2D:
+class FilterEstimator1D:
 
     def __init__(self,
                  unnormalized_data: np.ndarray,
@@ -28,7 +31,6 @@ class FilterEstimator2D:
                  noise_mean_param=None,
                  estimate_noise_parameters=True,
                  signal_margin=0,
-                 basic_row_col_jump=1,
                  save_statistics=False,
                  experiment_dir=None,
                  experiment_attr=None,
@@ -49,7 +51,6 @@ class FilterEstimator2D:
         self.noise_std_param = noise_std_param
         self.estimate_noise_parameters = estimate_noise_parameters
         self.particle_margin = signal_margin
-        self.basic_row_col_jump = basic_row_col_jump
         self.save_statistics = save_statistics
         self.experiment_dir = experiment_dir
         self.experiment_attr = experiment_attr
@@ -76,25 +77,23 @@ class FilterEstimator2D:
             noise_std_param if noise_std_param is not None else np.nanstd(data)
             for data in self.unnormalized_data])
 
-        self.data = (self.unnormalized_data - self.calculated_noise_means[:, np.newaxis,
-                                              np.newaxis]) / self.calculated_noise_stds[:, np.newaxis, np.newaxis]
+        self.data = (self.unnormalized_data - self.calculated_noise_means[:, np.newaxis]) / self.calculated_noise_stds[
+                                                                                            :, np.newaxis]
         self.noise_mean = 0  # We assume noise mean is close to 0 after normalization
         self.noise_std = 1  # We assume noise std is close to 1 after normalization
-        self.number_of_micrographs = self.data.shape[0]
+        self.number_of_samples = self.data.shape[0]
         self.data_size = self.data.shape[1]
 
         self.filter_basis_size = len(self.unnormalized_filter_basis)
         self.unmarginized_filter_basis, self.basis_norms = self._normalize_basis()
-        self.signal_size = max(self.unmarginized_filter_basis[0].shape)
+        self.signal_size = self.unmarginized_filter_basis[0].shape[0]
 
         # apply signal margin on filter basis
         self.filter_basis, self.signal_support = self._margin_filter_basis()
-        self.summed_filters = np.nansum(self.filter_basis, axis=(1, 2))
+        self.summed_filters = np.nansum(self.filter_basis, axis=1)
 
         # find max possible instances for given filter size
-        self.max_possible_instances = min(
-            self.num_of_instances_range[1],
-            (self.data.shape[1] // self.signal_support) * (self.data.shape[2] // self.signal_support))
+        self.max_possible_instances = min(self.num_of_instances_range[1], self.data_size // self.signal_support)
         logger.info(f'Maximum possible instances for size={self.signal_size} is {self.max_possible_instances}')
         self.min_possible_instances = self.num_of_instances_range[0]
 
@@ -105,15 +104,9 @@ class FilterEstimator2D:
         self.term_one = None
         self.term_three_const = None
 
-        # self.row_jump = self.signal_support // 4
-        # self.row_jump = min(self.signal_support, self.data_size // 20)
-        self.row_jump = self.signal_support
-        logger.debug(f'Row jump is set to {self.row_jump}')
-
-        # Will define the instead of moving one pixel to calc the next probability, the algorithm will jump more.
         self.basic_row_col_jump = self.data_size // 200
+        self.basic_row_col_jump = 1
         logger.info(f'Basic row col jump is {self.basic_row_col_jump}')
-        # self.basic_row_col_jump = 1
 
     def _normalize_basis(self):
         """
@@ -134,10 +127,9 @@ class FilterEstimator2D:
         :return:
         """
         filter_basis = np.array(
-            [np.pad(x, ((self.particle_margin, self.particle_margin), (self.particle_margin, self.particle_margin)),
-                    'constant', constant_values=((0, 0), (0, 0)))
+            [np.pad(x, (self.particle_margin, self.particle_margin), 'constant', constant_values=(0, 0))
              for x in self.unmarginized_filter_basis])
-        signal_support = max(filter_basis[0].shape)
+        signal_support = filter_basis[0].shape[0]
         return filter_basis, signal_support
 
     def _find_initial_filter_coeffs(self):
@@ -147,10 +139,7 @@ class FilterEstimator2D:
         """
 
         if self.prior_filter is None:
-            self.prior_filter = np.zeros_like(self.filter_basis[0])
-            center = (self.signal_support // 2, self.signal_support // 2)
-            rr, cc = disk(center, self.signal_size // 2, shape=self.filter_basis[0].shape)
-            self.prior_filter[rr, cc] = self.noise_std
+            self.prior_filter = np.ones(self.signal_support)
 
         def to_minimize(params):
             return self.filter_basis.T.dot(params).flatten() - self.prior_filter.flatten()
@@ -160,19 +149,8 @@ class FilterEstimator2D:
         logger.info(f'Optimal coeffs for prior filter are {np.round(initial_filter_params, 3)}')
         return initial_filter_params
 
-    def _calc_log_size_s(self, possible_instances):
-        max_k = possible_instances[-1]
-
-        if len(self.possible_instances) > 1:
-            return log_size_S_2d_1axis_multiple(self.data_size,
-                                                max_k,
-                                                self.signal_support,
-                                                row_jump=self.row_jump)[possible_instances]
-        else:
-            return log_size_S_2d_1axis(self.data_size,
-                                       max_k,
-                                       self.signal_support,
-                                       row_jump=self.row_jump)
+    def _calc_log_size_s(self):
+        return log_size_S_1d(self.data_size, self.possible_instances[-1], self.signal_support)
 
     def _calc_term_two(self, noise_mean):
         return log_prob_all_is_noise(self.data - noise_mean, self.noise_std)
@@ -189,15 +167,15 @@ class FilterEstimator2D:
         """
         return -np.arange(self.min_possible_instances, self.max_possible_instances + 1) / (2 * self.noise_std ** 2)
 
-    def _convolve_basis_element(self, mrc: np.ndarray, filter_element):
+    def _convolve_basis_element(self, data_sample: np.ndarray, filter_element):
         """
         convolve one basis element with data
-        :param mrc: micrograph
+        :param data_sample: data sample
         :param filter_element: one element from filter basis
         :return: (n-d, m-d) while  n is data #rows, m is #columns
         """
         flipped_signal_filter = np.flip(filter_element)  # Flipping to cross-correlate
-        conv = convolve(mrc, flipped_signal_filter, mode='valid')
+        conv = convolve(data_sample, flipped_signal_filter, mode='valid')
         return conv
 
     def _convolve_basis(self):
@@ -205,13 +183,12 @@ class FilterEstimator2D:
         convolve each normalized basis element with data
         :return: (M, T, n-d, m-d) array where M is number of micrographs, T is basis size, n is #rows, m is #columns
         """
-        constants = np.zeros(shape=(self.number_of_micrographs,
+        constants = np.zeros(shape=(self.number_of_samples,
                                     self.filter_basis_size,
-                                    self.data_size - self.signal_support + 1,
                                     self.data_size - self.signal_support + 1))
-        for i, mrc in enumerate(self.data):
+        for i, data_sample in enumerate(self.data):
             for j, fil in enumerate(self.filter_basis):
-                constants[i][j] = self._convolve_basis_element(mrc, fil)
+                constants[i][j] = self._convolve_basis_element(data_sample, fil)
         return constants
 
     def _calc_convolved_filter(self, filter_coeffs, full=False):
@@ -220,11 +197,9 @@ class FilterEstimator2D:
         :return: the dot product between relevant data sample and filter
         """
         if full:
-            convolved_filter = np.inner(self.full_convolved_basis.transpose([0, 3, 2, 1]), filter_coeffs) \
-                .transpose([0, 2, 1])
+            convolved_filter = np.inner(self.full_convolved_basis.transpose([0, 2, 1]), filter_coeffs)
         else:
-            convolved_filter = np.inner(self.convolved_basis.transpose([0, 3, 2, 1]), filter_coeffs) \
-                .transpose([0, 2, 1])
+            convolved_filter = np.inner(self.convolved_basis.transpose([0, 2, 1]), filter_coeffs)
         return convolved_filter
 
     def _calc_mapping(self, convolved_filter: np.ndarray, axis=0):
@@ -236,7 +211,7 @@ class FilterEstimator2D:
 
         _data_size = np.ceil(self.data_size / self.basic_row_col_jump).astype(int)
         _signal_support = np.ceil(self.signal_support / self.basic_row_col_jump).astype(int)
-        _row_jump = np.ceil(self.row_jump / self.basic_row_col_jump).astype(int)
+        # _row_jump = np.ceil(self.row_jump / self.basic_row_col_jump).astype(int)
         # _convolved_filter = convolved_filter[::self.basic_row_col_jump, ::self.basic_row_col_jump]
 
         mapping = calc_mapping_2d(convolved_filter.shape[0] + _signal_support - 1,
@@ -255,11 +230,11 @@ class FilterEstimator2D:
         convolved_filter = self._calc_convolved_filter(filter_coeffs)
         log_terms = np.array(
             [self._calc_mapping(convolved_filter[i], axis=0)
-             for i in range(self.number_of_micrographs)])[:, 0, self.possible_instances]  # vws on rows
+             for i in range(self.number_of_samples)])[:, 0, self.possible_instances]  # vws on rows
         # log_term_columns = self._calc_mapping(convolved_filter, axis=1)[0, self.possible_instances]  # vws on columns
 
         noise_terms = np.array([
-            log_prob_all_is_noise(self.data[i] - noise_mean, self.noise_std) for i in range(self.number_of_micrographs)
+            log_prob_all_is_noise(self.data[i] - noise_mean, self.noise_std) for i in range(self.number_of_samples)
         ])
 
         # noise_terms = np.array([0 for _ in range(self.number_of_micrographs)])
@@ -298,7 +273,7 @@ class FilterEstimator2D:
         noise_terms = - 1 / (self.noise_std ** 2) * np.linalg.norm(self.data, axis=(1, 2))
         convolve_term = np.array(
             [np.nansum(convolved_filter[i][np.array(locations[i])[:, 1], np.array(locations[i])[:, 0]])
-             for i in range(self.number_of_micrographs)])
+             for i in range(self.number_of_samples)])
 
         filter_norm_const_term = -1 / (2 * self.noise_std ** 2) * np.inner(filter_coeffs, filter_coeffs)
         noise_filter_const_term = -noise_mean / (self.noise_std ** 2) * np.inner(filter_coeffs, self.summed_filters)
@@ -746,10 +721,9 @@ class FilterEstimator2D:
             return -np.inf, np.zeros_like(self.filter_basis_size)
 
         self.full_convolved_basis = self._convolve_basis()
-        self.convolved_basis = self.full_convolved_basis[:, :, ::self.basic_row_col_jump, ::self.basic_row_col_jump]
+        self.convolved_basis = self.full_convolved_basis[:, :, ::self.basic_row_col_jump]
 
-        self.term_one = -self._calc_log_size_s(self.possible_instances)
-        # self.term_one = -self._calc_log_size_s(self.possible_instances) + np.log(2)
+        self.term_one = -self._calc_log_size_s()
         self.term_three_const = self._calc_term_three_const()
 
         likelihood, optimal_model_parameters = self._optimize_params()

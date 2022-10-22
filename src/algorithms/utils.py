@@ -617,13 +617,3 @@ def remove_outliers_by_iqr(data):
     clipped_mrc = data.clip(low_ths, high_ths)
 
     return clipped_mrc
-
-
-import matplotlib.pyplot as plt
-
-x = np.zeros(shape=(200, 200))
-x[::5, ::5] = 1
-
-plt.figure(figsize=(16, 10))
-plt.imshow(x)
-plt.show()

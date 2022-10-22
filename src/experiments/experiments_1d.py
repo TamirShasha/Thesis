@@ -11,7 +11,7 @@ from src.experiments.data_simulator_1d import add_pulses, add_gaus_noise
 from src.algorithms.length_estimator_1d import LengthEstimator1D, SignalPowerEstimator
 from src.utils.logger import logger
 
-np.random.seed(500)
+# np.random.seed(500)
 logger.setLevel(logging.INFO)
 
 
@@ -66,6 +66,7 @@ class Experiment:
         if length_options is None:
             length_options = np.arange(self._d // 4, int(self._d * 3), 10)
         self._signal_length_options = length_options
+        self._sizes_options = np.array(self._rows * self._signal_length_by_percentage // 100, dtype=int)
 
         exp_attr = {
             "d": self._d,
@@ -96,11 +97,20 @@ class Experiment:
         return likelihoods
 
     def save_and_plot(self):
-        plt.title(
+        fig, axs = plt.subplots(2, 2, figsize=(12, 6))
+        plt.suptitle(
             f"N={self._n}, D={self._d}, K={self._k}, Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n"
             f"Signal Power Estimator Method={self._signal_power_estimator_method},\n"
             f"Most likely D={self._results['d']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
-        plt.plot(self._signal_length_options, self._results['likelihoods'])
+        axs[0, 0].plot(self._y)
+        axs[0, 0].set_title('Noisy Data')
+        axs[0, 1].plot(self._y_with_signals)
+        axs[0, 1].set_title('Underlying signals')
+        axs[1, 0].plot(
+            np.pad(self._signal_fn(self._d), (self._d // 10, self._d // 10), 'constant', constant_values=(0, 0)))
+        axs[1, 0].set_title('Signal instance')
+        axs[1, 1].plot(self._signal_length_options, self._results['likelihoods'])
+        axs[1, 1].set_title('Likelihoods')
         plt.tight_layout()
 
         if self._save:
@@ -114,71 +124,17 @@ class Experiment:
 
 
 def __main__():
-    # Experiment(
-    #     name="std-5",
-    #     n=300000,
-    #     d=150,
-    #     signal_fraction=1 / 4,
-    #     noise_std=5,
-    #     signal_power_estimator_method=SignalPowerEstimator.SecondMoment,
-    #     plot=True,
-    #     save=False
-    # ).run()
-
     Experiment(
-        name="std-10",
-        n=4000,
-        d=200,
-        k=1,
+        n=40000,
+        d=150,
+        k=80,
         signal_fn=lambda d: np.full(d, 1),
         signal_filter_gen=lambda d: np.full(d, 1),
-        noise_std=4,
+        noise_std=.1,
         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
         plot=True,
         save=False
     ).run()
-
-    # d = 100
-    # len_ops = np.arange(d // 4, int(d * 1.5), 10)
-    # # len_ops = [50]
-    # likelihoods = []
-    # names = []
-    # # ps = np.arange(1, 3.1, 0.5)
-    # ps = [1, 2]
-    # for i, p in enumerate(ps):
-    #     np.random.seed(500)
-    #
-    #     names.append(f'p_{p}')
-    #     likelihoods.append(Experiment(
-    #         name="std-10",
-    #         n=3000,
-    #         d=d,
-    #         signal_fraction=1 / 5,
-    #         length_options=len_ops,
-    #         signal_fn=lambda d: np.full(d, 1),
-    #         signal_filter_gen=lambda d: np.full(d, p),
-    #         noise_std=5,
-    #         signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-    #         plot=False,
-    #         save=False
-    #     ).run())
-    #
-    # plt.plot(len_ops, np.max(np.array(likelihoods), axis=0))
-    # names.append('max')
-    #
-    # plt.legend(names)
-    # plt.show()
-
-    # Experiment(
-    #     name="std-13",
-    #     n=50000,
-    #     d=100,
-    #     signal_fraction=1 / 5,
-    #     noise_std=7,
-    #     signal_power_estimator_method=SignalPowerEstimator.FirstMoment,
-    #     plot=True,
-    #     save=False
-    # ).run()
 
 
 if __name__ == '__main__':
