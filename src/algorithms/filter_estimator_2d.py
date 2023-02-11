@@ -111,7 +111,7 @@ class FilterEstimator2D:
         logger.debug(f'Row jump is set to {self.row_jump}')
 
         # Will define the instead of moving one pixel to calc the next probability, the algorithm will jump more.
-        self.basic_row_col_jump = self.data_size // 200
+        self.basic_row_col_jump = max(self.data_size // 200, 1)
         logger.info(f'Basic row col jump is {self.basic_row_col_jump}')
         # self.basic_row_col_jump = 1
 
@@ -539,80 +539,80 @@ class FilterEstimator2D:
                                                                           optimal_noise_mean,
                                                                           mrc_locations // self.basic_row_col_jump)
 
-        particles_patches = []
-        for mrc_idx, mrc in enumerate(self.data):
-            locations = mrc_locations[mrc_idx]
-
-            intersection_img = np.zeros_like(self.data[0])
-            for _loc in locations:
-                loc = np.flip(_loc + self.particle_margin)
-                particles_patches.append(mrc[loc[0]: loc[0] + self.signal_size, loc[1]: loc[1] + self.signal_size])
-                intersection_img[loc[0]: loc[0] + self.signal_size, loc[1]: loc[1] + self.signal_size] += 1
-
-            # plt.imshow(intersection_img)
-            # plt.colorbar()
-            # plt.show()
-
-        particles_patches = np.array(particles_patches)
-        normed_particles_patches = \
-            particles_patches / np.linalg.norm(particles_patches, axis=(1, 2))[:, np.newaxis, np.newaxis]
-
-        correlations = []
-        for i in range(normed_particles_patches.shape[0]):
-            for j in range(i):
-                correlations.append(np.dot(normed_particles_patches[i].ravel(),
-                                           normed_particles_patches[j].ravel()))
-        correlations = np.array(correlations)
-
-        plt.title(f'Correlation Median: {np.median(correlations)}')
-        plt.hist(correlations, bins=20)
-        fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_correlation_hist.png')
-        plt.savefig(fname=fig_path)
-        plt.close()
-        logger.debug(f'({self.signal_size}) Correlation median: {np.median(correlations)}')
-
-        average_patch = np.nanmean(normed_particles_patches, axis=0)
-        plt.title('Average patch of maximum probability locations\n')
-        plt.imshow(average_patch)
-        plt.colorbar()
-        fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_average_patch.png')
-        plt.savefig(fname=fig_path)
-        plt.close()
-
-        # power_distribution_score = np.linalg.norm(average_patch * (self.filter_basis[0] != 0)) / np.linalg.norm(
-        #     average_patch)
-        inner_patch = average_patch * (self.filter_basis[0] != 0)
-        stats_inner = np.nanmean(inner_patch[inner_patch != 0]), np.nanstd(inner_patch[inner_patch != 0])
-        outer_patch = average_patch * (self.filter_basis[0] == 0)
-        stats_outer = np.nanmean(outer_patch[outer_patch != 0]), np.nanstd(outer_patch[outer_patch != 0])
-        power_distribution_score = (stats_inner[0] / stats_outer[0], stats_inner[1] / stats_outer[1])
-
-        logger.debug(f'({self.signal_size}) Power distribution score: {power_distribution_score}')
-
-        fig, axs = plt.subplots(nrows=1, ncols=2)
-
-        # Save matched filter and cumulative power as fig
-        matched_filter = self.filter_basis.T.dot(optimal_coeffs[0])
-        pcm = axs[0].imshow(matched_filter, cmap='gray')
-        axs[0].title.set_text('Matched Filter')
-        plt.colorbar(pcm, ax=axs[0])
-
-        center = matched_filter.shape[0] // 2
-        if self.particle_margin > 0:
-            filter_power_1d = np.square(matched_filter[center:-self.particle_margin, center])
-        else:
-            filter_power_1d = np.square(matched_filter[center:, center])
-        cum_filter_power_1d = np.nancumsum(filter_power_1d)
-        relative_power_fraction = 1 - cum_filter_power_1d / cum_filter_power_1d[-1]
-        xs = np.arange(0, filter_power_1d.shape[0]) * 2
-        axs[1].plot(xs, relative_power_fraction)
-        axs[1].title.set_text('Cumulative Power')
-        fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_matched_filter.png')
-        plt.savefig(fname=fig_path)
-        plt.close()
+        # particles_patches = []
+        # for mrc_idx, mrc in enumerate(self.data):
+        #     locations = mrc_locations[mrc_idx]
+        #
+        #     intersection_img = np.zeros_like(self.data[0])
+        #     for _loc in locations:
+        #         loc = np.flip(_loc + self.particle_margin)
+        #         particles_patches.append(mrc[loc[0]: loc[0] + self.signal_size, loc[1]: loc[1] + self.signal_size])
+        #         intersection_img[loc[0]: loc[0] + self.signal_size, loc[1]: loc[1] + self.signal_size] += 1
+        #
+        #     # plt.imshow(intersection_img)
+        #     # plt.colorbar()
+        #     # plt.show()
+        #
+        # particles_patches = np.array(particles_patches)
+        # normed_particles_patches = \
+        #     particles_patches / np.linalg.norm(particles_patches, axis=(1, 2))[:, np.newaxis, np.newaxis]
+        #
+        # correlations = []
+        # for i in range(normed_particles_patches.shape[0]):
+        #     for j in range(i):
+        #         correlations.append(np.dot(normed_particles_patches[i].ravel(),
+        #                                    normed_particles_patches[j].ravel()))
+        # correlations = np.array(correlations)
+        #
+        # plt.title(f'Correlation Median: {np.median(correlations)}')
+        # plt.hist(correlations, bins=20)
+        # fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_correlation_hist.png')
+        # plt.savefig(fname=fig_path)
+        # plt.close()
+        # logger.debug(f'({self.signal_size}) Correlation median: {np.median(correlations)}')
+        #
+        # average_patch = np.nanmean(normed_particles_patches, axis=0)
+        # plt.title('Average patch of maximum probability locations\n')
+        # plt.imshow(average_patch)
+        # plt.colorbar()
+        # fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_average_patch.png')
+        # plt.savefig(fname=fig_path)
+        # plt.close()
+        #
+        # # power_distribution_score = np.linalg.norm(average_patch * (self.filter_basis[0] != 0)) / np.linalg.norm(
+        # #     average_patch)
+        # inner_patch = average_patch * (self.filter_basis[0] != 0)
+        # stats_inner = np.nanmean(inner_patch[inner_patch != 0]), np.nanstd(inner_patch[inner_patch != 0])
+        # outer_patch = average_patch * (self.filter_basis[0] == 0)
+        # stats_outer = np.nanmean(outer_patch[outer_patch != 0]), np.nanstd(outer_patch[outer_patch != 0])
+        # power_distribution_score = (stats_inner[0] / stats_outer[0], stats_inner[1] / stats_outer[1])
+        #
+        # logger.debug(f'({self.signal_size}) Power distribution score: {power_distribution_score}')
+        #
+        # fig, axs = plt.subplots(nrows=1, ncols=2)
+        #
+        # # Save matched filter and cumulative power as fig
+        # matched_filter = self.filter_basis.T.dot(optimal_coeffs[0])
+        # pcm = axs[0].imshow(matched_filter, cmap='gray')
+        # axs[0].title.set_text('Matched Filter')
+        # plt.colorbar(pcm, ax=axs[0])
+        #
+        # center = matched_filter.shape[0] // 2
+        # if self.particle_margin > 0:
+        #     filter_power_1d = np.square(matched_filter[center:-self.particle_margin, center])
+        # else:
+        #     filter_power_1d = np.square(matched_filter[center:, center])
+        # cum_filter_power_1d = np.nancumsum(filter_power_1d)
+        # relative_power_fraction = 1 - cum_filter_power_1d / cum_filter_power_1d[-1]
+        # xs = np.arange(0, filter_power_1d.shape[0]) * 2
+        # axs[1].plot(xs, relative_power_fraction)
+        # axs[1].title.set_text('Cumulative Power')
+        # fig_path = os.path.join(self.experiment_dir, f'{self.signal_size}_matched_filter.png')
+        # plt.savefig(fname=fig_path)
+        # plt.close()
 
         # Return some of the statistics
-        return correlations, power_distribution_score, likelihood_of_locations
+        return likelihood_of_locations, mrc_locations
 
     def _estimate_most_likely_num_of_instances(self, filter_coeffs, noise_mean, convolved_filter):
 
@@ -718,7 +718,7 @@ class FilterEstimator2D:
             # Create a Rectangle patch
             for loc in locations:
                 rect = patches.Rectangle(loc + self.particle_margin, self.signal_size, self.signal_size,
-                                         linewidth=1,
+                                         linewidth=2,
                                          edgecolor='r',
                                          facecolor='none')
                 # Add the patch to the Axes
@@ -728,6 +728,7 @@ class FilterEstimator2D:
             plt.title(f'Likely locations for size {self.signal_size}\n'
                       f'Likely number of instances is {k}')
             plt.savefig(fname=fig_path)
+            plt.tight_layout()
             plt.close()
 
             mrc_locations.append(locations)
@@ -762,9 +763,10 @@ class FilterEstimator2D:
         # optimal_coeffs = optimal_filter_coeffs * noise_std / self.basis_norms
 
         if self.save_statistics:
-            correlations, power_distribution_score, likelihood_of_locations = \
-                self._generate_and_save_statistics(optimal_filter_coeffs, optimal_coeffs, optimal_noise_mean)
+            likelihood_of_locations, mrc_locations = self._generate_and_save_statistics(optimal_filter_coeffs,
+                                                                                        optimal_coeffs,
+                                                                                        optimal_noise_mean)
 
-            return likelihood, optimal_coeffs[0], correlations, power_distribution_score, likelihood_of_locations
+            return likelihood, optimal_coeffs[0], likelihood_of_locations, mrc_locations
         else:
             return likelihood, optimal_coeffs[0]

@@ -17,7 +17,7 @@ class FilterEstimator1D:
                  noise_std=1.,
                  noise_mean=0.,
                  prior_filter=None,
-                 optimize_using_basis=False):
+                 optimize_using_basis=True):
         """
         initialize the filter estimator
         :param unnormalized_data: 1d data
@@ -38,7 +38,7 @@ class FilterEstimator1D:
         self.noise_mean = noise_mean if noise_mean is not None else np.nanmean(unnormalized_data)
         self.prior_filter = prior_filter
         self.optimize_using_basis = optimize_using_basis
-        if optimize_using_basis:
+        if not optimize_using_basis:
             assert len(unnormalized_filter_basis) == 1
 
         self.data = (unnormalized_data - self.noise_mean) / self.noise_std
@@ -318,7 +318,6 @@ class FilterEstimator1D:
             likelihood, normalized_optimal_coeffs = self.calc_likelihood(initial_coeffs), initial_coeffs
 
         optimal_coeffs = normalized_optimal_coeffs * self.noise_std / self.basis_norms
-        print(optimal_coeffs)
         return likelihood, optimal_coeffs
 
 # def create_filter_basis(filter_length, basis_size, basis_type='chebyshev'):

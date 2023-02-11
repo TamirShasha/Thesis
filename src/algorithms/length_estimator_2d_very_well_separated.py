@@ -56,9 +56,9 @@ class LengthEstimator2DVeryWellSeparated:
             self._noise_std = noise_std
 
         if self._signal_length_by_percentage is None:
-            self._signal_length_by_percentage = [4, 6, 8, 10, 12]
+            self._signal_length_by_percentage = np.array([4, 6, 8, 10, 12])
 
-        self._signal_size_options = np.array(np.array(self._signal_length_by_percentage) / 100 * self._data_size,
+        self._signal_size_options = np.array(np.round(self._signal_length_by_percentage / 100 * self._data_size, 5),
                                              dtype=int)
         logger.info(f'Particle size options are: {self._signal_size_options}')
 
@@ -73,10 +73,15 @@ class LengthEstimator2DVeryWellSeparated:
         correlations = []
         power_distribution_scores = []
         likelihood_of_top_locations = []
-        for i, length in enumerate(self._signal_size_options):
-            logger.info(f'Estimating likelihood for size={length}')
+        mrc_locations = []
+        for i, size in enumerate(self._signal_size_options):
+            logger.info(f'Estimating likelihood for size={size}')
 
-            filter_basis = create_filter_basis(length, self._filter_basis_size, basis_type='chebyshev')
+            # if self._prior_filter:
+            #     filter_basis = np.array([self._prior_filter(size)])
+            # else:
+            filter_basis = create_filter_basis(size, self._filter_basis_size, basis_type='chebyshev')
+
             filter_estimator = FilterEstimator2D(unnormalized_data=self._data,
                                                  unnormalized_filter_basis=filter_basis,
                                                  num_of_instances_range=self._num_of_instances_range,
@@ -92,35 +97,29 @@ class LengthEstimator2DVeryWellSeparated:
                                                  log_level=self._log_level)
 
             if self._save_statistics:
-                likelihoods[i], optimal_coeffs[
-                    i], corrs, power_distribution_score, likelihood_of_locations = filter_estimator.estimate()
-                correlations.append(corrs)
-                power_distribution_scores.append(power_distribution_score)
+                likelihoods[i], optimal_coeffs[i], likelihood_of_locations, _mrc_locations = filter_estimator.estimate()
                 likelihood_of_top_locations.append(likelihood_of_locations)
+                mrc_locations.append(_mrc_locations)
             else:
                 likelihoods[i], optimal_coeffs[i] = filter_estimator.estimate()
 
             logger.info(
                 f'For length {self._signal_size_options[i]}, Likelihood={likelihoods[i]}')
 
-        # [plt.hist(cors, bins=20, alpha=0.5, label=self._signal_size_options[i]) for i, cors in enumerate(correlations)]
-        # plt.legend()
-        # plt.show()
-        #
-        # plt.title('Likelihood of top probability locations')
-        # plt.plot(self._signal_size_options, likelihood_of_top_locations)
-        # plt.show()
-        #
-        # power_distribution_scores = np.array(power_distribution_scores)
-        # plt.title('Means of outer filter patch')
-        # plt.plot(self._signal_size_options, power_distribution_scores[:, 0])
-        # plt.show()
-        # plt.title('STDs of outer filter patch')
-        # plt.plot(self._signal_size_options, power_distribution_scores[:, 1])
-        # plt.show()
-
         most_likely_index = np.nanargmax(likelihoods)
-        filter_basis = create_filter_basis(self._signal_size_options[most_likely_index], self._filter_basis_size)
+        filter_basis = create_filter_basis(self._signal_size_options[most_likely_index], self._filter_basis_size,
+                                           basis_type='chebyshev')
         est_signals = filter_basis.T.dot(optimal_coeffs[most_likely_index])
 
-        return likelihoods, optimal_coeffs, est_signals
+        result = {
+            "most_likely_index": most_likely_index,
+            "likelihoods": likelihoods,
+            "optimal_coeffs": optimal_coeffs,
+            "estimated_signal": est_signals,
+            "most_likely_size": self._signal_size_options[most_likely_index]
+        }
+
+        if len(mrc_locations) > 0:
+            result['mrc_locations'] = mrc_locations[most_likely_index]
+
+        return result

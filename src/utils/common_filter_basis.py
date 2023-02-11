@@ -157,3 +157,23 @@ def _create_gaussian_basis(filter_length, basis_size):
         basis[i] = basis_element
     gs_basis = gram_schmidt(basis.reshape(basis_size, -1)).reshape(basis_size, filter_length, filter_length)
     return gs_basis
+
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    from aspire.basis import FFBBasis2D
+
+    b = FFBBasis2D(size=50, dtype=float)
+    print(b)
+
+    # filter_basis = create_filter_basis(100, 8)
+    # fig, axs = plt.subplots(2, 4)
+    # plt.suptitle('First 8 radial Chebyshev polynomials')
+    # for i in range(2):
+    #     for j in range(4):
+    #         axs[i, j].imshow(filter_basis[4*i + j])
+    #         axs[i, j].set_title(f'n={4*i + j}')
+    #         axs[i, j].tick_params(left=False, right=False, labelleft=False,
+    #                         labelbottom=False, bottom=False)
+    # plt.show()
+

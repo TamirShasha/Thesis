@@ -6,6 +6,7 @@ from src.constants import ROOT_DIR
 import logging
 from datetime import datetime
 import pathlib
+import pickle
 
 from src.experiments.data_simulator_1d import DataSimulator1D
 from src.utils.logger import logger
@@ -109,17 +110,32 @@ class Experiment1D:
             "optimal_coeffs": optimal_coeffs,
             "estimated_signal": estimated_signal,
             "total_time": end_time - start_time,
+            "most_likely_index": np.nanargmax(likelihoods),
             "most_likely_size": self._sizes_options[np.nanargmax(likelihoods)]
         }
 
-        self.save_and_plot()
+        self.save_and_plot_all_figures()
 
         return self._results
 
-    def save_and_plot(self):
+    def save_and_plot_original(self):
 
         likelihoods = self._results['likelihoods']
         most_likely_index = np.nanargmax(likelihoods)
+
+        if self._save:
+            data_to_save = {
+                **self._results,
+                **{
+                    "signal_size": self._signal_length,
+                    "sizes_options": self._sizes_options,
+                    "number_of_instances": self._num_of_instances,
+                    "noise_mean": self._noise_mean,
+                    "noise_std": self._noise_std,
+                    "most_likely_index": most_likely_index
+                }
+            }
+            pickle.dump(data_to_save, open(os.path.join(self.experiment_dir, 'data.pkl'), 'wb'))
 
         fig, axs = plt.subplots(2, 2, figsize=(12, 6))
         plt.suptitle(
@@ -139,7 +155,7 @@ class Experiment1D:
                               constant_values=(0, 0)), label='estimated', linestyle='--')
         axs[1, 0].legend()
         axs[1, 0].set_title('Signal instance and estimated')
-        axs[1, 1].plot(self._sizes_options, self._results['likelihoods'])
+        axs[1, 1].plot(self._sizes_options, self._results['likelihoods'], 'o-')
         axs[1, 1].set_title('Likelihoods')
 
         if self._save:
@@ -150,36 +166,287 @@ class Experiment1D:
 
         plt.close()
 
+    def save_and_plot_all_figures(self):
 
-# np.random.seed(504)
+        font = {'size': 16}
+        import matplotlib
+        matplotlib.rc('font', **font)
+
+        likelihoods = self._results['likelihoods']
+        most_likely_index = np.nanargmax(likelihoods)
+
+        if self._save:
+            data_to_save = {
+                **self._results,
+                **{
+                    "signal_size": self._signal_length,
+                    "sizes_options": self._sizes_options,
+                    "number_of_instances": self._num_of_instances,
+                    "noise_mean": self._noise_mean,
+                    "noise_std": self._noise_std,
+                    "most_likely_index": most_likely_index
+                }
+            }
+            pickle.dump(data_to_save, open(os.path.join(self.experiment_dir, 'data.pkl'), 'wb'))
+
+        # fig, axs = plt.subplots(2, 2, figsize=(12, 6))
+        fig = plt.figure()
+        gs = fig.add_gridspec(2, 2)
+        ax1 = fig.add_subplot(gs[0, :])
+        ax1.xaxis.set_visible(False)
+        ax2 = fig.add_subplot(gs[1, 0])
+        ax3 = fig.add_subplot(gs[1, 1])
+        ax3.yaxis.set_visible(False)
+
+        # plt.suptitle(
+        #     f"n={self._data_size}, d={self._signal_length}, k={self._num_of_instances}, "
+        #     f"N~{self._noise_mean, self._noise_std}")
+        # f"Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n")
+        # f"Most likely size={self._results['most_likely_size']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
+        ax1.plot(self._data[0][:5000], label='noisy data')
+        ax1.set_title('Noisy Data')
+        ax1.plot(self._data_simulator.clean_data[:5000], label='underlying signals')
+        ax1.legend(loc='upper right')
+        # axs[0, 1].set_title('Underlying signals')
+        pad = self._signal_length // 10
+        ax2.plot(
+            np.pad(self._data_simulator.unmarginized_signal_gen(self._signal_length), (pad, pad), 'constant',
+                   constant_values=(0, 0)),
+            label='true')
+        ax2.plot(np.pad(self._results['estimated_signal'], (pad, pad), 'constant',
+                        constant_values=(0, 0)), label='estimated', linestyle='--')
+        ax2.legend()
+        ax2.set_title('True Signal And Estimated Signal')
+        ax3.plot(self._sizes_options, self._results['likelihoods'], 'o-')
+        ax3.axvline(x=self._signal_length, label='signal true size', color='black', linestyle='--')
+        # ax3.axvline(x=self._results['most_likely_size'], label='signal estimated size', linestyle='--', color='red')
+        ax3.scatter([self._results['most_likely_size']],
+                    [self._results['likelihoods'][self._results['most_likely_index']]],
+                    color='red', marker='*', s=300, label='signal estimated size')
+        ax3.set_title('Likelihood')
+        ax3.legend(loc='lower right')
+
+        plt.tight_layout()
+
+        if self._save:
+            fig_path = os.path.join(self.experiment_dir, f'{self._name}.png')
+            plt.savefig(fname=fig_path)
+        if self._plot:
+            plt.show()
+
+        plt.close()
+
+    def save_and_plot(self):
+
+        font = {'size': 16}
+        import matplotlib
+        matplotlib.rc('font', **font)
+
+        likelihoods = self._results['likelihoods']
+        most_likely_index = np.nanargmax(likelihoods)
+
+        if self._save:
+            data_to_save = {
+                **self._results,
+                **{
+                    "signal_size": self._signal_length,
+                    "sizes_options": self._sizes_options,
+                    "number_of_instances": self._num_of_instances,
+                    "noise_mean": self._noise_mean,
+                    "noise_std": self._noise_std,
+                    "most_likely_index": most_likely_index
+                }
+            }
+            pickle.dump(data_to_save, open(os.path.join(self.experiment_dir, 'data.pkl'), 'wb'))
+
+        # fig, axs = plt.subplots(2, 2, figsize=(12, 6))
+        fig = plt.figure(figsize=(16, 4))
+        gs = fig.add_gridspec(1, 3)
+        ax1 = fig.add_subplot(gs[0, :2])
+        ax1.xaxis.set_visible(False)
+        ax2 = fig.add_subplot(gs[0, 2])
+        ax2.yaxis.set_visible(False)
+        # ax3 = fig.add_subplot(gs[1, 1])
+
+        # plt.suptitle(
+        #     f"n={self._data_size}, d={self._signal_length}, k={self._num_of_instances}, "
+        #     f"N~{self._noise_mean, self._noise_std}")
+        # f"Noise Mean={self._noise_mean}, Noise STD={self._noise_std} \n")
+        # f"Most likely size={self._results['most_likely_size']}, Took {'%.3f' % (self._results['total_time'])} Seconds")
+        ax1.plot(self._data[0][:5000], label='noisy data')
+        ax1.set_title('Noisy Data')
+        ax1.plot(self._data_simulator.clean_data[:5000], label='underlying signals')
+        ax1.legend(loc='upper right')
+        # axs[0, 1].set_title('Underlying signals')
+        pad = self._signal_length // 10
+        # ax2.plot(
+        #     np.pad(self._data_simulator.unmarginized_signal_gen(self._signal_length), (pad, pad), 'constant',
+        #            constant_values=(0, 0)),
+        #     label='instance')
+        # ax2.plot(np.pad(self._results['estimated_signal'], (pad, pad), 'constant',
+        #                 constant_values=(0, 0)), label='estimated', linestyle='--')
+        # ax2.legend()
+        # ax2.set_title('Signal instance and estimated')
+        ax2.plot(self._sizes_options, self._results['likelihoods'], 'o-')
+        ax2.axvline(x=self._signal_length, label='signal true size', color='black', linestyle='--')
+        # ax3.axvline(x=self._results['most_likely_size'], label='signal estimated size', linestyle='--', color='red')
+        ax2.scatter([self._results['most_likely_size']],
+                    [self._results['likelihoods'][self._results['most_likely_index']]],
+                    color='red', marker='*', s=300, label='signal estimated size')
+        ax2.set_title('Likelihood')
+        ax2.legend(loc='lower right')
+
+        plt.tight_layout()
+
+        if self._save:
+            fig_path = os.path.join(self.experiment_dir, f'{self._name}.png')
+            plt.savefig(fname=fig_path)
+        if self._plot:
+            plt.show()
+
+        plt.close()
 
 
-def __main__():
+np.random.seed(505)
+
+arbitrary_signal = lambda d: 1 - 2 * np.square(np.linspace(0, 1, d) - 0.5 + 0.2 * np.sin(10 * np.linspace(0, 1, d)))
+pulses = lambda d: np.ones(d)
+paraboly = lambda d: 1 - 2 * np.square(np.linspace(0, 1, d) - 0.5)
+
+
+def run_experiment_pulses(noise_std=1, random_seed=503):
+    np.random.seed(random_seed)
     sim_data = DataSimulator1D(size=300000,
                                signal_size=150,
                                # signal_fraction=0.1,
                                signal_margin=0.0001,
                                num_of_instances=500,
-                               signal_gen=lambda d: np.ones(d),
-                               noise_std=12,
+                               signal_gen=pulses,
+                               noise_std=noise_std,
                                noise_mean=0)
 
     Experiment1D(
-        name=f"expy",
+        name=f"experiment_pulses_1d_{str(noise_std).replace('.', '_')}",
         simulator=sim_data,
-        signal_length_by_percentage=np.arange(0.1, 2.5, 0.1) * sim_data.signal_size / sim_data.size * 100,
+        signal_length_by_percentage=np.arange(0.1, 2, 0.1) * sim_data.signal_size / sim_data.size * 100,
         # signal_length_by_percentage=np.array([0]) * sim_data.signal_size / sim_data.size * 100,
         num_of_instances=sim_data.num_of_instances,
         use_noise_params=True,
         estimate_noise=False,
         filter_basis_size=1,
         save_statistics=False,
-        prior_filter=lambda d: np.ones(d),
+        # prior_filter=lambd
+
+        # a d: np.ones(d),
         particles_margin=0,
-        plot=True,
+        plot=False,
         save=True,
         log_level=logging.INFO
     ).run()
+
+
+def run_experiment_arbitrary(noise_std=1, random_seed=503, signal_gen=paraboly):
+    np.random.seed(random_seed)
+    sim_data = DataSimulator1D(size=50000,
+                               signal_size=100,
+                               # signal_fraction=0.1,
+                               signal_margin=0.0001,
+                               num_of_instances=150,
+                               signal_gen=signal_gen,
+                               noise_std=noise_std,
+                               noise_mean=0)
+
+    Experiment1D(
+        name=f"experiment_{signal_gen.__name__}_1d_{str(noise_std).replace('.', '_')}",
+        simulator=sim_data,
+        signal_length_by_percentage=np.arange(0.1, 2, 0.1) * sim_data.signal_size / sim_data.size * 100,
+        # signal_length_by_percentage=np.array([0]) * sim_data.signal_size / sim_data.size * 100,
+        num_of_instances=sim_data.num_of_instances,
+        use_noise_params=True,
+        estimate_noise=False,
+        filter_basis_size=8,
+        save_statistics=False,
+        # prior_filter=lambd
+
+        # a d: np.ones(d),
+        particles_margin=0,
+        plot=True,
+        save=False,
+        log_level=logging.INFO
+    ).run()
+
+
+def __main__():
+    # run_experiment_pulses(noise_std=0.1, random_seed=503)
+    # run_experiment_pulses(noise_std=3, random_seed=503)
+    # run_experiment_pulses(noise_std=10, random_seed=503)
+    # run_experiment_pulses(noise_std=50, random_seed=503)
+    run_experiment_arbitrary(noise_std=1, signal_gen=arbitrary_signal)
+
+    # noise_std = [1]
+    # noise_std = [0.1, 5, 10, 50]
+    # noise_std = [10, 20]
+
+    # for noise_std in [0.1, 5, 10, 50]:
+    #     for random_seed in np.arange(505, 506):
+    #         np.random.seed()
+    #         sim_data = DataSimulator1D(size=300000,
+    #                                    signal_size=150,
+    #                                    # signal_fraction=0.1,
+    #                                    signal_margin=0.0001,
+    #                                    num_of_instances=500,
+    #                                    signal_gen=pulses,
+    #                                    noise_std=noise_std,
+    #                                    noise_mean=0)
+    #
+    #         Experiment1D(
+    #             name=f"expy_{noise_std}",
+    #             simulator=sim_data,
+    #             signal_length_by_percentage=np.arange(0.1, 2, 0.1) * sim_data.signal_size / sim_data.size * 100,
+    #             # signal_length_by_percentage=np.array([0]) * sim_data.signal_size / sim_data.size * 100,
+    #             num_of_instances=sim_data.num_of_instances,
+    #             use_noise_params=True,
+    #             estimate_noise=False,
+    #             filter_basis_size=1,
+    #             save_statistics=False,
+    #             # prior_filter=lambd
+    #             # a d: np.ones(d),
+    #             particles_margin=0,
+    #
+    #             plot=False,
+    #             save=True,
+    #             log_level=logging.INFOs
+    #         ).run()
+
+    # for noise_std in [0.1]:
+    #
+    # np.random.seed(500)
+    # sim_data = DataSimulator1D(size=10000,
+    #                            signal_size=50,
+    #                            # signal_fraction=0.1,
+    #                            signal_margin=0.0001,
+    #                            num_of_instances=50,
+    #                            signal_gen=pulses,
+    #                            noise_std=0.1,
+    #                            noise_mean=0)
+    #
+    # Experiment1D(
+    #     name=f"expy_{0.1}",
+    #     simulator=sim_data,
+    #     signal_length_by_percentage=np.arange(0.1, 2, 0.1) * sim_data.signal_size / sim_data.size * 100,
+    #     # signal_length_by_percentage=np.array([0]) * sim_data.signal_size / sim_data.size * 100,
+    #     num_of_instances=sim_data.num_of_instances,
+    #     use_noise_params=True,
+    #     estimate_noise=False,
+    #     filter_basis_size=1,
+    #     save_statistics=False,
+    #     # prior_filter=lambd
+    #     # a d: np.ones(d),
+    #     particles_margin=0,
+    #     plot=False,
+    #     save=True,
+    #     log_level=logging.INFO
+    # ).run()
 
 
 if __name__ == '__main__':
