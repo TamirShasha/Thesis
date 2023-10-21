@@ -8,6 +8,7 @@ from datetime import datetime
 import pathlib
 from enum import Enum
 import pickle
+import matplotlib.patches as patches
 
 from src.experiments.data_simulator_2d import DataSimulator2D, Shapes2D
 # from src.algorithms.length_estimator_2d_curves_method import LengthEstimator2DCurvesMethod
@@ -255,6 +256,8 @@ class Experiment2D:
             data_to_save = {
                 **self._results,
                 **{
+                    "data": self._data[0],
+                    "clean_data": self._data_simulator.clean_data,
                     "signal_size": self._signal_length,
                     "sizes_options": self._sizes_options,
                     "number_of_instances": self._num_of_instances_range,
@@ -265,13 +268,19 @@ class Experiment2D:
             }
             pickle.dump(data_to_save, open(os.path.join(self.experiment_dir, 'data.pkl'), 'wb'))
 
-        fig = plt.figure()
+        fig = plt.figure(figsize=(20, 4))
 
         mrc_fig = plt.subplot2grid((2, 3), (0, 2))
         likelihoods_fig = plt.subplot2grid((2, 3), (0, 0), colspan=2)
         particle_fig = plt.subplot2grid((2, 3), (1, 0))
         est_particle_fig = plt.subplot2grid((2, 3), (1, 1))
-        est_basis_coeffs_fig = plt.subplot2grid((2, 3), (1, 2))
+        clean_data_fig = plt.subplot2grid((2, 3), (1, 2))
+
+        mrc_fig = plt.subplot2grid((1, 5), (0, 0))
+        likelihoods_fig = plt.subplot2grid((1, 5), (0, 3), colspan=2)
+        # particle_fig = plt.subplot2grid((1, 5), (1, 0))
+        est_particle_fig = plt.subplot2grid((1, 5), (0, 2))
+        clean_data_fig = plt.subplot2grid((1, 5), (0, 1))
 
         # title = f"Size=({self._rows}, {self._columns}), " \
         #         f"d={self._signal_length}, k={self._data_simulator.num_of_instances}, " \
@@ -294,19 +303,22 @@ class Experiment2D:
         #          f"Took {int(self._results['total_time'])} seconds"
         # fig.suptitle(title)
 
-        mrc_fig.set_title('Noisy Data')
+        # mrc_fig.set_title('Noisy Data')
         mrc_fig.imshow(self._data[0], cmap='gray')
+        mrc_fig.axis('off')
 
-        est_particle_fig.set_title('Estimated Signal')
+        # est_particle_fig.set_title('Estimated Signal')
         pcm = est_particle_fig.imshow(self._results['estimated_signal'], cmap='gray')
-        plt.colorbar(pcm, ax=est_particle_fig)
+        est_particle_fig.axis('off')
+        # plt.colorbar(pcm, ax=est_particle_fig)
 
         most_likely_coeffs = self._results['optimal_coeffs'][most_likely_index]
         # est_basis_coeffs_fig.bar(np.arange(len(most_likely_coeffs)), most_likely_coeffs)
-        est_basis_coeffs_fig.set_title('Clean Data')
-        est_basis_coeffs_fig.imshow(self.experiment_attr['clean_data'][0], cmap='gray')
+        # est_basis_coeffs_fig.set_title('Clean Data')
+        clean_data_fig.imshow(self.experiment_attr['clean_data'][0], cmap='gray')
+        clean_data_fig.axis('off')
 
-        likelihoods_fig.set_title('Likelihoods')
+        # likelihoods_fig.set_title('Likelihoods')
         likelihoods_fig.plot(self._sizes_options, likelihoods, 'o-')
         likelihoods_fig.axvline(x=self._signal_length, label='signal true size', color='black', linestyle='--')
         likelihoods_fig.scatter([self._results['most_likely_size']],
@@ -314,15 +326,15 @@ class Experiment2D:
                                 color='red', marker='*', s=300, label='signal estimated size')
         # likelihoods_fig.axvline(x=self._results['most_likely_size'], label='signal estimated size', linestyle='--',
         #                         color='red')
-        likelihoods_fig.set_xlabel('Sizes')
-        likelihoods_fig.set_ylabel('Likelihood')
+        # likelihoods_fig.set_xlabel('Sizes')
+        # likelihoods_fig.set_ylabel('Likelihood')
         likelihoods_fig.yaxis.set_visible(False)
         likelihoods_fig.legend()
 
-        if self._data_simulator:
-            particle_fig.set_title('True Signal')
-            pcm = particle_fig.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
-            plt.colorbar(pcm, ax=particle_fig)
+        # if self._data_simulator:
+        #     # particle_fig.set_title('True Signal')
+        #     pcm = particle_fig.imshow(self._data_simulator.create_signal_instance(), cmap='gray')
+        #     plt.colorbar(pcm, ax=particle_fig)
 
         plt.tight_layout()
 
@@ -358,23 +370,31 @@ class Experiment2D:
             }
             pickle.dump(data_to_save, open(os.path.join(self.experiment_dir, 'data.pkl'), 'wb'))
 
-        fig = plt.figure()
+        fig = plt.figure(figsize=(10, 8))
 
-        mrc_fig = plt.subplot2grid((2, 2), (1, 1))
-        likelihoods_fig = plt.subplot2grid((2, 2), (0, 0), colspan=2)
-        est_particle_fig = plt.subplot2grid((2, 2), (1, 0))
-
+        likelihoods_fig = plt.subplot2grid((3, 2), (0, 0), colspan=2)
+        mrc_fig = plt.subplot2grid((3, 2), (1, 1), rowspan=2)
+        est_particle_fig = plt.subplot2grid((3, 2), (1, 0), rowspan=2)
 
         mrc_fig.set_title('Micrograph')
         mrc_fig.imshow(self._data[0], cmap='gray')
+        if self._results['mrc_locations'] is not None:
+            for loc in self._results['mrc_locations'][0]:
+                rect = patches.Rectangle(loc + self._particles_margin,
+                                         self._results['most_likely_size'], self._results['most_likely_size'],
+                                         linewidth=1,
+                                         edgecolor='r',
+                                         facecolor='none')
+                # Add the patch to the Axes
+                mrc_fig.add_patch(rect)
 
         est_particle_fig.set_title('Estimated Signal')
         pcm = est_particle_fig.imshow(self._results['estimated_signal'], cmap='gray')
-        plt.colorbar(pcm, ax=est_particle_fig)
+        # plt.colorbar(pcm, ax=est_particle_fig)
 
         likelihoods_fig.set_title('Likelihoods')
         likelihoods_fig.plot(self._sizes_options, likelihoods, 'o-')
-        likelihoods_fig.axvline(x=self._signal_length, label='signal true size', color='black', linestyle='--')
+        # likelihoods_fig.axvline(x=self._signal_length, label='signal true size', color='black', linestyle='--')
         likelihoods_fig.scatter([self._results['most_likely_size']],
                                 [self._results['likelihoods'][most_likely_index]],
                                 color='red', marker='*', s=300, label='signal estimated size')
@@ -422,23 +442,107 @@ def run_disk_experiment(random_seed=513):
         filter_basis_size=1,
         save_statistics=True,
         particles_margin=0,
+        plot=True,
+        save=True,
+        log_level=logging.INFO
+    ).run()
+
+
+def run_ring_experiment(random_seed=513):
+    np.random.seed(random_seed)
+    sim_data = DataSimulator2D(rows=2000,
+                               columns=2000,
+                               signal_length=80,
+                               signal_power=1,
+                               signal_margin=0,
+                               num_of_instances=100,
+                               number_of_micrographs=1,
+                               signal_gen=lambda d, p: Shapes2D.double_disk(d, d // 2, p, 0),
+
+                               noise_std=10,
+                               noise_mean=0,
+                               apply_ctf=False)
+
+    Experiment2D(
+        name=f"2d_ring_10",
+        simulator=sim_data,
+        signal_length_by_percentage=np.arange(0.2, 1.7, 0.1) * sim_data.signal_length / sim_data.rows * 100,
+        num_of_instances_range=(40, 40),
+        use_noise_params=True,
+        estimate_noise=False,
+        filter_basis_size=8,
+        save_statistics=True,
+        particles_margin=0,
         plot=False,
         save=True,
         log_level=logging.INFO
     ).run()
 
 
-def run_real_dataset_experiemnt():
+def run_real_dataset_experiemnt_10028():
     Experiment2D(
         name=f"expy",
-        mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\10028\001.mrc',
-                       clip_outliers=True,
-                       downsample=1000),
-        signal_length_by_percentage=np.arange(1, 10, 2),
+        mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\10028\005.mrc',
+                       clip_outliers=True),
+        signal_length_by_percentage=np.arange(2, 8, 0.5),
         num_of_instances_range=(40, 40),
         use_noise_params=False,
         estimate_noise=False,
-        filter_basis_size=1,
+        filter_basis_size=5,
+        save_statistics=True,
+        particles_margin=0,
+        plot=True,
+        save=True,
+        log_level=logging.INFO
+    ).run()
+
+
+def run_real_dataset_experiemnt_10081():
+    Experiment2D(
+        name=f"expy",
+        mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10081\HCN1apo_0035_2xaligned.mrc',
+                       clip_outliers=True),
+        signal_length_by_percentage=np.arange(2, 8, 0.5),
+        num_of_instances_range=(40, 40),
+        use_noise_params=False,
+        estimate_noise=False,
+        filter_basis_size=5,
+        save_statistics=True,
+        particles_margin=0,
+        plot=True,
+        save=True,
+        log_level=logging.INFO
+    ).run()
+
+
+def run_real_dataset_experiemnt_10089():
+    Experiment2D(
+        name=f"expy",
+        mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0155_frames_sum.mrc',
+                       clip_outliers=True),
+        signal_length_by_percentage=np.arange(2, 8, 0.5),
+        num_of_instances_range=(40, 40),
+        use_noise_params=False,
+        estimate_noise=False,
+        filter_basis_size=5,
+        save_statistics=True,
+        particles_margin=0,
+        plot=True,
+        save=True,
+        log_level=logging.INFO
+    ).run()
+
+
+def run_real_dataset_experiemnt_10128():
+    Experiment2D(
+        name=f"expy",
+        mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10128\001.mrc',
+                       clip_outliers=True),
+        signal_length_by_percentage=np.arange(2, 8, 0.5),
+        num_of_instances_range=(40, 40),
+        use_noise_params=False,
+        estimate_noise=False,
+        filter_basis_size=5,
         save_statistics=True,
         particles_margin=0,
         plot=True,
@@ -449,74 +553,9 @@ def run_real_dataset_experiemnt():
 
 def __main__():
     # run_disk_experiment()
-    run_real_dataset_experiemnt()
-    # # for noise_std in [0.1, 1, 10, 30]:
-    # ks = [5] + list(np.arange(10, 101, 10))
-    # ks = [3, 5, 8]
-    # ks = [3, 5, 8, 30, 40]
-    # print(ks)
-    # for k in [30]:
-    #     for random_seed in np.arange(512, 513):
-    #         np.random.seed(random_seed)
-    #         sim_data = DataSimulator2D(rows=1000,
-    #                                    columns=1000,
-    #                                    signal_length=50,
-    #                                    signal_power=1,
-    #                                    # signal_fraction=np.random.randint(10, 20) / 100,
-    #                                    # num_of_instances=
-    #                                    # method='vws',
-    #                                    signal_margin=0,
-    #                                    num_of_instances=70,
-    #                                    # num_of_instances=np.random.randint(40, 120),
-    #                                    number_of_micrographs=1,
-    #                                    # signal_gen=Shapes2D.sphere,
-    #                                    # signal_gen=lambda l, p: Shapes2D.double_disk(l, l // 2, p, 0),
-    #                                    signal_gen=Shapes2D.disk,
-    #                                    noise_std=10,
-    #                                    noise_mean=0,
-    #                                    apply_ctf=False)
-    #
-    #         Experiment2D(
-    #             name=f"expy",
-    #             # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10128\002.mrc',
-    #             #                downsample=4000,
-    #             #                clip_outliers=True),
-    #             # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMD-2984_0010_1000.mrc', clip_outliers=True),
-    #             # mrc=Micrograph(
-    #             #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10049\stack_0250_2x_SumCorr - Copy.mrc',
-    #             #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10049\stack_0241_2x_SumCorr.mrc',
-    #             #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10049\stack_0199_2x_SumCorr.mrc',
-    #             #     file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10081\HCN1apo_0035_2xaligned.mrc',
-    #             #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0155_frames_sum.mrc',
-    #             #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10061\EMD-2984_1068.mrc',
-    #             #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0155_frames_sum.mrc',
-    #             #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0176_frames_sum.mrc',
-    #             #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\10028\001.mrc',
-    #             #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10061\EMD-2984_0061.mrc',
-    #             #     downsample=4000,
-    #             #     low_pass_filter=-1,
-    #             #     plot=False,
-    #             #     clip_outliers=True),
-    #             # mrc=Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\002.mrc', downsample=1000),
-    #             simulator=sim_data,
-    #             # signal_length_by_percentage=[5, 7, 8, 10],
-    #             signal_length_by_percentage=np.arange(0.2, 1.7, 0.1) * sim_data.signal_length / sim_data.rows * 100,
-    #             # signal_length_by_percentage=[2, 6, 10],
-    #             # signal_length_by_percentage=[6],
-    #             # signal_length_by_percentage=[5, 8, 10, 12],
-    #             num_of_instances_range=(40, 40),
-    #             # num_of_instances_range=(2, 2),
-    #             # num_of_instances_range=(int(sim_data.num_of_instances * 0.7), int(sim_data.num_of_instances * 0.7)),
-    #             # down_sample_size=500,
-    #             use_noise_params=True,
-    #             estimate_noise=False,
-    #             filter_basis_size=1,
-    #             save_statistics=True,
-    #             particles_margin=0,
-    #             plot=True,
-    #             save=True,
-    #             log_level=logging.INFO
-    #         ).run()
+    # run_ring_experiment()
+    run_real_dataset_experiemnt_10089()
+    # run_real_dataset_experiemnt_10028()
 
 
 if __name__ == '__main__':

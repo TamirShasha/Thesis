@@ -263,3 +263,13 @@ class DataSimulator2D:
         db = int(10 * np.log10(single_signal_snr))
         mrc_db = int(10 * np.log10(mrc_snr))
         return db, mrc_db
+
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    ring = Shapes2D.double_disk(80, 40, fill_value_large=1, fill_value_small=0)
+    fig = plt.figure(figsize=(4, 4))
+    plt.imshow(ring, cmap='gray')
+    plt.xticks(np.arange(0, 80, 10))
+    plt.yticks(np.arange(0, 80, 10))
+    plt.tight_layout()
+    plt.show()

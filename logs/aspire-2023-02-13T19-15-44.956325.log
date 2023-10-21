@@ -1,0 +1,34 @@
+2023-02-13 19:15:44,956 DEBUG [root] ASPIRE configuration directory is C:\Users\tamir\AppData\Roaming\ASPIRE
+2023-02-13 19:15:44,956 DEBUG [root] ASPIRE configuration resolution details [({'logging': {'log_dir': 'C:/Users/tamir/Desktop/Thesis/main/logs'}}, ConfigSource(<super: <class 'ConfigSource'>, <ConfigSource object>>, None, False, False)), ({}, ConfigSource(<super: <class 'ConfigSource'>, <YamlSource object>>, 'C:\\Users\\tamir\\AppData\\Roaming\\ASPIRE\\config.yaml', False, False)), ({'version': '0.10.1', 'common': OrderedDict([('numeric', 'numpy'), ('fft', 'pyfftw')]), 'logging': OrderedDict([('log_dir', 'logs'), ('log_exceptions', 1), ('tqdm_disable', False), ('console_level', 'INFO'), ('log_file_level', 'DEBUG'), ('log_prefix', 'aspire')]), 'nufft': OrderedDict([('backends', ['cufinufft', 'finufft', 'pynfft'])]), 'ray': OrderedDict([('temp_dir', '/tmp/ray')])}, ConfigSource(<super: <class 'ConfigSource'>, <YamlSource object>>, 'C:\\Users\\tamir\\AppData\\Local\\Continuum\\anaconda3\\envs\\main\\lib\\site-packages\\aspire\\config_default.yaml', True, False))]
+2023-02-13 19:15:44,971 DEBUG [root] Resolved config.yaml:
+
+logging:
+    log_dir: C:/Users/tamir/Desktop/Thesis/main/logs
+    log_exceptions: 1
+    tqdm_disable: no
+    console_level: INFO
+    log_file_level: DEBUG
+    log_prefix: aspire
+version: 0.10.1
+common:
+    numeric: numpy
+    fft: pyfftw
+
+nufft:
+    backends: [cufinufft, finufft, pynfft]
+
+ray:
+    temp_dir: /tmp/ray
+
+
+2023-02-13 19:15:46,009 INFO [numexpr.utils] NumExpr defaulting to 8 threads.
+2023-02-13 19:15:46,967 INFO [aspire.basis.ffb_2d] Expanding 2D image in a frequency-domain Fourier–Bessel basis using the fast method.
+2023-02-13 19:15:47,125 INFO [aspire.nufft] Trying NFFT backend cufinufft
+2023-02-13 19:15:47,125 INFO [aspire.nufft] NFFT backend cufinufft not usable:
+	No module named 'pycuda'
+2023-02-13 19:15:47,125 INFO [aspire.nufft] Trying NFFT backend finufft
+2023-02-13 19:15:47,141 INFO [aspire.nufft] NFFT backend finufft usable.
+2023-02-13 19:15:47,141 INFO [aspire.nufft] Trying NFFT backend pynfft
+2023-02-13 19:15:47,141 INFO [aspire.nufft] NFFT backend pynfft not usable:
+	No module named 'pynfft'
+2023-02-13 19:15:47,141 INFO [aspire.nufft] Selected NFFT backend = finufft.

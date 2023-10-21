@@ -112,6 +112,7 @@ class FilterEstimator2D:
 
         # Will define the instead of moving one pixel to calc the next probability, the algorithm will jump more.
         self.basic_row_col_jump = max(self.data_size // 200, 1)
+        # self.basic_row_col_jump = 3
         logger.info(f'Basic row col jump is {self.basic_row_col_jump}')
         # self.basic_row_col_jump = 1
 

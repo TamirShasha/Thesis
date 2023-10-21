@@ -95,6 +95,8 @@ class Micrograph:
         else:
             raise Exception('Unsupported File Extension!')
 
+        logger.info(f'Loaded micrograph size is {mrc.shape}')
+
         # Flipping for positive signal power, cutting for square dimension
         # plt.imshow(mrc, cmap='gray')
         # plt.show()
@@ -214,29 +216,39 @@ def apply_low_pass_filter(img, n_pass=5, plot=False):
 
 
 if __name__ == '__main__':
-    # mrc = Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\HCN1apo_0016_2xaligned.mrc',
-    mrc = Micrograph(
-        # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10049\stack_0250_2x_SumCorr - Copy.mrc',
-        file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10061\EMD-2984_0775.mrc',
-        # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10061\EMD-2984_1249.mrc',
-        # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0155_frames_sum.mrc',
-        # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10081\HCN1apo_0035_2xaligned.mrc',
-        downsample=-1,
-        clip_outliers=True,
-        load_micrograph=True)
-
-    plt.imshow(mrc.img, cmap='gray')
+    mrc = Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\10028\005.mrc',
+                     clip_outliers=True, plot=True)
+    # mrc = Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0155_frames_sum.mrc',
+    #                  clip_outliers=True, plot=True)
+    plt.imshow(mrc.get_micrograph())
     plt.show()
 
-    img_gaus_10 = gaussian(mrc.img, sigma=10, mode='nearest', truncate=2.0)
-    plt.imshow(img_gaus_10, cmap='gray')
-    plt.show()
-    img_gaus_5 = gaussian(mrc.img, sigma=5, mode='nearest', truncate=2.0)
-    plt.imshow(img_gaus_5, cmap='gray')
-    plt.show()
-    img_gaus_3 = gaussian(mrc.img, sigma=3, mode='nearest', truncate=2.0)
-    plt.imshow(img_gaus_3, cmap='gray')
-    plt.show()
+    # Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0155_frames_sum.mrc',
+    #            clip_outliers=True)
+    #
+    # # mrc = Micrograph(file_path=r'C:\Users\tamir\Desktop\Thesis\data\HCN1apo_0016_2xaligned.mrc',
+    # mrc = Micrograph(
+    #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10049\stack_0250_2x_SumCorr - Copy.mrc',
+    #     file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10061\EMD-2984_0775.mrc',
+    #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10061\EMD-2984_1249.mrc',
+    #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10089\TcdA1-0155_frames_sum.mrc',
+    #     # file_path=r'C:\Users\tamir\Desktop\Thesis\data\EMPIAR_10081\HCN1apo_0035_2xaligned.mrc',
+    #     downsample=-1,
+    #     clip_outliers=True,
+    #     load_micrograph=True)
+    #
+    # plt.imshow(mrc.img, cmap='gray')
+    # plt.show()
+    #
+    # img_gaus_10 = gaussian(mrc.img, sigma=10, mode='nearest', truncate=2.0)
+    # plt.imshow(img_gaus_10, cmap='gray')
+    # plt.show()
+    # img_gaus_5 = gaussian(mrc.img, sigma=5, mode='nearest', truncate=2.0)
+    # plt.imshow(img_gaus_5, cmap='gray')
+    # plt.show()
+    # img_gaus_3 = gaussian(mrc.img, sigma=3, mode='nearest', truncate=2.0)
+    # plt.imshow(img_gaus_3, cmap='gray')
+    # plt.show()
     # img__ = gaussian(mrc.img - img_, sigma=100, mode='nearest', truncate=2.0)
     #
     # fig, axs = plt.subplots(2, 2, figsize=(18, 12))
